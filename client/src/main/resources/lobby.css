@@ -7,3 +7,8 @@ Dont duplicate styles already defined in common.css
 .lobby-background {
     -fx-background-color: #e0e0e0;
 }
+.button {
+    -fx-font-size: 14px;
+    -fx-padding: 10px 20px;
+    -fx-text-fill: blueviolet;
+}

@@ -1,16 +1,18 @@
 package dk.dtu;
 
 import javafx.application.Application;
-import javafx.event.ActionEvent;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.StackPane;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
 import org.jspace.FormalField;
-import org.jspace.SequentialSpace;
-import org.jspace.Space;
+import org.jspace.RemoteSpace;
+
+import java.util.List;
 
 /**
  * JavaFX client
@@ -20,46 +22,66 @@ import org.jspace.Space;
  */
 public class ClientApp extends Application {
 
-    public static void main(String[] args) throws InterruptedException {
-        Space inbox = new SequentialSpace();
-        inbox.put("Hello World!");
-        Object[] tuple = inbox.get(new FormalField(String.class));
-        System.out.println(tuple[0]);
+    private static final String HOST = "127.0.0.1";
+    private static final int PORT = 9001;
+    private static final String TODO_LISTS_URI = "tcp://" + HOST + ":" + PORT + "/todoLists?keep";
 
+    private final Label statusLabel = new Label("Not connected");
+    private final ListView<String> listsView = new ListView<>();
+
+    public static void main(String[] args) throws InterruptedException {
         launch(args);
     }
 
-    private int counter = 0;
-    private final Button button = new Button();
-
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Hello World!");
+        primaryStage.setTitle("Todo Lists");
 
-        button.setText("Im a counter! Click ME!!!");
-        button.setOnAction(this::handleClick);
+        Button refreshButton = new Button("Refresh");
+        refreshButton.setOnAction(e -> loadLists());
 
-        StackPane root = new StackPane(button);
-        Scene scene = new Scene(root, 300, 250);
-        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKey);
+        VBox root = new VBox(10,
+                statusLabel,
+                refreshButton,
+                new Label("Lists:"),
+                listsView
+        );
+        root.setStyle("-fx-padding: 12;");
 
-        primaryStage.setScene(scene);
+        primaryStage.setScene(new Scene(root, 420, 420));
         primaryStage.show();
+
+        loadLists();
     }
 
-    private void handleClick(ActionEvent event) {
-        counter++;
-        button.setText(String.valueOf(counter));
+    private void loadLists() {
+        setStatus("Connecting to " + TODO_LISTS_URI + " ...");
+        new Thread(() -> {
+            try {
+                RemoteSpace todoLists = new RemoteSpace(TODO_LISTS_URI);
+                
+                // Server tuple format: (listId:String, listName:String)
+                List<Object[]> tuples = todoLists.queryAll(
+                        new FormalField(String.class),
+                        new FormalField(String.class)
+                );
+
+                Platform.runLater(() -> {
+                    listsView.getItems().clear();
+                    for (Object[] t : tuples) {
+                        String id = (String) t[0];
+                        String name = (String) t[1];
+                        listsView.getItems().add(id + " - " + name);
+                    }
+                    setStatus("Loaded " + tuples.size() + " lists");
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> setStatus("Failed: " + ex.getMessage()));
+            }
+        }, "load-lists").start();
     }
 
-    private void handleKey(KeyEvent event) {
-        if (event.getCode() == KeyCode.UP) {
-            counter++;
-        } else if (event.getCode() == KeyCode.DOWN) {
-            counter--;
-        } else {
-            return;
-        }
-        button.setText(String.valueOf(counter));
+    private void setStatus(String text) {
+        statusLabel.setText(text);
     }
 }

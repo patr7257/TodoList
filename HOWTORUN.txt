@@ -1,11 +1,22 @@
 Build / Test: 
-mvn clean test (from client or server folders) 
-"cd client; mvn clean test"
-"cd server; mvn clean test"
+mvn -pl server test
+mvn -pl client test
 
 RUN / START 
 Run server: mvn -pl server exec:java        (from repo root)
 Run client: mvn -pl client javafx:run       (from repo root)
+
+
+
+
+
+
+
+
+mvn clean test (from client or server folders) 
+"cd client; mvn clean test"
+"cd server; mvn clean test"
+
 
 Projects fixes:
 cntrl + shift + p:
