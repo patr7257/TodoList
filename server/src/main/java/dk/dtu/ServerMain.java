@@ -23,6 +23,13 @@ public class ServerMain {
             repo.add("counter", counter);
             counter.put(0);
 
+            SequentialSpace users = new SequentialSpace();
+            repo.add(TupleSpaces.USERS, users);
+
+            // optional: lav nogle testbrugere
+            users.put("alice");
+            users.put("bob");
+
             // Request
             SequentialSpace requests = new SequentialSpace();
             repo.add(TupleSpaces.REQUESTS, requests);
@@ -42,11 +49,13 @@ public class ServerMain {
             String todoListsUri = "tcp://" + host + ":" + port + "/todoLists?keep";
             String counterUri = "tcp://" + host + ":" + port + "/counter?keep";
             String requestsUri = "tcp://" + host + ":" + port + "/" + TupleSpaces.REQUESTS + "?keep";
+            String usersUri     = "tcp://" + host + ":" + port + "/" + TupleSpaces.USERS + "?keep";
 
             System.out.println("Server started.");
             System.out.println("todoLists URI: " + todoListsUri);
             System.out.println("counter URI: " + counterUri);
             System.out.println("requests URI: " + requestsUri);
+            System.out.println("users URI: " + usersUri);
 
             Thread requestLoop = new Thread(() -> handleRequests(requests), "request-loop");
             requestLoop.start();
@@ -68,8 +77,8 @@ public class ServerMain {
                 System.out.println("hej");
                 // Wait for a ping request: (cmd, requestId, a1, a2, a3, a4)
                 Object[] req = requests.get(
-                        new ActualField(TupleSpaces.CMD_PING),
-                        new FormalField(String.class),
+                        new FormalField(String.class), // cmd
+                        new FormalField(String.class), // requestId
                         new FormalField(Object.class),
                         new FormalField(Object.class),
                         new FormalField(Object.class),
@@ -77,27 +86,27 @@ public class ServerMain {
 
                 String cmdType = (String) req[0];
                 switch (cmdType) {
-                    case "ping":
+                    case TupleSpaces.CMD_PING:
                         System.out.println("ping");
                         handlePingRequest(req);
                         break;
-                    case "list_create":
+                    case TupleSpaces.CMD_LIST_CREATE:
                         System.out.println("listc");
                         handleListCreateRequest(req);
                         break;
-                    case "task_add":
+                    case TupleSpaces.CMD_TASK_ADD:
                         handleTaskAddRequest(req);
                         break;
-                    case "task_status":
+                    case TupleSpaces.CMD_TASK_STATUS:
                         handleTaskStatusRequest(req);
                         break;
-                    case "task_assign":
+                    case TupleSpaces.CMD_TASK_ASSIGN:
                         handleTaskAssignRequest(req);
                         break;
-                    case "lists_get":
+                    case TupleSpaces.CMD_LISTS_GET:
                         handleListsGetRequest(req);
                         break;
-                    case "tasks_get":
+                    case TupleSpaces.CMD_TASKS_GET:
                         handleTasksGetRequest(req);
                         break;
                 }

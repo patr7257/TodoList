@@ -16,6 +16,7 @@ public final class TupleSpaces {
     public static final String RESPONSES = "responses";
     public static final String LISTS = "lists";
     public static final String TASKS = "tasks";
+    public static final String USERS = "users";
     
     // Commands
     public static final String CMD_PING = "ping";
