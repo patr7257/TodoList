@@ -10,6 +10,7 @@ import javafx.stage.Stage;
 public class SceneNavigator {
 
     private final Stage stage;
+    private String currentUser;
 
     // Constructor
     public SceneNavigator(Stage stage) {
@@ -39,4 +40,15 @@ public class SceneNavigator {
         stage.setTitle("Todo List");
         stage.setScene(new D_TodoListView(this, listId, listName).createScene());
     }
+    public void setCurrentUser(String username) {
+        this.currentUser = username;
+    }
+
+    public String getCurrentUser() {
+        return currentUser;
+    }
+    public void showMainMenuWithMessage(String loginMessage) {
+    stage.setTitle("Main Menu");
+    stage.setScene(new C_MainMenu(this, loginMessage).createScene());
+}
 }

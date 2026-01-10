@@ -16,6 +16,9 @@ public final class TupleSpaces {
     public static final String RESPONSES = "responses";
     public static final String LISTS = "lists";
     public static final String TASKS = "tasks";
+    public static final String USERS = "users";
+
+
     
     // Commands
     public static final String CMD_PING = "ping";
@@ -25,6 +28,8 @@ public final class TupleSpaces {
     public static final String CMD_TASK_ASSIGN = "task_assign";
     public static final String CMD_LISTS_GET = "lists_get";
     public static final String CMD_TASKS_GET = "tasks_get";
+    public static final String CMD_USER_REGISTER = "user_register";
+    public static final String CMD_USER_LOGIN = "user_login";
 
     // Response status (first field in response tuples).
     public static final String RESP_OK = "ok";
