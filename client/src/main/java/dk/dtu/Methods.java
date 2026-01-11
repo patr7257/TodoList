@@ -147,4 +147,56 @@ public class Methods {
 		}, "login-user").start();
 	}
 
+	public static void createToDoList(Label statusLabel, Button createToDoListButton, String requestsUri,
+			String responsesUri, Button refreshButton, ListView<ListEntry> listsView, String todoListsUri,
+			String listName) {
+		if (listName == null || listName.isBlank()) {
+			setStatus(statusLabel, "Enter a name");
+			return;
+		}
+
+		setStatus(statusLabel, "Creating to do list...");
+		createToDoListButton.setDisable(true);
+
+		new Thread(() -> {
+			String requestId = UUID.randomUUID().toString();
+			try {
+				RemoteSpace requests = new RemoteSpace(requestsUri);
+				RemoteSpace responses = new RemoteSpace(responsesUri);
+
+				// Send create request (a1 = listName)
+				requests.put(TupleSpaces.CMD_LIST_CREATE, requestId, listName, "", "", "");
+
+				// Wait for server response correlated by requestId
+				Object[] resp = responses.get(
+						new ActualField(TupleSpaces.RESP_OK),
+						new ActualField(requestId),
+						new FormalField(Object.class),
+						new FormalField(Object.class),
+						new FormalField(Object.class),
+						new FormalField(Object.class));
+
+				// resp[2]=listId, resp[3]=listName (if provided by server)
+				String createdId = resp.length > 2 && resp[2] instanceof String ? (String) resp[2] : null;
+				String createdName = resp.length > 3 && resp[3] instanceof String ? (String) resp[3] : null;
+
+				Platform.runLater(() -> {
+					if (createdId != null) {
+						setStatus(statusLabel, "Created: " + (createdName != null ? createdName : createdId));
+					} else {
+						setStatus(statusLabel, "Created (no id returned)");
+					}
+					createToDoListButton.setDisable(false);
+					// Refresh lists now that server confirmed creation
+					loadTodoLists(statusLabel, refreshButton, listsView, todoListsUri);
+				});
+			} catch (Exception ex) {
+				Platform.runLater(() -> {
+					setStatus(statusLabel, "Creation of list failed: " + ex.getMessage());
+					createToDoListButton.setDisable(false);
+				});
+			}
+		}, "create-todo-list").start();
+	}
+
 }

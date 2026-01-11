@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -20,6 +21,7 @@ public class C_MainMenu {
     private static final int PORT = 9001;
     private static final String TODO_LISTS_URI = "tcp://" + HOST + ":" + PORT + "/todoLists?keep";
     private static final String REQUESTS_URI = "tcp://" + HOST + ":" + PORT + "/" + TupleSpaces.REQUESTS + "?keep";
+    private static final String RESPONSES_URI = "tcp://" + HOST + ":" + PORT + "/" + TupleSpaces.RESPONSES + "?keep";
 
     private final SceneNavigator navigator;
     private final String loginMessage; // besked vist kort efter login
@@ -29,6 +31,7 @@ public class C_MainMenu {
     private final Button refreshButton = new Button("Refresh");
     private final Button logoutButton = new Button("Logout");
     private final Button pingButton = new Button("Ping server");
+    private final Button createToDoListButton = new Button("Create To Do List");
 
     // Bruges hvis man går til MainMenu uden specifik login-besked
     public C_MainMenu(SceneNavigator navigator) {
@@ -69,6 +72,22 @@ public class C_MainMenu {
 
         pingButton.setOnAction(e -> Methods.sendPing(statusLabel, pingButton, REQUESTS_URI));
 
+        createToDoListButton.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Create To Do List");
+            dialog.setHeaderText("Enter a name for the new list:");
+            dialog.setContentText("Name:");
+
+            dialog.showAndWait().ifPresent(name -> {
+                if (name == null || name.isBlank()) {
+                    Methods.setStatus(tempMessageLabel, "Enter a name");
+                    return;
+                }
+                Methods.createToDoList(tempMessageLabel, createToDoListButton, REQUESTS_URI, RESPONSES_URI,
+                        refreshButton, listsView, TODO_LISTS_URI, name);
+            });
+        });
+
         listsView.setOnMouseClicked(e -> {
             if (e.getButton() != MouseButton.PRIMARY) {
                 return;
@@ -80,7 +99,7 @@ public class C_MainMenu {
             navigator.showTodoList(selected.id, selected.name);
         });
 
-        HBox actions = new HBox(10, refreshButton, pingButton, logoutButton);
+        HBox actions = new HBox(10, refreshButton, pingButton, logoutButton, createToDoListButton);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         // Vi tilføjer tempMessageLabel mellem userLabel og statusLabel
