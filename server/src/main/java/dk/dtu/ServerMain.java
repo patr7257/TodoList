@@ -28,7 +28,6 @@ public class ServerMain {
             // Shared counter space (single tuple: (count:int))
             counter = new SequentialSpace();
             repo.add("counter", counter);
-            counter.put(0);
 
             users = new SequentialSpace();
             repo.add(TupleSpaces.USERS, users);
@@ -52,6 +51,9 @@ public class ServerMain {
             todoLists.put("l4", "Chores");
             todoLists.put("l5", "Trips");
 
+            // Counter == Actual number of todo lists
+            counter.put(getTodoListCount());
+
             // Open a gate so RemoteSpace clients can connect
             String host = "127.0.0.1";
             int port = 9001;
@@ -63,12 +65,12 @@ public class ServerMain {
             String usersUri = "tcp://" + host + ":" + port + "/" + TupleSpaces.USERS + "?keep";
             String responsesUri = "tcp://" + host + ":" + port + "/" + TupleSpaces.RESPONSES + "?keep";
 
-            System.out.println("Server started.");
-            System.out.println("todoLists URI: " + todoListsUri);
-            System.out.println("counter URI: " + counterUri);
-            System.out.println("requests URI: " + requestsUri);
-            System.out.println("responses URI: " + responsesUri);
-            System.out.println("users URI: " + usersUri);
+            System.out.println("Server started! \nListening on\n Host: " + host + "\nPort: " + port + " ...\n");
+            // System.out.println("todoLists URI: " + todoListsUri);
+            // System.out.println("counter URI: " + counterUri);
+            // System.out.println("requests URI: " + requestsUri);
+            // System.out.println("responses URI: " + responsesUri);
+            // System.out.println("users URI: " + usersUri);
 
             Thread requestLoop = new Thread(() -> handleRequests(requests), "request-loop");
             requestLoop.start();
@@ -87,7 +89,6 @@ public class ServerMain {
     private static void handleRequests(Space requests) {
         try {
             while (true) {
-                System.out.println("hej");
                 // Wait for a ping request: (cmd, requestId, a1, a2, a3, a4)
                 Object[] req = requests.get(
                         new FormalField(String.class), // cmd
@@ -100,11 +101,9 @@ public class ServerMain {
                 String cmdType = (String) req[0];
                 switch (cmdType) {
                     case TupleSpaces.CMD_PING:
-                        System.out.println("ping");
                         handlePingRequest(req);
                         break;
                     case TupleSpaces.CMD_LIST_CREATE:
-                        System.out.println("listc");
                         handleListCreateRequest(req);
                         break;
                     case TupleSpaces.CMD_TASK_ADD:
@@ -157,27 +156,36 @@ public class ServerMain {
     }
 
     private static void handleListCreateRequest(Object[] req) {
-        System.out.println("handleListCreateRequest");
+        // System.out.println("handleListCreateRequest");
         try {
             // req format: (cmd, requestId, a1, a2, a3, a4)
             String requestId = (String) req[1];
 
-            // Get and increment counter
-            Object[] c = counter.get(new FormalField(Integer.class));
-            int count = (Integer) c[0];
-            count++;
-            counter.put(count);
+            final String listId;
+            final String listName;
+            synchronized (todoLists) {
+                int countBefore = getTodoListCount();
 
-            // Create a new list id and a name (use provided name if any)
-            String listId = "l" + count;
-            String provided = null;
-            if (req.length > 2 && req[2] instanceof String) {
-                provided = (String) req[2];
+                // Create a new list id and a name (use provided name if any)
+                listId = "l" + (countBefore + 1);
+                String provided = null;
+                if (req.length > 2 && req[2] instanceof String) {
+                    provided = (String) req[2];
+                }
+                listName = (provided != null && !provided.isBlank()) ? provided : "New List " + (countBefore + 1);
+
+                // Store list tuple: (listId, listName) in the todoLists space
+                todoLists.put(listId, listName);
+
+                // Update counter to reflect actual size after insert
+                int countAfter = getTodoListCount();
+                // Replace the single tuple in counter space
+                try {
+                    counter.get(new FormalField(Integer.class));
+                } catch (Exception ignored) {
+                }
+                counter.put(countAfter);
             }
-            String listName = (provided != null && !provided.isBlank()) ? provided : "New List " + count;
-
-            // Store list tuple: (listId, listName) in the todoLists space
-            todoLists.put(listId, listName);
 
             System.out.println("Created list: " + listId + " - " + listName);
 
@@ -195,6 +203,13 @@ public class ServerMain {
 
     private static void handlePingRequest(Object[] req) {
         System.out.println("handlePingRequest");
+    }
+
+    private static int getTodoListCount() throws InterruptedException {
+        return todoLists.queryAll(
+                new FormalField(String.class),  // listId
+                new FormalField(String.class)   // listName
+        ).size();
     }
 
 }

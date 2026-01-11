@@ -18,11 +18,11 @@ public final class TodoList implements Serializable {
         public String getId() {
                 return id;
         }
-
+        
         public String getName() {
                 return name;
         }
-
+        
         public List<Task> getTasks() {
                 return tasks;
         }
