@@ -1,5 +1,9 @@
 package dk.dtu;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.jspace.ActualField;
 import org.jspace.FormalField;
 import org.jspace.Space;
 
@@ -8,13 +12,15 @@ public class ServerHandlerService implements Runnable {
     private final Space todoLists;
     private final Space counter;
     private final Space users;
+    private final Space tasks;
     private final Space requests;
     private final Space responses;
 
-    public ServerHandlerService(Space todoLists, Space counter, Space users, Space requests, Space responses) {
+    public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests, Space responses) {
         this.todoLists = todoLists;
         this.counter = counter;
         this.users = users;
+        this.tasks = tasks;
         this.requests = requests;
         this.responses = responses;
     }
@@ -53,8 +59,9 @@ public class ServerHandlerService implements Runnable {
         }
     }
 
-    private void handlePing(Request req) {
+    private void handlePing(Request req) throws InterruptedException {
         System.out.println("handlePingRequest");
+        responses.put(TupleSpaces.RESP_OK, req.requestId(), "pong", "", "", "");
         // Optional: could respond with ok
     }
 
@@ -79,25 +86,127 @@ public class ServerHandlerService implements Runnable {
         responses.put(TupleSpaces.RESP_OK, requestId, listId, listName, "", "");
     }
 
-    // Placeholders for later
     private void handleTaskAdd(Request req) {
         System.out.println("handleTaskAddRequest");
+
+        String requestId = req.requestId();
+        String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
+
+        String title = (req.a2() instanceof String) ? (String) req.a2() : null;
+        String owner = (req.a3() instanceof String) ? (String) req.a3() : null;
+
+        if (listId == null || title == null) {
+            System.out.println("Invalid parameters for adding task");
+            return;
+        }
+
+        String taskId = UUID.randomUUID().toString();
+        String status = "TODO";
+        try {
+            tasks.put(listId, taskId, title, owner == null ? "" : owner, status);
+            System.out.println("Added task: " + taskId + " - " + title + " to list " + listId);
+
+        // send OK response back 
+        responses.put(
+            TupleSpaces.RESP_OK,
+            requestId,
+            listId,
+            taskId,
+            title,
+            status
+        );
+        
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
-    private void handleTaskStatus(Request req) {
+    private void handleTaskStatus(Request req) throws InterruptedException {
         System.out.println("handleTaskStatusRequest");
+        String requestId = req.requestId();
+        String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
+        String taskId = (req.a2() instanceof String) ? (String) req.a2() : null;
+        String newStatus = (req.a3() instanceof String) ? (String) req.a3() : null;
+
+        if (listId == null || taskId == null || newStatus == null) {
+            // Invalid parameters
+            System.out.println("Invalid parameters for updating task status");
+            responses.put(TupleSpaces.RESP_ERROR, requestId, "Invalid parameters", "", "", "");
+            return;
+        }
+
+        Object[] existing = tasks.getp(
+            new ActualField(listId),
+            new ActualField(taskId),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(String.class)
+        );
+
+        if (existing == null) {
+            responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String title = (String) existing[2];
+        String owner = (String) existing[3];
+
+        tasks.put(listId, taskId, title, owner, newStatus);
+        responses.put(TupleSpaces.RESP_OK, requestId, listId, taskId, title, newStatus);
+
+        System.out.println("Updated task status: " + taskId + " to " + newStatus + " in list " + listId);
     }
 
     private void handleTaskAssign(Request req) {
         System.out.println("handleTaskAssignRequest");
     }
 
-    private void handleListsGet(Request req) {
+    private void handleListsGet(Request req) throws InterruptedException {
         System.out.println("handleListsGetRequest");
+        String requestId = req.requestId();
+
+        List<Object[]> all = todoLists.queryAll(
+            new FormalField(String.class),
+            new FormalField(String.class)
+        );
+
+        for (Object[] l : all) {
+            String listId = (String) l[0];
+            String listName = (String) l[1];
+            responses.put(TupleSpaces.RESP_OK, requestId, listId, listName, "", "");
+        }
     }
 
-    private void handleTasksGet(Request req) {
+    // Sends back all tasks for a given list
+    private void handleTasksGet(Request req) throws InterruptedException {
         System.out.println("handleTasksGetRequest");
+        String requestId = req.requestId();
+        String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
+        if (listId == null) {
+            // Invalid parameters
+            System.out.println("Invalid parameters for getting tasks");
+            return;
+        }
+        List<Object[]> tuples = tasks.queryAll(
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(String.class)
+        );
+
+        
+        for (Object[] t : tuples) {
+            String tListId = (String) t[0];
+            if (!tListId.equals(listId)) continue;
+
+            String taskId = (String) t[1];
+            String title = (String) t[2];
+            String status = (String) t[4];
+
+            responses.put(TupleSpaces.RESP_OK, requestId, listId, taskId, title, status);
+        }
+        responses.put(TupleSpaces.RESP_OK, requestId, "END", "", "", "");
     }
 
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {

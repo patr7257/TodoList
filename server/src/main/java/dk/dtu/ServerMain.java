@@ -27,6 +27,10 @@ public class ServerMain {
             users.put("alice");
             users.put("bob");
 
+            // Tasks space 
+            SequentialSpace tasks = new SequentialSpace();
+            repo.add(TupleSpaces.TASKS, tasks);
+
             // Request
             SequentialSpace requests = new SequentialSpace();
             repo.add(TupleSpaces.REQUESTS, requests);
@@ -50,7 +54,7 @@ public class ServerMain {
 
             System.out.println("Server started!\nListening on\nHost: " + ServerConfig.HOST + "\nPort: " + ServerConfig.PORT + "\n");
 
-            ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, requests, responses);
+            ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, tasks, requests, responses);
             Thread requestLoop = new Thread(service, "request-loop");
             requestLoop.setDaemon(false);
             requestLoop.start();
