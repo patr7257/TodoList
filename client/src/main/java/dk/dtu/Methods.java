@@ -23,7 +23,7 @@ public class Methods {
 	public static void sendPing(Label statusLabel, Button pingButton, String requestsUri) {
 		setStatus(statusLabel, "Sending ping...");
 		pingButton.setDisable(true);
-
+		
 		new Thread(() -> {
 			try {
 				RemoteSpace requests = new RemoteSpace(requestsUri);
@@ -82,7 +82,12 @@ public class Methods {
 	// Used in various scenes to show status messages
 	// Example: "Connecting to server...", "Loaded 5 lists", "Ping failed: ..."
 	public static void setStatus(Label statusLabel, String text) {
-		statusLabel.setText(text);
+		if (statusLabel == null) return;
+		if (Platform.isFxApplicationThread()) {
+			statusLabel.setText(text);
+		} else {
+			Platform.runLater(() -> statusLabel.setText(text));
+		}
 	}
 
 	// List entry representing a todo list (id and name)
@@ -360,8 +365,7 @@ public class Methods {
 					setStatus(statusLabel, "Assigned");
 					assignButton.setDisable(false);
 					// Refresh tasks now that server confirmed assign
-					String tasksUri = requestsUri.replace("requests", "tasks");
-					loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
+					loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
