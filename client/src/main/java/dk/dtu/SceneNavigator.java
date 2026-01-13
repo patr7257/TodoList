@@ -4,6 +4,7 @@ import dk.dtu.scenes.A_WelcomeScreen;
 import dk.dtu.scenes.B_LoginScreen;
 import dk.dtu.scenes.C_MainMenu;
 import dk.dtu.scenes.D_TodoListView;
+import dk.dtu.scenes.E_TaskView;
 import javafx.stage.Stage;
 
 // JavaFX navigation between scenes (Add more methods for new scenes)
@@ -37,13 +38,13 @@ public class SceneNavigator {
 
     // D: Show todo list view for selected list
     public void showTodoList(String listId, String listName) {
-        stage.setTitle("Todo List");
+        stage.setTitle("Todo List - " + listName);
         stage.setScene(new D_TodoListView(this, listId, listName).createScene());
     }
 
-    // E: Show task view for selected list
+    // E: Show task view for selected list (manages all tasks)
     public void showTaskView(String listId, String listName) {
-        stage.setTitle("Task View");
+        stage.setTitle("Task Manager - " + listName);
         stage.setScene(new E_TaskView(this, listId, listName).createScene());
     }
 

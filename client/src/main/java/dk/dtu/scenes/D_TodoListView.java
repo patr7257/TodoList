@@ -20,19 +20,18 @@ public class D_TodoListView {
 	}
 
 	public Scene createScene() {
-		Label title = new Label("Todo List");
+		Label title = new Label("Todo List: " + listName);
 		title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-
-		Button mainMenuButton = new Button("Main menu");
+		
+		Button mainMenuButton = new Button("Main Menu");
 		mainMenuButton.setOnAction(e -> navigator.showMainMenu());
 
-		Label selected = new Label("Selected: " + listId + " - " + listName);
-		Label statusLabel = new Label("");
+		Button viewTasksButton = new Button("View Tasks");
+		viewTasksButton.setOnAction(e -> navigator.showTaskView(listId, listName));
 
-		// All task UI + task actions are owned by E_TaskView now
-		VBox tasksPane = E_TaskView.createTasksPane(statusLabel, listId, navigator.getCurrentUser());
-
-		VBox root = new VBox(12, title, mainMenuButton, selected, statusLabel, tasksPane);
+		Label info = new Label("List ID: " + listId);
+		
+		VBox root = new VBox(16, title, info, viewTasksButton, mainMenuButton);
 		root.setAlignment(Pos.CENTER);
 		root.setStyle("-fx-padding: 24;");
 

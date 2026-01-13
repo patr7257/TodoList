@@ -217,10 +217,8 @@ public class Methods {
 			return;
 		}
 
-		Platform.runLater(() -> {
-			statusLabel.setText("Adding task...");
-			addTaskButton.setDisable(true);
-		});
+		setStatus(statusLabel, "Adding task...");
+		addTaskButton.setDisable(true);
 
 		new Thread(() -> {
 			String requestId = UUID.randomUUID().toString();
@@ -228,11 +226,9 @@ public class Methods {
 				RemoteSpace requests = new RemoteSpace(requestsUri);
 				RemoteSpace responses = new RemoteSpace(responsesUri);
 
-				// Use server's task_add endpoint so server controls IDs and responds back
-				requests.put(TupleSpaces.CMD_TASK_ADD, requestId, listId, taskTitle == null ? "" : taskTitle,
+				requests.put(TupleSpaces.CMD_TASK_ADD, requestId, listId, taskTitle, 
 						taskOwner == null ? "" : taskOwner, "");
 
-				// Wait for server response correlated by requestId
 				Object[] resp = waitForOk(responses, requestId);
 
 				String returnedTaskId = resp.length > 3 && resp[3] instanceof String ? (String) resp[3] : null;
@@ -240,8 +236,10 @@ public class Methods {
 				Platform.runLater(() -> {
 					setStatus(statusLabel, returnedTaskId != null ? "Task added" : "Task added (no id returned)");
 					addTaskButton.setDisable(false);
-					// Refresh tasks now that server confirmed add
-					loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
+					// Refresh tasks if refresh button and view are provided
+					if (refreshButton != null && tasksView != null) {
+						loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
+					}
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
@@ -272,17 +270,17 @@ public class Methods {
 				RemoteSpace requests = new RemoteSpace(requestsUri);
 				RemoteSpace responses = new RemoteSpace(responsesUri);
 
-				// Send change status request (a1 = listId, a2 = taskId, a3 = newStatus)
 				requests.put(TupleSpaces.CMD_TASK_STATUS, requestId, listId, taskId, newStatus, "");
 
-				// Wait for server response correlated by requestId
 				Object[] resp = waitForOk(responses, requestId);
 
 				Platform.runLater(() -> {
-					setStatus(statusLabel, "Task status changed");
+					setStatus(statusLabel, "Task status changed to " + newStatus);
 					changeStatusButton.setDisable(false);
-					// Refresh tasks now that server confirmed status change
-					loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
+					// Refresh tasks if refresh button and view are provided
+					if (refreshButton != null && tasksView != null) {
+						loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
+					}
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
@@ -346,6 +344,12 @@ public class Methods {
 			String listId,
 			String taskId,
 			String owner) {
+		
+		if (owner == null || owner.isBlank()) {
+			setStatus(statusLabel, "Enter a username to assign");
+			return;
+		}
+
 		setStatus(statusLabel, "Assigning task...");
 		assignButton.setDisable(true);
 
@@ -355,17 +359,17 @@ public class Methods {
 				RemoteSpace requests = new RemoteSpace(requestsUri);
 				RemoteSpace responses = new RemoteSpace(responsesUri);
 
-				// Send assign request (a1 = listId, a2 = taskId, a3 = owner)
-				requests.put(TupleSpaces.CMD_TASK_ASSIGN, requestId, listId, taskId, owner == null ? "" : owner, "");
+				requests.put(TupleSpaces.CMD_TASK_ASSIGN, requestId, listId, taskId, owner, "");
 
-				// Wait for server response correlated by requestId
 				Object[] resp = waitForOk(responses, requestId);
 
 				Platform.runLater(() -> {
-					setStatus(statusLabel, "Assigned");
+					setStatus(statusLabel, "Task assigned to " + owner);
 					assignButton.setDisable(false);
-					// Refresh tasks now that server confirmed assign
-					loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
+					// Refresh tasks if refresh button and view are provided
+					if (refreshButton != null && tasksView != null) {
+						loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
+					}
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
