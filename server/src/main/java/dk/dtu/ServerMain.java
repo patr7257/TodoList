@@ -39,6 +39,9 @@ public class ServerMain {
             SequentialSpace responses = new SequentialSpace();
             repo.add(TupleSpaces.RESPONSES, responses);
 
+
+            //TODO
+            // //Database.loadDatabase();
             // Hardcoded lists for testing frontend connection: tuples of (listId, listName)
             todoLists.put("l1", "Shopping");
             todoLists.put("l2", "School");
@@ -52,7 +55,7 @@ public class ServerMain {
             // Counter should mirror actual todoLists size
             ServerConfig.syncCounterToTodoLists(counter, todoLists);
 
-            System.out.println("Server started!\nListening on\nHost: " + ServerConfig.HOST + "\nPort: " + ServerConfig.PORT + "\n");
+            System.out.println("Server started!\nListening on:\nHost: " + ServerConfig.HOST + "\nPort: " + ServerConfig.PORT + "\n");
 
             ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, tasks, requests, responses);
             Thread requestLoop = new Thread(service, "request-loop");

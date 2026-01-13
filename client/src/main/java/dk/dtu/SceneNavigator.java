@@ -40,6 +40,13 @@ public class SceneNavigator {
         stage.setTitle("Todo List");
         stage.setScene(new D_TodoListView(this, listId, listName).createScene());
     }
+
+    // E: Show task view for selected list
+    public void showTaskView(String listId, String listName) {
+        stage.setTitle("Task View");
+        stage.setScene(new E_TaskView(this, listId, listName).createScene());
+    }
+
     public void setCurrentUser(String username) {
         this.currentUser = username;
     }

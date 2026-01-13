@@ -1,18 +1,14 @@
 package dk.dtu.scenes;
 
+import dk.dtu.Config;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
-import dk.dtu.TupleSpaces;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 
 public class B_LoginScreen {
-
-    private static final String HOST = "127.0.0.1";
-    private static final int PORT = 9001;
-    private static final String USERS_URI = "tcp://" + HOST + ":" + PORT + "/" + TupleSpaces.USERS + "?keep";
 
     private final SceneNavigator navigator;
 
@@ -37,7 +33,7 @@ public class B_LoginScreen {
                     statusLabel,
                     loginButton,
                     usernameField.getText(),
-                    USERS_URI,
+                    Config.USERS_URI,
                     (message) -> {
                         navigator.setCurrentUser(usernameField.getText());
                         navigator.showMainMenuWithMessage(message);

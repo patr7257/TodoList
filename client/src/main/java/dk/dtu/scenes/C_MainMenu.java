@@ -1,5 +1,6 @@
 package dk.dtu.scenes;
 
+import dk.dtu.Config;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
 import dk.dtu.TupleSpaces;
@@ -16,13 +17,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 public class C_MainMenu {
-
-    private static final String HOST = "127.0.0.1";
-    private static final int PORT = 9001;
-    private static final String TODO_LISTS_URI = "tcp://" + HOST + ":" + PORT + "/todoLists?keep";
-    private static final String REQUESTS_URI = "tcp://" + HOST + ":" + PORT + "/" + TupleSpaces.REQUESTS + "?keep";
-    private static final String RESPONSES_URI = "tcp://" + HOST + ":" + PORT + "/" + TupleSpaces.RESPONSES + "?keep";
-
+    
     private final SceneNavigator navigator;
     private final String loginMessage; // besked vist kort efter login
 
@@ -32,7 +27,7 @@ public class C_MainMenu {
     private final Button logoutButton = new Button("Logout");
     private final Button pingButton = new Button("Ping server");
     private final Button createToDoListButton = new Button("Create To Do List");
-
+    
     // Bruges hvis man går til MainMenu uden specifik login-besked
     public C_MainMenu(SceneNavigator navigator) {
         this(navigator, null);
@@ -66,11 +61,13 @@ public class C_MainMenu {
             }, "login-message-timer").start();
         }
 
-        refreshButton.setOnAction(e -> Methods.loadTodoLists(statusLabel, refreshButton, listsView, TODO_LISTS_URI));
+        refreshButton.setOnAction(e -> Methods.loadTodoLists(
+                statusLabel, refreshButton, listsView, Config.TODO_LISTS_URI));
 
         logoutButton.setOnAction(e -> navigator.showLogin());
 
-        pingButton.setOnAction(e -> Methods.sendPing(statusLabel, pingButton, REQUESTS_URI));
+        pingButton.setOnAction(e -> Methods.sendPing(
+                statusLabel, pingButton, Config.REQUESTS_URI));
 
         createToDoListButton.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
@@ -83,8 +80,15 @@ public class C_MainMenu {
                     Methods.setStatus(tempMessageLabel, "Enter a name");
                     return;
                 }
-                Methods.createToDoList(tempMessageLabel, createToDoListButton, REQUESTS_URI, RESPONSES_URI,
-                        refreshButton, listsView, TODO_LISTS_URI, name);
+                Methods.createToDoList(
+                        tempMessageLabel,
+                        createToDoListButton,
+                        Config.REQUESTS_URI,
+                        Config.RESPONSES_URI,
+                        refreshButton,
+                        listsView,
+                        Config.TODO_LISTS_URI,
+                        name);
             });
         });
 
@@ -113,7 +117,7 @@ public class C_MainMenu {
                 listsView);
         root.setPadding(new Insets(12));
 
-        Methods.loadTodoLists(statusLabel, refreshButton, listsView, TODO_LISTS_URI);
+        Methods.loadTodoLists(statusLabel, refreshButton, listsView, Config.TODO_LISTS_URI);
 
         return new Scene(root, 520, 420);
     }

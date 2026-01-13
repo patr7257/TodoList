@@ -88,7 +88,7 @@ public class ServerHandlerService implements Runnable {
 
     private void handleTaskAdd(Request req) {
         System.out.println("handleTaskAddRequest");
-
+        
         String requestId = req.requestId();
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
 
