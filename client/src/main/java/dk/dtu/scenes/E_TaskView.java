@@ -123,6 +123,26 @@ public class E_TaskView {
             assignField.clear();
         });
 
+        Button deleteButton = new Button("Delete");
+        deleteButton.setOnAction(e -> {
+            TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
+            if (selectedTask == null) {
+                Methods.setStatus(statusLabel, "No task selected");
+                return;
+            }
+
+            Methods.deleteTaskFromList(
+                statusLabel,
+                deleteButton,
+                Config.REQUESTS_URI,
+                Config.RESPONSES_URI,
+                refreshButton,
+                tasksView,
+                listId,
+                selectedTask.id
+            );
+        });
+
         // Initial load
         Methods.loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
 
@@ -139,6 +159,9 @@ public class E_TaskView {
         HBox assignBox = new HBox(8, assignField, assignButton);
         assignBox.setAlignment(Pos.CENTER);
 
+        HBox deleteBox = new HBox(8, deleteButton);
+        deleteBox.setAlignment(Pos.CENTER);
+
         Label hint = new Label("(Select a task from the list above)");
         hint.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
 
@@ -154,7 +177,9 @@ public class E_TaskView {
             new Label("Change Task Status:"),
             statusBox,
             new Label("Assign Task:"),
-            assignBox);
+            assignBox,
+            new Label("Delete task"),
+            deleteBox);
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-padding: 24;");
 

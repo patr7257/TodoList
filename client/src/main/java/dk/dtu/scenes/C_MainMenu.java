@@ -3,7 +3,6 @@ package dk.dtu.scenes;
 import dk.dtu.Config;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
-import dk.dtu.TupleSpaces;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
