@@ -47,6 +47,8 @@ public class ServerHandlerService implements Runnable {
                     case TupleSpaces.CMD_TASK_ASSIGN -> handleTaskAssign(req);
                     case TupleSpaces.CMD_LISTS_GET -> handleListsGet(req);
                     case TupleSpaces.CMD_TASKS_GET -> handleTasksGet(req);
+                    case TupleSpaces.CMD_TASK_DELETE -> HandleTaskDelete(req);
+                    case TupleSpaces.CMD_LIST_DELETE -> handleListDelete(req);
                     default -> {
                         // Ignore unknown commands for now
                     }
@@ -207,6 +209,54 @@ public class ServerHandlerService implements Runnable {
             responses.put(TupleSpaces.RESP_OK, requestId, listId, taskId, title, status);
         }
         responses.put(TupleSpaces.RESP_OK, requestId, "END", "", "", "");
+    }
+    // atm without involving tasks
+    private void HandleTaskDelete(Request req) throws InterruptedException {
+        System.out.println("handleTaskDeleteRequest");
+        String requestId = req.requestId();
+        String taskId = (req.a2() instanceof String) ? (String) req.a2() : null; 
+
+        if (taskId == null) {
+            return;
+        }
+
+        Object [] removed = tasks.getp(
+            new FormalField(String.class),
+            new ActualField(taskId),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(String.class)
+        );
+
+        if (removed == null) {
+            responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", "", taskId, "");
+            return;
+        }
+
+        responses.put(TupleSpaces.RESP_OK, requestId, "", taskId, "DELETED", "OK");
+    }
+
+    private void handleListDelete(Request req) throws InterruptedException {
+        System.out.println("handleListDeleteRequest");
+        String requestId = req.requestId();
+
+        String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
+    
+        if (listId == null) {
+            return;
+        }
+        Object[] removed = todoLists.getp(
+            new ActualField(listId),
+            new FormalField(String.class)
+        );
+        if (removed == null) {
+            responses.put(TupleSpaces.RESP_ERROR, requestId, "List not found", listId, "", "");
+            return;
+        }
+        String removedName = (removed[1] instanceof String) ? (String) removed[1] : "";
+
+    System.out.println("Deleted list: " + listId + " - " + removedName);
+    responses.put(TupleSpaces.RESP_OK, requestId, listId, removedName, "DELETED", "OK");
     }
 
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {

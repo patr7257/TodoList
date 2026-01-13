@@ -380,6 +380,51 @@ public class Methods {
 		}, "assign-task").start();
 	}
 
+	public static void deleteTaskFromList(
+        Label statusLabel,
+        Button deleteButton,
+        String requestsUri,
+        String responsesUri,
+        Button refreshButton,
+        ListView<TaskEntry> tasksView,
+        String listId,
+        String taskId
+) {
+    if (taskId == null || taskId.isBlank()) {
+        setStatus(statusLabel, "No task selected");
+        return;
+    }
+
+    setStatus(statusLabel, "Deleting task...");
+    deleteButton.setDisable(true);
+
+    new Thread(() -> {
+        String requestId = UUID.randomUUID().toString();
+        try {
+            RemoteSpace requests = new RemoteSpace(requestsUri);
+            RemoteSpace responses = new RemoteSpace(responsesUri);
+
+            requests.put(TupleSpaces.CMD_TASK_DELETE, requestId, listId, taskId, "", "");
+
+            // Vait for ok else error
+            waitForOk(responses, requestId);
+
+            Platform.runLater(() -> {
+                // remove locally directly
+                tasksView.getItems().removeIf(t -> taskId.equals(t.id));
+
+                setStatus(statusLabel, "Task deleted");
+                deleteButton.setDisable(false);
+            });
+        } catch (Exception ex) {
+            Platform.runLater(() -> {
+                setStatus(statusLabel, "Delete failed: " + ex.getMessage());
+                deleteButton.setDisable(false);
+            });
+        }
+    }, "task-delete").start();
+}
+
 	public static void createToDoList(Label statusLabel, Button createToDoListButton, String requestsUri,
 			String responsesUri, Button refreshButton, ListView<ListEntry> listsView, String todoListsUri,
 			String listName) {

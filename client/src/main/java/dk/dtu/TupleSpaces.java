@@ -26,6 +26,9 @@ public final class TupleSpaces {
     public static final String CMD_TASK_ASSIGN = "task_assign";
     public static final String CMD_LISTS_GET = "lists_get";
     public static final String CMD_TASKS_GET = "tasks_get";
+    public static final String CMD_TASK_DELETE = "task_delete";
+    public static final String CMD_LIST_DELETE = "list_delete";
+
 
     // Response status (first field in response tuples).
     public static final String RESP_OK = "ok";

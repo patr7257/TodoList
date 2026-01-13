@@ -30,6 +30,8 @@ public final class TupleSpaces {
     public static final String CMD_TASKS_GET = "tasks_get";
     public static final String CMD_USER_REGISTER = "user_register";
     public static final String CMD_USER_LOGIN = "user_login";
+    public static final String CMD_LIST_DELETE = "list_delete";
+    public static final String CMD_TASK_DELETE = "task_delete";
 
     // Response status (first field in response tuples).
     public static final String RESP_OK = "ok";
