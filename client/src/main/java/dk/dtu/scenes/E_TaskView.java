@@ -1,6 +1,6 @@
 package dk.dtu.scenes;
 
-import dk.dtu.Config;
+import dk.dtu.ClientConfig;
 import dk.dtu.Methods;
 import dk.dtu.Methods.TaskEntry;
 import dk.dtu.SceneNavigator;
@@ -44,7 +44,7 @@ public class E_TaskView {
 
         Button refreshButton = new Button("Refresh");
         refreshButton.setOnAction(e -> Methods.loadTasksForList(
-            statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId));
+            statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId));
 
         // Add task section
         TextField newTaskField = new TextField();
@@ -55,9 +55,9 @@ public class E_TaskView {
             Methods.addTaskToList(
                 statusLabel,
                 addTaskButton,
-                Config.TASKS_URI,
-                Config.REQUESTS_URI,
-                Config.RESPONSES_URI,
+                ClientConfig.TASKS_URI,
+                ClientConfig.REQUESTS_URI,
+                ClientConfig.RESPONSES_URI,
                 refreshButton,
                 tasksView,
                 listId,
@@ -88,9 +88,9 @@ public class E_TaskView {
             Methods.changeTaskStatus(
                 statusLabel,
                 changeStatusButton,
-                Config.TASKS_URI,
-                Config.REQUESTS_URI,
-                Config.RESPONSES_URI,
+                ClientConfig.TASKS_URI,
+                ClientConfig.REQUESTS_URI,
+                ClientConfig.RESPONSES_URI,
                 refreshButton,
                 tasksView,
                 listId,
@@ -113,8 +113,8 @@ public class E_TaskView {
             Methods.assignTaskToList(
                 statusLabel, 
                 assignButton, 
-                Config.REQUESTS_URI, 
-                Config.RESPONSES_URI,
+                ClientConfig.REQUESTS_URI, 
+                ClientConfig.RESPONSES_URI,
                 refreshButton, 
                 tasksView, 
                 listId, 
@@ -130,12 +130,12 @@ public class E_TaskView {
                 Methods.setStatus(statusLabel, "No task selected");
                 return;
             }
-
+            
             Methods.deleteTaskFromList(
                 statusLabel,
                 deleteButton,
-                Config.REQUESTS_URI,
-                Config.RESPONSES_URI,
+                ClientConfig.REQUESTS_URI,
+                ClientConfig.RESPONSES_URI,
                 refreshButton,
                 tasksView,
                 listId,
@@ -144,8 +144,7 @@ public class E_TaskView {
         });
 
         // Initial load
-        Methods.loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
-
+        Methods.loadTasksForList(statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId);
         // Layout
         HBox navButtons = new HBox(8, backButton, mainMenuButton);
         navButtons.setAlignment(Pos.CENTER);

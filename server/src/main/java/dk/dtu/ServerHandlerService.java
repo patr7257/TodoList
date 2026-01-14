@@ -16,7 +16,8 @@ public class ServerHandlerService implements Runnable {
     private final Space requests;
     private final Space responses;
 
-    public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests, Space responses) {
+    public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests,
+            Space responses) {
         this.todoLists = todoLists;
         this.counter = counter;
         this.users = users;
@@ -35,8 +36,7 @@ public class ServerHandlerService implements Runnable {
                         new FormalField(Object.class),
                         new FormalField(Object.class),
                         new FormalField(Object.class),
-                        new FormalField(Object.class)
-                );
+                        new FormalField(Object.class));
 
                 Request req = Request.fromTuple(tuple);
                 switch (req.cmd()) {
@@ -90,7 +90,7 @@ public class ServerHandlerService implements Runnable {
 
     private void handleTaskAdd(Request req) {
         System.out.println("handleTaskAddRequest");
-        
+
         String requestId = req.requestId();
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
 
@@ -108,16 +108,15 @@ public class ServerHandlerService implements Runnable {
             tasks.put(listId, taskId, title, owner == null ? "" : owner, status);
             System.out.println("Added task: " + taskId + " - " + title + " to list " + listId);
 
-        // send OK response back 
-        responses.put(
-            TupleSpaces.RESP_OK,
-            requestId,
-            listId,
-            taskId,
-            title,
-            status
-        );
-        
+            // send OK response back
+            responses.put(
+                    TupleSpaces.RESP_OK,
+                    requestId,
+                    listId,
+                    taskId,
+                    title,
+                    status);
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -138,12 +137,11 @@ public class ServerHandlerService implements Runnable {
         }
 
         Object[] existing = tasks.getp(
-            new ActualField(listId),
-            new ActualField(taskId),
-            new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(String.class)
-        );
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
 
         if (existing == null) {
             responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", listId, taskId, "");
@@ -168,9 +166,8 @@ public class ServerHandlerService implements Runnable {
         String requestId = req.requestId();
 
         List<Object[]> all = todoLists.queryAll(
-            new FormalField(String.class),
-            new FormalField(String.class)
-        );
+                new FormalField(String.class),
+                new FormalField(String.class));
 
         for (Object[] l : all) {
             String listId = (String) l[0];
@@ -190,17 +187,16 @@ public class ServerHandlerService implements Runnable {
             return;
         }
         List<Object[]> tuples = tasks.queryAll(
-            new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(String.class)
-        );
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
 
-        
         for (Object[] t : tuples) {
             String tListId = (String) t[0];
-            if (!tListId.equals(listId)) continue;
+            if (!tListId.equals(listId))
+                continue;
 
             String taskId = (String) t[1];
             String title = (String) t[2];
@@ -210,23 +206,23 @@ public class ServerHandlerService implements Runnable {
         }
         responses.put(TupleSpaces.RESP_OK, requestId, "END", "", "", "");
     }
+
     // atm without involving tasks
     private void HandleTaskDelete(Request req) throws InterruptedException {
         System.out.println("handleTaskDeleteRequest");
         String requestId = req.requestId();
-        String taskId = (req.a2() instanceof String) ? (String) req.a2() : null; 
+        String taskId = (req.a2() instanceof String) ? (String) req.a2() : null;
 
         if (taskId == null) {
             return;
         }
 
-        Object [] removed = tasks.getp(
-            new FormalField(String.class),
-            new ActualField(taskId),
-            new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(String.class)
-        );
+        Object[] removed = tasks.getp(
+                new FormalField(String.class),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
 
         if (removed == null) {
             responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", "", taskId, "");
@@ -241,22 +237,21 @@ public class ServerHandlerService implements Runnable {
         String requestId = req.requestId();
 
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
-    
+
         if (listId == null) {
             return;
         }
         Object[] removed = todoLists.getp(
-            new ActualField(listId),
-            new FormalField(String.class)
-        );
+                new ActualField(listId),
+                new FormalField(String.class));
         if (removed == null) {
             responses.put(TupleSpaces.RESP_ERROR, requestId, "List not found", listId, "", "");
             return;
         }
         String removedName = (removed[1] instanceof String) ? (String) removed[1] : "";
 
-    System.out.println("Deleted list: " + listId + " - " + removedName);
-    responses.put(TupleSpaces.RESP_OK, requestId, listId, removedName, "DELETED", "OK");
+        System.out.println("Deleted list: " + listId + " - " + removedName);
+        responses.put(TupleSpaces.RESP_OK, requestId, listId, removedName, "DELETED", "OK");
     }
 
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {
@@ -270,8 +265,7 @@ public class ServerHandlerService implements Runnable {
                     tuple[2],
                     tuple[3],
                     tuple[4],
-                    tuple[5]
-            );
+                    tuple[5]);
         }
     }
 }

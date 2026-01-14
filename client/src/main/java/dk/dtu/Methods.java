@@ -272,6 +272,7 @@ public class Methods {
 
 				requests.put(TupleSpaces.CMD_TASK_STATUS, requestId, listId, taskId, newStatus, "");
 
+				// TODO: Use this?
 				Object[] resp = waitForOk(responses, requestId);
 
 				Platform.runLater(() -> {
@@ -360,7 +361,8 @@ public class Methods {
 				RemoteSpace responses = new RemoteSpace(responsesUri);
 
 				requests.put(TupleSpaces.CMD_TASK_ASSIGN, requestId, listId, taskId, owner, "");
-
+				
+				// TODO: Use this?
 				Object[] resp = waitForOk(responses, requestId);
 
 				Platform.runLater(() -> {
@@ -368,7 +370,7 @@ public class Methods {
 					assignButton.setDisable(false);
 					// Refresh tasks if refresh button and view are provided
 					if (refreshButton != null && tasksView != null) {
-						loadTasksForList(statusLabel, refreshButton, tasksView, Config.TASKS_URI, listId);
+						loadTasksForList(statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId);
 					}
 				});
 			} catch (Exception ex) {

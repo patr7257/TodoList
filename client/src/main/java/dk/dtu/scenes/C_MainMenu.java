@@ -1,6 +1,6 @@
 package dk.dtu.scenes;
 
-import dk.dtu.Config;
+import dk.dtu.ClientConfig;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
 import javafx.application.Platform;
@@ -61,12 +61,12 @@ public class C_MainMenu {
         }
 
         refreshButton.setOnAction(e -> Methods.loadTodoLists(
-                statusLabel, refreshButton, listsView, Config.TODO_LISTS_URI));
+                statusLabel, refreshButton, listsView, ClientConfig.TODO_LISTS_URI));
 
         logoutButton.setOnAction(e -> navigator.showLogin());
 
         pingButton.setOnAction(e -> Methods.sendPing(
-                statusLabel, pingButton, Config.REQUESTS_URI));
+                statusLabel, pingButton, ClientConfig.REQUESTS_URI));
 
         createToDoListButton.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
@@ -82,11 +82,11 @@ public class C_MainMenu {
                 Methods.createToDoList(
                         tempMessageLabel,
                         createToDoListButton,
-                        Config.REQUESTS_URI,
-                        Config.RESPONSES_URI,
+                        ClientConfig.REQUESTS_URI,
+                        ClientConfig.RESPONSES_URI,
                         refreshButton,
                         listsView,
-                        Config.TODO_LISTS_URI,
+                        ClientConfig.TODO_LISTS_URI,
                         name);
             });
         });
@@ -116,7 +116,7 @@ public class C_MainMenu {
                 listsView);
         root.setPadding(new Insets(12));
 
-        Methods.loadTodoLists(statusLabel, refreshButton, listsView, Config.TODO_LISTS_URI);
+        Methods.loadTodoLists(statusLabel, refreshButton, listsView, ClientConfig.TODO_LISTS_URI);
 
         return new Scene(root, 520, 420);
     }

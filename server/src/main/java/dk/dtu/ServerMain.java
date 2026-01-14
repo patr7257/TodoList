@@ -55,7 +55,28 @@ public class ServerMain {
             // Counter should mirror actual todoLists size
             ServerConfig.syncCounterToTodoLists(counter, todoLists);
 
-            System.out.println("Server started!\nListening on:\nHost: " + ServerConfig.HOST + "\nPort: " + ServerConfig.PORT + "\n");
+            System.out.println("=".repeat(70));
+            System.out.println("SERVER STARTED SUCCESSFULLY");
+            System.out.println("=".repeat(70));
+            System.out.println("Server binding: " + ServerConfig.HOST + ":" + ServerConfig.PORT);
+            System.out.println("(0.0.0.0 means listening on all network interfaces)");
+            System.out.println();
+            System.out.println("This server's configured IP: " + ServerConfig.SERVER_IP);
+            System.out.println("Client Connection Details:");
+            System.out.println("  Clients should connect to: tcp://" + ServerConfig.SERVER_IP + ":" + ServerConfig.PORT + "/");
+            System.out.println("  (Set in ServerConfig.SERVER_IP and client Config.SERVER_IP)");
+            System.out.println();
+            System.out.println("Tuple Spaces Available:");
+            System.out.println("  - " + TupleSpaces.USERS + " (users space)");
+            System.out.println("  - todoLists (todo lists space)");
+            System.out.println("  - " + TupleSpaces.TASKS + " (tasks space)");
+            System.out.println("  - " + TupleSpaces.REQUESTS + " (client requests)");
+            System.out.println("  - " + TupleSpaces.RESPONSES + " (server responses)");
+            System.out.println("  - counter (internal counter)");
+            System.out.println();
+            System.out.println("Example full URI: tcp://" + ServerConfig.SERVER_IP + ":" + ServerConfig.PORT + "/" + TupleSpaces.REQUESTS + "?keep");
+            System.out.println("=".repeat(70));
+            System.out.println();
 
             ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, tasks, requests, responses);
             Thread requestLoop = new Thread(service, "request-loop");
