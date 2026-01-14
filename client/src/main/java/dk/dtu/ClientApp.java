@@ -10,7 +10,7 @@ import javafx.stage.Stage;
  * - UI states (current user, selected list etc)
  */
 public class ClientApp extends Application {
-
+    
     public static void main(String[] args) {
         launch(args);
     }

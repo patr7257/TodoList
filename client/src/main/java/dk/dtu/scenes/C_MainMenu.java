@@ -22,7 +22,6 @@ public class C_MainMenu {
 
     private final Label statusLabel = new Label("Loading...");
     private final ListView<Methods.ListEntry> listsView = new ListView<>();
-    private final Button refreshButton = new Button("Refresh");
     private final Button logoutButton = new Button("Logout");
     private final Button pingButton = new Button("Ping server");
     private final Button createToDoListButton = new Button("Create To Do List");
@@ -60,9 +59,6 @@ public class C_MainMenu {
             }, "login-message-timer").start();
         }
 
-        refreshButton.setOnAction(e -> Methods.loadTodoLists(
-                statusLabel, refreshButton, listsView, ClientConfig.TODO_LISTS_URI));
-
         logoutButton.setOnAction(e -> navigator.showLogin());
 
         pingButton.setOnAction(e -> Methods.sendPing(
@@ -84,9 +80,6 @@ public class C_MainMenu {
                         createToDoListButton,
                         ClientConfig.REQUESTS_URI,
                         ClientConfig.RESPONSES_URI,
-                        refreshButton,
-                        listsView,
-                        ClientConfig.TODO_LISTS_URI,
                         name);
             });
         });
@@ -102,7 +95,7 @@ public class C_MainMenu {
             navigator.showTodoList(selected.id, selected.name);
         });
 
-        HBox actions = new HBox(10, refreshButton, pingButton, logoutButton, createToDoListButton);
+        HBox actions = new HBox(10, pingButton, logoutButton, createToDoListButton);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         // Vi tilføjer tempMessageLabel mellem userLabel og statusLabel
@@ -116,8 +109,16 @@ public class C_MainMenu {
                 listsView);
         root.setPadding(new Insets(12));
 
-        Methods.loadTodoLists(statusLabel, refreshButton, listsView, ClientConfig.TODO_LISTS_URI);
+        Methods.loadTodoLists(statusLabel, listsView, ClientConfig.TODO_LISTS_URI);
 
         return new Scene(root, 520, 420);
+    }
+    
+    /**
+     * Auto-refresh lists when notification received from server.
+     * Called by SceneNavigator when server broadcasts list changes.
+     */
+    public void autoRefreshLists() {
+        Methods.loadTodoLists(statusLabel, listsView, ClientConfig.TODO_LISTS_URI);
     }
 }

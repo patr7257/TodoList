@@ -7,6 +7,8 @@ public final class ServerConfig {
 	// Change this IP to match the server's LAN IP address!
 	// Johans IP:
 	// public static final String SERVER_IP = "192.168.0.15";
+
+	// Use this to run on own PC
 	public static final String SERVER_IP = "127.0.0.1";
 
 	// Bind to all network interfaces (allows LAN connections)

@@ -47,10 +47,9 @@ public class Methods {
 
 	// Load todo lists from server and populate the ListView
 	// Used in MainMenu to show available todo lists
-	public static void loadTodoLists(Label statusLabel, Button refreshButton, ListView<ListEntry> listsView,
+	public static void loadTodoLists(Label statusLabel, ListView<ListEntry> listsView,
 			String todoListsUri) {
 		setStatus(statusLabel, "Connecting to server...");
-		refreshButton.setDisable(true);
 
 		new Thread(() -> {
 			try {
@@ -67,12 +66,10 @@ public class Methods {
 						listsView.getItems().add(new ListEntry((String) t[0], (String) t[1]));
 					}
 					setStatus(statusLabel, "Loaded " + tuples.size() + " lists");
-					refreshButton.setDisable(false);
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
 					setStatus(statusLabel, "Failed: " + ex.getMessage());
-					refreshButton.setDisable(false);
 				});
 			}
 		}, "load-todo-lists").start();
@@ -158,12 +155,10 @@ public class Methods {
 
 	public static void loadTasksForList(
 			Label statusLabel,
-			Button refreshButton,
 			ListView<TaskEntry> tasksView,
 			String tasksUri,
 			String listId) {
 		setStatus(statusLabel, "Loading tasks...");
-		refreshButton.setDisable(true);
 
 		new Thread(() -> {
 			try {
@@ -189,12 +184,10 @@ public class Methods {
 								(String) t[4]));
 					}
 					setStatus(statusLabel, "Loaded " + tuples.size() + " tasks");
-					refreshButton.setDisable(false);
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
 					setStatus(statusLabel, "Failed: " + ex.getMessage());
-					refreshButton.setDisable(false);
 				});
 			}
 		}, "load-tasks-for-list").start();
@@ -203,11 +196,8 @@ public class Methods {
 	public static void addTaskToList(
 			Label statusLabel,
 			Button addTaskButton,
-			String tasksUri,
 			String requestsUri,
 			String responsesUri,
-			Button refreshButton,
-			ListView<TaskEntry> tasksView,
 			String listId,
 			String taskTitle,
 			String taskOwner) {
@@ -236,10 +226,7 @@ public class Methods {
 				Platform.runLater(() -> {
 					setStatus(statusLabel, returnedTaskId != null ? "Task added" : "Task added (no id returned)");
 					addTaskButton.setDisable(false);
-					// Refresh tasks if refresh button and view are provided
-					if (refreshButton != null && tasksView != null) {
-						loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
-					}
+					// No manual refresh - notification system handles it automatically
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
@@ -253,11 +240,8 @@ public class Methods {
 	public static void changeTaskStatus(
 			Label statusLabel,
 			Button changeStatusButton,
-			String tasksUri,
 			String requestsUri,
 			String responsesUri,
-			Button refreshButton,
-			ListView<TaskEntry> tasksView,
 			String listId,
 			String taskId,
 			String newStatus) {
@@ -274,14 +258,11 @@ public class Methods {
 
 				// TODO: Use this?
 				Object[] resp = waitForOk(responses, requestId);
-
+				
 				Platform.runLater(() -> {
 					setStatus(statusLabel, "Task status changed to " + newStatus);
 					changeStatusButton.setDisable(false);
-					// Refresh tasks if refresh button and view are provided
-					if (refreshButton != null && tasksView != null) {
-						loadTasksForList(statusLabel, refreshButton, tasksView, tasksUri, listId);
-					}
+					// No manual refresh - notification system handles it automatically
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
@@ -340,8 +321,6 @@ public class Methods {
 			Button assignButton,
 			String requestsUri,
 			String responsesUri,
-			Button refreshButton,
-			ListView<TaskEntry> tasksView,
 			String listId,
 			String taskId,
 			String owner) {
@@ -368,10 +347,7 @@ public class Methods {
 				Platform.runLater(() -> {
 					setStatus(statusLabel, "Task assigned to " + owner);
 					assignButton.setDisable(false);
-					// Refresh tasks if refresh button and view are provided
-					if (refreshButton != null && tasksView != null) {
-						loadTasksForList(statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId);
-					}
+					// No manual refresh - notification system handles it automatically
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {
@@ -387,8 +363,6 @@ public class Methods {
         Button deleteButton,
         String requestsUri,
         String responsesUri,
-        Button refreshButton,
-        ListView<TaskEntry> tasksView,
         String listId,
         String taskId
 ) {
@@ -399,7 +373,7 @@ public class Methods {
 
     setStatus(statusLabel, "Deleting task...");
     deleteButton.setDisable(true);
-
+	
     new Thread(() -> {
         String requestId = UUID.randomUUID().toString();
         try {
@@ -408,15 +382,13 @@ public class Methods {
 
             requests.put(TupleSpaces.CMD_TASK_DELETE, requestId, listId, taskId, "", "");
 
-            // Vait for ok else error
+            // Wait for ok else error
             waitForOk(responses, requestId);
 
             Platform.runLater(() -> {
-                // remove locally directly
-                tasksView.getItems().removeIf(t -> taskId.equals(t.id));
-
                 setStatus(statusLabel, "Task deleted");
                 deleteButton.setDisable(false);
+                // No manual refresh - notification system handles it automatically
             });
         } catch (Exception ex) {
             Platform.runLater(() -> {
@@ -428,8 +400,7 @@ public class Methods {
 }
 
 	public static void createToDoList(Label statusLabel, Button createToDoListButton, String requestsUri,
-			String responsesUri, Button refreshButton, ListView<ListEntry> listsView, String todoListsUri,
-			String listName) {
+			String responsesUri, String listName) {
 		if (listName == null || listName.isBlank()) {
 			setStatus(statusLabel, "Enter a name");
 			return;
@@ -437,7 +408,7 @@ public class Methods {
 
 		setStatus(statusLabel, "Creating to do list...");
 		createToDoListButton.setDisable(true);
-
+		
 		new Thread(() -> {
 			String requestId = UUID.randomUUID().toString();
 			try {
@@ -461,8 +432,7 @@ public class Methods {
 						setStatus(statusLabel, "Created (no id returned)");
 					}
 					createToDoListButton.setDisable(false);
-					// Refresh lists now that server confirmed creation
-					loadTodoLists(statusLabel, refreshButton, listsView, todoListsUri);
+					// No manual refresh - notification system handles it automatically
 				});
 			} catch (Exception ex) {
 				Platform.runLater(() -> {

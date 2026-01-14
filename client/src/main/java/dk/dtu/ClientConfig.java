@@ -5,8 +5,9 @@ public final class ClientConfig {
 	}
 
 	// Change this IP to match the server's LAN IP address!
+	
 	// Johans IP:
-	//public static final String SERVER_IP = "192.168.0.15";
+	// public static final String SERVER_IP = "192.168.0.15";
 
 	// Use this to run on own PC
 	public static final String SERVER_IP = "127.0.0.1";
@@ -22,4 +23,5 @@ public final class ClientConfig {
 	public static final String TASKS_URI = BASE_URI + TupleSpaces.TASKS + "?keep";
 	public static final String REQUESTS_URI = BASE_URI + TupleSpaces.REQUESTS + "?keep";
 	public static final String RESPONSES_URI = BASE_URI + TupleSpaces.RESPONSES + "?keep";
+	public static final String NOTIFICATIONS_URI = BASE_URI + TupleSpaces.NOTIFICATIONS + "?keep";
 }

@@ -19,6 +19,10 @@ public class E_TaskView {
     private final SceneNavigator navigator;
     private final String listId;
     private final String listName;
+    
+    // Store references for auto-refresh
+    private Label statusLabel;
+    private ListView<TaskEntry> tasksView;
 
     public E_TaskView(SceneNavigator navigator, String listId, String listName) {
         this.navigator = navigator;
@@ -36,15 +40,11 @@ public class E_TaskView {
         Button mainMenuButton = new Button("Main Menu");
         mainMenuButton.setOnAction(e -> navigator.showMainMenu());
 
-        Label statusLabel = new Label("");
+        statusLabel = new Label("");
 
         // Task ListView
-        ListView<TaskEntry> tasksView = new ListView<>();
+        tasksView = new ListView<>();
         tasksView.setPrefHeight(200);
-
-        Button refreshButton = new Button("Refresh");
-        refreshButton.setOnAction(e -> Methods.loadTasksForList(
-            statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId));
 
         // Add task section
         TextField newTaskField = new TextField();
@@ -55,11 +55,8 @@ public class E_TaskView {
             Methods.addTaskToList(
                 statusLabel,
                 addTaskButton,
-                ClientConfig.TASKS_URI,
                 ClientConfig.REQUESTS_URI,
                 ClientConfig.RESPONSES_URI,
-                refreshButton,
-                tasksView,
                 listId,
                 newTaskField.getText(),
                 navigator.getCurrentUser()
@@ -88,11 +85,8 @@ public class E_TaskView {
             Methods.changeTaskStatus(
                 statusLabel,
                 changeStatusButton,
-                ClientConfig.TASKS_URI,
                 ClientConfig.REQUESTS_URI,
                 ClientConfig.RESPONSES_URI,
-                refreshButton,
-                tasksView,
                 listId,
                 selectedTask.id,
                 newStatus
@@ -115,8 +109,6 @@ public class E_TaskView {
                 assignButton, 
                 ClientConfig.REQUESTS_URI, 
                 ClientConfig.RESPONSES_URI,
-                refreshButton, 
-                tasksView, 
                 listId, 
                 selectedTask.id, 
                 assignField.getText());
@@ -136,15 +128,13 @@ public class E_TaskView {
                 deleteButton,
                 ClientConfig.REQUESTS_URI,
                 ClientConfig.RESPONSES_URI,
-                refreshButton,
-                tasksView,
                 listId,
                 selectedTask.id
             );
         });
 
         // Initial load
-        Methods.loadTasksForList(statusLabel, refreshButton, tasksView, ClientConfig.TASKS_URI, listId);
+        Methods.loadTasksForList(statusLabel, tasksView, ClientConfig.TASKS_URI, listId);
         // Layout
         HBox navButtons = new HBox(8, backButton, mainMenuButton);
         navButtons.setAlignment(Pos.CENTER);
@@ -169,7 +159,6 @@ public class E_TaskView {
             navButtons,
             statusLabel,
             tasksView,
-            refreshButton,
             new Label("Add New Task:"),
             addBox,
             hint,
@@ -183,5 +172,13 @@ public class E_TaskView {
         root.setStyle("-fx-padding: 24;");
 
         return new Scene(root, 640, 600);
+    }
+    
+    /**
+     * Auto-refresh tasks when notification received from server.
+     * Called by SceneNavigator when server broadcasts task changes for this list.
+     */
+    public void autoRefreshTasks() {
+        Methods.loadTasksForList(statusLabel, tasksView, ClientConfig.TASKS_URI, listId);
     }
 }

@@ -15,15 +15,17 @@ public class ServerHandlerService implements Runnable {
     private final Space tasks;
     private final Space requests;
     private final Space responses;
+    private final Space notifications;
 
     public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests,
-            Space responses) {
+            Space responses, Space notifications) {
         this.todoLists = todoLists;
         this.counter = counter;
         this.users = users;
         this.tasks = tasks;
         this.requests = requests;
         this.responses = responses;
+        this.notifications = notifications;
     }
 
     @Override
@@ -47,7 +49,7 @@ public class ServerHandlerService implements Runnable {
                     case TupleSpaces.CMD_TASK_ASSIGN -> handleTaskAssign(req);
                     case TupleSpaces.CMD_LISTS_GET -> handleListsGet(req);
                     case TupleSpaces.CMD_TASKS_GET -> handleTasksGet(req);
-                    case TupleSpaces.CMD_TASK_DELETE -> HandleTaskDelete(req);
+                    case TupleSpaces.CMD_TASK_DELETE -> handleTaskDelete(req);
                     case TupleSpaces.CMD_LIST_DELETE -> handleListDelete(req);
                     default -> {
                         // Ignore unknown commands for now
@@ -62,7 +64,6 @@ public class ServerHandlerService implements Runnable {
     }
 
     private void handlePing(Request req) throws InterruptedException {
-        System.out.println("handlePingRequest");
         responses.put(TupleSpaces.RESP_OK, req.requestId(), "pong", "", "", "");
         // Optional: could respond with ok
     }
@@ -84,13 +85,14 @@ public class ServerHandlerService implements Runnable {
             ServerConfig.syncCounterToTodoLists(counter, todoLists);
         }
 
-        System.out.println("Created list: " + listId + " - " + listName);
+        System.out.println("List created: " + listName);
         responses.put(TupleSpaces.RESP_OK, requestId, listId, listName, "", "");
+        
+        // Broadcast to all clients: "data changed", trigger refresh
+        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "list_create", listId, listName, "");
     }
 
     private void handleTaskAdd(Request req) {
-        System.out.println("handleTaskAddRequest");
-
         String requestId = req.requestId();
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
 
@@ -98,7 +100,6 @@ public class ServerHandlerService implements Runnable {
         String owner = (req.a3() instanceof String) ? (String) req.a3() : null;
 
         if (listId == null || title == null) {
-            System.out.println("Invalid parameters for adding task");
             return;
         }
 
@@ -106,7 +107,7 @@ public class ServerHandlerService implements Runnable {
         String status = "TODO";
         try {
             tasks.put(listId, taskId, title, owner == null ? "" : owner, status);
-            System.out.println("Added task: " + taskId + " - " + title + " to list " + listId);
+            System.out.println("Task added: " + title);
 
             // send OK response back
             responses.put(
@@ -117,21 +118,21 @@ public class ServerHandlerService implements Runnable {
                     title,
                     status);
 
+            // Broadcast notification to all clients
+            notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_add", listId, taskId, "");
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
 
     private void handleTaskStatus(Request req) throws InterruptedException {
-        System.out.println("handleTaskStatusRequest");
         String requestId = req.requestId();
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
         String taskId = (req.a2() instanceof String) ? (String) req.a2() : null;
         String newStatus = (req.a3() instanceof String) ? (String) req.a3() : null;
 
         if (listId == null || taskId == null || newStatus == null) {
-            // Invalid parameters
-            System.out.println("Invalid parameters for updating task status");
             responses.put(TupleSpaces.RESP_ERROR, requestId, "Invalid parameters", "", "", "");
             return;
         }
@@ -142,7 +143,7 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class));
-
+        
         if (existing == null) {
             responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", listId, taskId, "");
             return;
@@ -153,16 +154,17 @@ public class ServerHandlerService implements Runnable {
 
         tasks.put(listId, taskId, title, owner, newStatus);
         responses.put(TupleSpaces.RESP_OK, requestId, listId, taskId, title, newStatus);
+        
+        // Broadcast notification to all clients
+        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_status", listId, taskId, "");
 
-        System.out.println("Updated task status: " + taskId + " to " + newStatus + " in list " + listId);
+        System.out.println("Task status updated: " + newStatus);
     }
 
     private void handleTaskAssign(Request req) {
-        System.out.println("handleTaskAssignRequest");
     }
 
     private void handleListsGet(Request req) throws InterruptedException {
-        System.out.println("handleListsGetRequest");
         String requestId = req.requestId();
 
         List<Object[]> all = todoLists.queryAll(
@@ -178,12 +180,9 @@ public class ServerHandlerService implements Runnable {
 
     // Sends back all tasks for a given list
     private void handleTasksGet(Request req) throws InterruptedException {
-        System.out.println("handleTasksGetRequest");
         String requestId = req.requestId();
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
         if (listId == null) {
-            // Invalid parameters
-            System.out.println("Invalid parameters for getting tasks");
             return;
         }
         List<Object[]> tuples = tasks.queryAll(
@@ -207,9 +206,8 @@ public class ServerHandlerService implements Runnable {
         responses.put(TupleSpaces.RESP_OK, requestId, "END", "", "", "");
     }
 
-    // atm without involving tasks
-    private void HandleTaskDelete(Request req) throws InterruptedException {
-        System.out.println("handleTaskDeleteRequest");
+    // Delete a task
+    private void handleTaskDelete(Request req) throws InterruptedException {
         String requestId = req.requestId();
         String taskId = (req.a2() instanceof String) ? (String) req.a2() : null;
 
@@ -228,12 +226,16 @@ public class ServerHandlerService implements Runnable {
             responses.put(TupleSpaces.RESP_ERROR, requestId, "Task not found", "", taskId, "");
             return;
         }
+        
+        String deletedListId = (String) removed[0];
 
         responses.put(TupleSpaces.RESP_OK, requestId, "", taskId, "DELETED", "OK");
+        
+        // Broadcast notification to all clients
+        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_delete", deletedListId, taskId, "");
     }
 
     private void handleListDelete(Request req) throws InterruptedException {
-        System.out.println("handleListDeleteRequest");
         String requestId = req.requestId();
 
         String listId = (req.a1() instanceof String) ? (String) req.a1() : null;
@@ -250,8 +252,11 @@ public class ServerHandlerService implements Runnable {
         }
         String removedName = (removed[1] instanceof String) ? (String) removed[1] : "";
 
-        System.out.println("Deleted list: " + listId + " - " + removedName);
+        System.out.println("List deleted: " + removedName);
         responses.put(TupleSpaces.RESP_OK, requestId, listId, removedName, "DELETED", "OK");
+        
+        // Broadcast notification to all clients
+        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "list_delete", listId, removedName, "");
     }
 
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {
