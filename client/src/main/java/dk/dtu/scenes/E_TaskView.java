@@ -184,7 +184,7 @@ public class E_TaskView {
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-padding: 24;");
 
-        return new Scene(root, 640, 600);
+        return new Scene(root, 900, 600);
     }
     
     // Refresh tasks view

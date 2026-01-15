@@ -1,13 +1,11 @@
-/*
-CSS styling specific to the lobby scene
-
-Dont duplicate styles already defined in common.css
-*/
+/* lobby.css */
 
 .lobby-background {
     -fx-background-color: #e0e0e0;
 }
-.button {
+
+/* Knapper kun inde i lobby-root */
+.lobby-background .button {
     -fx-font-size: 14px;
     -fx-padding: 10px 20px;
     -fx-text-fill: blueviolet;

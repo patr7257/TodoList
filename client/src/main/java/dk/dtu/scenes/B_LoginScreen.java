@@ -18,11 +18,13 @@ public class B_LoginScreen {
 
     public Scene createScene() {
         Label title = new Label("Login");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        title.getStyleClass().add("login-title");
 
         Label usernameLabel = new Label("Username:");
+
         TextField usernameField = new TextField();
         usernameField.setPromptText("Enter username (e.g. alice)");
+        usernameField.getStyleClass().add("login-textfield");
 
         Button loginButton = new Button("Login");
         loginButton.setDefaultButton(true);
@@ -49,10 +51,12 @@ public class B_LoginScreen {
         Button backButton = new Button("Back to Welcome Screen");
         backButton.setOnAction(e -> navigator.showWelcome());
 
-        VBox root = new VBox(10, title, usernameLabel, usernameField, loginButton, backButton);
+        VBox root = new VBox(20, title, usernameLabel, usernameField, loginButton, backButton);
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-padding: 24;");
+        root.setFillWidth(false);  
+        root.getStyleClass().add("login-root");
 
-        return new Scene(root, 520, 360);
+        return new Scene(root, 900, 600);
+
     }
 }

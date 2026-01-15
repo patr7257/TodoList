@@ -1,22 +1,163 @@
-/*
-COMMON STYLESHEET for the JavaFX client application
-
-consistent look: use CSS for colors, fonts, borders, backgrounds,
-hover/pressed states, and use code/FXML for layout and logic
-*/
-
-.root {
-    -fx-font-family: "Arial";
-    -fx-font-size: 14px;
-    -fx-background-color: #f0f0f0;
+.welcome-screen {
+    -fx-background-color: #e8ebf0;
+    -fx-alignment: center;
 }
+
+.welcome-title {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 42px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #333333;
+    -fx-padding: 20 0 60 0;
+}
+
+
+.welcome-tagline {
+    -fx-font-size: 20px;
+    -fx-text-fill: #4a4a4a;
+    -fx-font-style: italic;
+    -fx-font-weight: 500;
+    -fx-padding: 8 0 0 0;
+}
+
+.primary-button {
+    -fx-min-width: 170px;
+    -fx-min-height: 46px;
+    -fx-background-color: #2d6cdf;
+    -fx-background-radius: 30;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 20, 0, 0, 4);
+}
+.primary-button:hover {
+    -fx-background-color: #1e4fa8;
+}
+
 .button {
-    -fx-background-color: #4CAF50;
+    -fx-background-color: #2d6cdf;
     -fx-text-fill: white;
-    -fx-padding: 10 20 10 20;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
+    -fx-font-size: 20px;
+    -fx-font-weight: 600;
+    -fx-padding: 12 30;
+    -fx-background-radius: 999;
 }
+
 .button:hover {
-    -fx-background-color: #45a049;
+    -fx-background-color: #1e4fa8;
+}
+.login-root, .mainmenu-root {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 20px;           /* increase base font size */
+}
+
+/* Larger title */
+.login-title, .mainmenu-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+
+/* Inputs */
+.login-textfield {
+    -fx-pref-width: 320px;
+    -fx-pref-height: 42px;
+    -fx-font-size: 18px;
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1px;
+    -fx-padding: 0 10;
+}
+
+.login-textfield:focused {
+    -fx-border-color: #2d6cdf;
+    -fx-border-width: 2px;
+}
+
+.login-root, .mainmenu-root {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 20px;
+}
+
+.login-title, .mainmenu-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+.create-new-item {
+    -fx-text-fill: #2d6cdf;
+    -fx-font-weight: bold;
+    -fx-font-size: 20px;
+}
+
+.list-header {
+    -fx-font-size: 18px;
+    -fx-text-fill: #666666;
+    -fx-font-weight: 600;
+}
+
+.list-col-name {
+    -fx-font-size: 20px;
+}
+
+.list-col-status,
+.list-col-count {
+    -fx-text-fill: #666666;
+}
+
+.list-col-delete-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d32f2f;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-padding: 2 8;
+}
+
+.list-col-delete-button:hover {
+    -fx-background-color: rgba(211,47,47,0.08);
+}
+
+.create-link {
+    -fx-text-fill: #2d6cdf;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+}
+
+.create-link:hover {
+    -fx-underline: true;
+}
+/* Todo list view root */
+.todolist-root {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 18px;
+    -fx-background-color: #e8ebf0;
+}
+
+/* Big list name */
+.todolist-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #333333;
+}
+
+/* Subtitle under title */
+.todolist-subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #666666;
+}
+
+/* Small meta text for ID */
+.todolist-meta {
+    -fx-font-size: 14px;
+    -fx-text-fill: #888888;
+}
+.danger-button {
+    -fx-background-color: #e53935;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 10 18;
+    -fx-background-radius: 999;
+}
+
+.danger-button:hover {
+    -fx-background-color: #c62828;
 }
