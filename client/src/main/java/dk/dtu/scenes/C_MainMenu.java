@@ -1,7 +1,7 @@
 package dk.dtu.scenes;
 
 import dk.dtu.shared.Config;
-import dk.dtu.Methods;
+import dk.dtu.methods.*;
 import dk.dtu.SceneNavigator;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -18,20 +18,16 @@ import javafx.scene.layout.VBox;
 public class C_MainMenu {
     
     private final SceneNavigator navigator;
-    private final String loginMessage; // besked vist kort efter login
+    private final String loginMessage;
 
-    private final Label statusLabel = new Label("Loading...");
-    private final ListView<Methods.ListEntry> listsView = new ListView<>();
+    private final ListView<Helpers.ListEntry> listsView = new ListView<>();
     private final Button logoutButton = new Button("Logout");
-    private final Button pingButton = new Button("Ping server");
     private final Button createToDoListButton = new Button("Create To Do List");
     
-    // Bruges hvis man går til MainMenu uden specifik login-besked
     public C_MainMenu(SceneNavigator navigator) {
         this(navigator, null);
     }
 
-    // Bruges når man lige er logget ind (med besked fra login)
     public C_MainMenu(SceneNavigator navigator, String loginMessage) {
         this.navigator = navigator;
         this.loginMessage = loginMessage;
@@ -43,13 +39,11 @@ public class C_MainMenu {
 
         Label userLabel = new Label("Logged in as: " + navigator.getCurrentUser());
 
-        // Label til midlertidig login-besked
         Label tempMessageLabel = new Label();
         if (loginMessage != null && !loginMessage.isBlank()) {
             tempMessageLabel.setText(loginMessage);
             tempMessageLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
 
-            // Fjern beskeden efter 2 sekunder
             new Thread(() -> {
                 try {
                     Thread.sleep(2000);
@@ -61,9 +55,6 @@ public class C_MainMenu {
 
         logoutButton.setOnAction(e -> navigator.showLogin());
 
-        pingButton.setOnAction(e -> Methods.sendPing(
-                statusLabel, pingButton, Config.getRequestsUri()));
-
         createToDoListButton.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("Create To Do List");
@@ -72,15 +63,18 @@ public class C_MainMenu {
 
             dialog.showAndWait().ifPresent(name -> {
                 if (name == null || name.isBlank()) {
-                    Methods.setStatus(tempMessageLabel, "Enter a name");
                     return;
                 }
-                Methods.createToDoList(
-                        tempMessageLabel,
-                        createToDoListButton,
-                        Config.getRequestsUri(),
-                        Config.getResponsesUri(),
-                        name);
+                createToDoListButton.setDisable(true);
+                new Thread(() -> {
+                    try {
+                        Lists.createTodoList(Config.getRequestsUri(), Config.getResponsesUri(), name);
+                        javafx.application.Platform.runLater(() -> createToDoListButton.setDisable(false));
+                    } catch (Exception ex) {
+                        javafx.application.Platform.runLater(() -> createToDoListButton.setDisable(false));
+                        ex.printStackTrace();
+                    }
+                }, "create-list").start();
             });
         });
 
@@ -88,28 +82,26 @@ public class C_MainMenu {
             if (e.getButton() != MouseButton.PRIMARY) {
                 return;
             }
-            Methods.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
+            Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 return;
             }
             navigator.showTodoList(selected.id, selected.name);
         });
 
-        HBox actions = new HBox(10, pingButton, logoutButton, createToDoListButton);
+        HBox actions = new HBox(10, logoutButton, createToDoListButton);
         actions.setAlignment(Pos.CENTER_LEFT);
 
-        // Vi tilføjer tempMessageLabel mellem userLabel og statusLabel
         VBox root = new VBox(
                 10,
                 title,
                 userLabel,
                 tempMessageLabel,
-                statusLabel,
                 actions,
                 listsView);
         root.setPadding(new Insets(12));
 
-        Methods.loadTodoLists(statusLabel, listsView, Config.getTodoListsUri());
+        Lists.loadTodoLists(listsView, Config.getTodoListsUri());
 
         return new Scene(root, 520, 420);
     }
@@ -119,6 +111,6 @@ public class C_MainMenu {
      * Called by SceneNavigator when server broadcasts list changes.
      */
     public void autoRefreshLists() {
-        Methods.loadTodoLists(statusLabel, listsView, Config.getTodoListsUri());
+        Lists.loadTodoLists(listsView, Config.getTodoListsUri());
     }
 }

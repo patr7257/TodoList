@@ -7,11 +7,8 @@ import dk.dtu.shared.Config;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Simplified notification listener - just signals "something changed" to the UI.
- * SceneNavigator decides what to refresh based on what's currently displayed.
- * This scales much better than having specific handlers for each data type.
- */
+// Listener for notifications from the server
+// Calls a single callback when ANY data changes (to refresh current view)
 public class NotificationListener implements Runnable {
     
     private final String notificationsUri;

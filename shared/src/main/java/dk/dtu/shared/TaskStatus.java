@@ -1,4 +1,4 @@
-package dk.dtu.model;
+package dk.dtu.shared;
 
 public enum TaskStatus {
     NOT_STARTED,

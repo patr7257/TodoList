@@ -1,6 +1,5 @@
 package dk.dtu;
 
-import dk.dtu.model.Database;
 import dk.dtu.shared.Config;
 import dk.dtu.shared.TupleSpaces;
 import org.jspace.*;

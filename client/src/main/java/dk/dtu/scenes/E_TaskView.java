@@ -1,8 +1,8 @@
 package dk.dtu.scenes;
 
 import dk.dtu.shared.Config;
-import dk.dtu.Methods;
-import dk.dtu.Methods.TaskEntry;
+import dk.dtu.shared.TaskStatus;
+import dk.dtu.methods.*;
 import dk.dtu.SceneNavigator;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,8 +21,7 @@ public class E_TaskView {
     private final String listName;
     
     // Store references for auto-refresh
-    private Label statusLabel;
-    private ListView<TaskEntry> tasksView;
+    private ListView<Helpers.TaskEntry> tasksView;
 
     public E_TaskView(SceneNavigator navigator, String listId, String listName) {
         this.navigator = navigator;
@@ -40,12 +39,10 @@ public class E_TaskView {
         Button mainMenuButton = new Button("Main Menu");
         mainMenuButton.setOnAction(e -> navigator.showMainMenu());
 
-        statusLabel = new Label("");
-
         ComboBox<String> assigneeComboBox = new ComboBox<>();
         assigneeComboBox.setPromptText("Select assignee");
 
-        Methods.loadUsersIntoComboBox(statusLabel, assigneeComboBox, Config.getUsersUri());
+        Users.loadUsersIntoComboBox(assigneeComboBox, Config.getUsersUri());
 
 
         // Task ListView
@@ -60,97 +57,97 @@ public class E_TaskView {
         addTaskButton.setOnAction(e -> {
             String selectedAssignee = assigneeComboBox.getValue();
             if (selectedAssignee == null || selectedAssignee.isBlank()) {
-                Methods.setStatus(statusLabel, "Select an assignee");
                 return;
             }
-            Methods.addTaskToList(
-                statusLabel,
-                addTaskButton,
-                Config.getRequestsUri(),
-                Config.getResponsesUri(),
-                listId,
-                newTaskField.getText(),
-                selectedAssignee
-            );
-            newTaskField.clear();
+            addTaskButton.setDisable(true);
+            new Thread(() -> {
+                try {
+                    Tasks.addTask(Config.getRequestsUri(), Config.getResponsesUri(), listId, newTaskField.getText(), selectedAssignee);
+                    javafx.application.Platform.runLater(() -> {
+                        addTaskButton.setDisable(false);
+                        newTaskField.clear();
+                    });
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> addTaskButton.setDisable(false));
+                    ex.printStackTrace();
+                }
+            }, "add-task").start();
         });
 
         // Change status section
-        ComboBox<String> statusComboBox = new ComboBox<>();
-        statusComboBox.getItems().addAll("PENDING", "IN_PROGRESS", "DONE");
+        ComboBox<TaskStatus> statusComboBox = new ComboBox<>();
+        statusComboBox.getItems().addAll(TaskStatus.values());
         statusComboBox.setPromptText("Select Status");
-        statusComboBox.setValue("DONE");
+        statusComboBox.setValue(TaskStatus.DONE);
         
         Button changeStatusButton = new Button("Change Status");
         changeStatusButton.setOnAction(e -> {
-            TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
+            Helpers.TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
             if (selectedTask == null) {
-                Methods.setStatus(statusLabel, "No task selected");
                 return;
             }
-            String newStatus = statusComboBox.getValue();
+            TaskStatus newStatus = statusComboBox.getValue();
             if (newStatus == null) {
-                Methods.setStatus(statusLabel, "Select a status");
                 return;
             }
-            Methods.changeTaskStatus(
-                statusLabel,
-                changeStatusButton,
-                Config.getRequestsUri(),
-                Config.getResponsesUri(),
-                listId,
-                selectedTask.id,
-                newStatus
-            );
+            changeStatusButton.setDisable(true);
+            new Thread(() -> {
+                try {
+                    Tasks.changeTaskStatus(Config.getRequestsUri(), Config.getResponsesUri(), listId, selectedTask.id, newStatus.name());
+                    javafx.application.Platform.runLater(() -> changeStatusButton.setDisable(false));
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> changeStatusButton.setDisable(false));
+                    ex.printStackTrace();
+                }
+            }, "change-status").start();
         });
 
         // Assign task section
         Button assignButton = new Button("Assign");
         assignButton.setOnAction(e -> {
-            TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
+            Helpers.TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
             if (selectedTask == null) {
-                Methods.setStatus(statusLabel, "No task selected");
                 return;
             }
 
             String selectedAssignee = assigneeComboBox.getValue();
             if (selectedAssignee == null || selectedAssignee.isBlank()) {
-                Methods.setStatus(statusLabel, "Select an assignee");
                 return;
             }
 
-            Methods.assignTaskToList(
-                statusLabel,
-                assignButton,
-                Config.getRequestsUri(),
-                Config.getResponsesUri(),
-                listId,
-                selectedTask.id,
-                selectedAssignee
-            );
+            assignButton.setDisable(true);
+            new Thread(() -> {
+                try {
+                    Tasks.assignTask(Config.getRequestsUri(), Config.getResponsesUri(), listId, selectedTask.id, selectedAssignee);
+                    javafx.application.Platform.runLater(() -> assignButton.setDisable(false));
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> assignButton.setDisable(false));
+                    ex.printStackTrace();
+                }
+            }, "assign-task").start();
         });
-
 
         Button deleteButton = new Button("Delete");
         deleteButton.setOnAction(e -> {
-            TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
+            Helpers.TaskEntry selectedTask = tasksView.getSelectionModel().getSelectedItem();
             if (selectedTask == null) {
-                Methods.setStatus(statusLabel, "No task selected");
                 return;
             }
             
-            Methods.deleteTaskFromList(
-                statusLabel,
-                deleteButton,
-                Config.getRequestsUri(),
-                Config.getResponsesUri(),
-                listId,
-                selectedTask.id
-            );
+            deleteButton.setDisable(true);
+            new Thread(() -> {
+                try {
+                    Tasks.deleteTask(Config.getRequestsUri(), Config.getResponsesUri(), selectedTask.id);
+                    javafx.application.Platform.runLater(() -> deleteButton.setDisable(false));
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> deleteButton.setDisable(false));
+                    ex.printStackTrace();
+                }
+            }, "delete-task").start();
         });
 
         // Initial load
-        Methods.loadTasksForList(statusLabel, tasksView, Config.getTasksUri(), listId);
+        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
         // Layout
         HBox navButtons = new HBox(8, backButton, mainMenuButton);
         navButtons.setAlignment(Pos.CENTER);
@@ -174,7 +171,6 @@ public class E_TaskView {
         VBox root = new VBox(12, 
             title, 
             navButtons,
-            statusLabel,
             tasksView,
             new Label("Add New Task:"),
             addBox,
@@ -191,11 +187,8 @@ public class E_TaskView {
         return new Scene(root, 640, 600);
     }
     
-    /**
-     * Auto-refresh tasks when notification received from server.
-     * Called by SceneNavigator when server broadcasts task changes for this list.
-     */
+    // Refresh tasks view
     public void autoRefreshTasks() {
-        Methods.loadTasksForList(statusLabel, tasksView, Config.getTasksUri(), listId);
+        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
     }
 }

@@ -1,7 +1,7 @@
 package dk.dtu.scenes;
 
 import dk.dtu.shared.Config;
-import dk.dtu.Methods;
+import dk.dtu.methods.Users;
 import dk.dtu.SceneNavigator;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -24,26 +24,32 @@ public class B_LoginScreen {
         TextField usernameField = new TextField();
         usernameField.setPromptText("Enter username (e.g. alice)");
 
-        Label statusLabel = new Label();
-
         Button loginButton = new Button("Login");
         loginButton.setDefaultButton(true);
         loginButton.setOnAction(evt -> {
-            Methods.autoLoginUser(
-                    statusLabel,
-                    loginButton,
-                    usernameField.getText(),
-                    Config.getUsersUri(),
-                    (message) -> {
-                        navigator.setCurrentUser(usernameField.getText());
+            String username = usernameField.getText();
+            if (username.isBlank()) {
+                return;
+            }
+            loginButton.setDisable(true);
+            new Thread(() -> {
+                try {
+                    Users.autoLoginUser(username, Config.getUsersUri(), (message) -> {
+                        navigator.setCurrentUser(username);
                         navigator.showMainMenuWithMessage(message);
+                        javafx.application.Platform.runLater(() -> loginButton.setDisable(false));
                     });
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> loginButton.setDisable(false));
+                    ex.printStackTrace();
+                }
+            }, "login").start();
         });
 
         Button backButton = new Button("Back to Welcome Screen");
         backButton.setOnAction(e -> navigator.showWelcome());
 
-        VBox root = new VBox(10, title, usernameLabel, usernameField, loginButton, statusLabel, backButton);
+        VBox root = new VBox(10, title, usernameLabel, usernameField, loginButton, backButton);
         root.setAlignment(Pos.CENTER);
         root.setStyle("-fx-padding: 24;");
 
