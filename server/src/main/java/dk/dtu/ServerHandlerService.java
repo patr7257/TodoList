@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import dk.dtu.model.Database;
 import dk.dtu.shared.TupleSpaces;
 import java.util.List;
 import java.util.UUID;
@@ -44,6 +45,7 @@ public class ServerHandlerService implements Runnable {
                 Request req = Request.fromTuple(tuple);
                 switch (req.cmd()) {
                     case TupleSpaces.CMD_PING -> handlePing(req);
+                    case TupleSpaces.CMD_CLIENT_DISCONNECT -> handleClientDisconnect(req);
                     case TupleSpaces.CMD_LIST_CREATE -> handleListCreate(req);
                     case TupleSpaces.CMD_TASK_ADD -> handleTaskAdd(req);
                     case TupleSpaces.CMD_TASK_STATUS -> handleTaskStatus(req);
@@ -65,25 +67,33 @@ public class ServerHandlerService implements Runnable {
     }
 
     private void handlePing(Request req) throws InterruptedException {
+        System.out.println("Received ping from client.");
         responses.put(TupleSpaces.RESP_OK, req.requestId(), "pong", "", "", "");
         // Optional: could respond with ok
+    }
+
+    private void handleClientDisconnect(Request req) {
+        String username = (req.a1() instanceof String) ? (String) req.a1() : "";
+        System.out.println("Client disconnected from server: " + username);
     }
 
     private void handleListCreate(Request req) throws InterruptedException {
         String requestId = req.requestId();
         String providedName = (req.a1() instanceof String) ? (String) req.a1() : null;
-
+        
         final String listId;
         final String listName;
         synchronized (todoLists) {
-            int count = ServerMain.getTodoListCount(todoLists);
+            int count = Database.getTodoListCount(todoLists);
             listId = "l" + (count + 1);
             listName = (providedName != null && !providedName.isBlank())
                     ? providedName
                     : "New List " + (count + 1);
 
             todoLists.put(listId, listName);
-            ServerMain.syncCounterToTodoLists(counter, todoLists);
+            // Update counter
+            counter.getp(new FormalField(Integer.class));
+            counter.put(count + 1);
         }
 
         System.out.println("List created: " + listName);
@@ -119,8 +129,8 @@ public class ServerHandlerService implements Runnable {
                     title,
                     status);
 
-            // Broadcast notification to all clients
-            notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_add", listId, taskId, "");
+            // Broadcast notification to all clients (send task title for user-friendly display)
+            notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_add", listId, title, "");
 
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -156,8 +166,8 @@ public class ServerHandlerService implements Runnable {
         tasks.put(listId, taskId, title, assignee, newStatus);
         responses.put(TupleSpaces.RESP_OK, requestId, listId, taskId, title, newStatus);
         
-        // Broadcast notification to all clients
-        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_status", listId, taskId, "");
+        // Broadcast notification to all clients (include new status for display)
+        notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), "task_status", listId, newStatus, "");
 
         System.out.println("Task status updated: " + newStatus);
     }
@@ -305,7 +315,6 @@ public class ServerHandlerService implements Runnable {
             e.printStackTrace();
         }
     }
-    
 
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {
         static Request fromTuple(Object[] tuple) {

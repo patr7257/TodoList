@@ -48,6 +48,13 @@ public class SceneNavigator {
     }
     
     public void shutdown() {
+        try {
+            org.jspace.RemoteSpace requests = new org.jspace.RemoteSpace(Config.getRequestsUri());
+            String requestId = java.util.UUID.randomUUID().toString();
+            requests.put(dk.dtu.shared.TupleSpaces.CMD_CLIENT_DISCONNECT, requestId, currentUser != null ? currentUser : "", "", "", "");
+        } catch (Exception e) {
+        }
+        
         if (notificationListener != null) {
             notificationListener.stop();
         }
@@ -66,6 +73,10 @@ public class SceneNavigator {
 
     // B: Show login screen
     public void showLogin() {
+        if (currentUser != null) {
+            System.out.println("Logged out: " + currentUser);
+            currentUser = null;
+        }
         currentMainMenu = null;
         currentTaskView = null;
         stage.setTitle("Login");

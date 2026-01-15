@@ -24,6 +24,7 @@ public class Methods {
 	// Used to check if server is reachable in MainMenu
 	public static void sendPing(Label statusLabel, Button pingButton, String requestsUri) {
 		setStatus(statusLabel, "Sending ping...");
+		System.out.println("Sending ping to server.");
 		pingButton.setDisable(true);
 		
 		new Thread(() -> {
@@ -304,6 +305,8 @@ public class Methods {
 				String msg = isNewUser
 						? "New user " + username + " created, logged in"
 						: "Logged in as " + username;
+
+				System.out.println(msg);
 
 				Platform.runLater(() -> {
 					onSuccessMessage.accept(msg);

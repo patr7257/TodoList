@@ -62,7 +62,13 @@ public class NotificationListener implements Runnable {
                 }
                 
                 processedTimestamps.add(timestamp);
-                System.out.println("Data updated");
+                
+                // Print user-friendly message based on operation type
+                String operationType = (String) notification[2];
+                String data1 = (String) notification[3];  // listId or taskId
+                String data2 = (String) notification[4];  // listName or taskTitle
+                
+                printFriendlyNotification(operationType, data1, data2);
                 
                 // Simple: just tell UI "something changed, refresh yourself"
                 if (onDataChanged != null) {
@@ -78,7 +84,31 @@ public class NotificationListener implements Runnable {
             System.err.println("[NotificationListener] Error: " + e.getMessage());
         }
     }
-    
+
+    // Helper method to print friendly notification messages
+    private void printFriendlyNotification(String operationType, String id, String name) {
+        switch (operationType) {
+            case "list_create":
+                System.out.println("List created: " + name);
+                break;
+            case "task_add":
+                System.out.println("Task added: " + name);
+                break;
+            case "task_status":
+                System.out.println("Task status updated: " + name);
+                break;
+            case "task_delete":
+                System.out.println("Task deleted");
+                break;
+            case "list_delete":
+                System.out.println("List deleted: " + name);
+                break;
+            default:
+                System.out.println("Data updated");
+                break;
+        }
+    }
+
     public void stop() {
         running = false;
     }

@@ -1,15 +1,13 @@
 package dk.dtu;
 
+import dk.dtu.model.Database;
 import dk.dtu.shared.Config;
 import dk.dtu.shared.TupleSpaces;
 import org.jspace.*;
 
-/**
- * Main server application
- * Minimal version (for learning):
- * - Create a SpaceRepository
- * - Open a TCP gate so clients can connect using RemoteSpace
- */
+// Main server application
+// Sets up jSpace spaces, loads preset data, and starts request handling loop
+// Listens for client requests and processes them accordingly
 public class ServerMain {
 
     public static void main(String[] args) {
@@ -24,10 +22,6 @@ public class ServerMain {
 
             SequentialSpace users = new SequentialSpace();
             repo.add(TupleSpaces.USERS, users);
-
-            // optional: lav nogle testbrugere
-            users.put("Alice");
-            users.put("Bob");
 
             // Tasks space 
             SequentialSpace tasks = new SequentialSpace();
@@ -45,21 +39,14 @@ public class ServerMain {
             SequentialSpace notifications = new SequentialSpace();
             repo.add(TupleSpaces.NOTIFICATIONS, notifications);
 
-
-            //TODO
-            // //Database.loadDatabase();
-            // Hardcoded lists for testing frontend connection: tuples of (listId, listName)
-            todoLists.put("l1", "Shopping");
-            todoLists.put("l2", "School");
-            todoLists.put("l3", "Work");
-            todoLists.put("l4", "Chores");
-            todoLists.put("l5", "Trips");
+            // Load preset data into the system
+            Database.loadDatabase(users, todoLists, tasks);
 
             // Open a gate so RemoteSpace clients can connect
             repo.addGate(Config.getServerGateUri());
 
-            // Counter should mirror actual todoLists size
-            syncCounterToTodoLists(counter, todoLists);
+            // Initialize counter with current todoLists count
+            counter.put(Database.getTodoListCount(todoLists));
 
             System.out.println("Server started on " + Config.SERVER_IP + ":" + Config.PORT + ".\nWaiting for client requests...");
 
@@ -77,18 +64,5 @@ public class ServerMain {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-    
-    // Helper methods for counter management
-    public static int getTodoListCount(Space todoLists) throws InterruptedException {
-        return todoLists.queryAll(
-                new FormalField(String.class),
-                new FormalField(String.class)).size();
-    }
-
-    public static void syncCounterToTodoLists(Space counter, Space todoLists) throws InterruptedException {
-        int count = getTodoListCount(todoLists);
-        counter.getp(new FormalField(Integer.class));
-        counter.put(count);
     }
 }
