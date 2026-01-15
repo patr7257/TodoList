@@ -1,6 +1,6 @@
 package dk.dtu.scenes;
 
-import dk.dtu.ClientConfig;
+import dk.dtu.shared.Config;
 import dk.dtu.Methods;
 import dk.dtu.Methods.TaskEntry;
 import dk.dtu.SceneNavigator;
@@ -55,8 +55,8 @@ public class E_TaskView {
             Methods.addTaskToList(
                 statusLabel,
                 addTaskButton,
-                ClientConfig.REQUESTS_URI,
-                ClientConfig.RESPONSES_URI,
+                Config.getRequestsUri(),
+                Config.getResponsesUri(),
                 listId,
                 newTaskField.getText(),
                 navigator.getCurrentUser()
@@ -85,8 +85,8 @@ public class E_TaskView {
             Methods.changeTaskStatus(
                 statusLabel,
                 changeStatusButton,
-                ClientConfig.REQUESTS_URI,
-                ClientConfig.RESPONSES_URI,
+                Config.getRequestsUri(),
+                Config.getResponsesUri(),
                 listId,
                 selectedTask.id,
                 newStatus
@@ -107,8 +107,8 @@ public class E_TaskView {
             Methods.assignTaskToList(
                 statusLabel, 
                 assignButton, 
-                ClientConfig.REQUESTS_URI, 
-                ClientConfig.RESPONSES_URI,
+                Config.getRequestsUri(), 
+                Config.getResponsesUri(),
                 listId, 
                 selectedTask.id, 
                 assignField.getText());
@@ -126,15 +126,15 @@ public class E_TaskView {
             Methods.deleteTaskFromList(
                 statusLabel,
                 deleteButton,
-                ClientConfig.REQUESTS_URI,
-                ClientConfig.RESPONSES_URI,
+                Config.getRequestsUri(),
+                Config.getResponsesUri(),
                 listId,
                 selectedTask.id
             );
         });
 
         // Initial load
-        Methods.loadTasksForList(statusLabel, tasksView, ClientConfig.TASKS_URI, listId);
+        Methods.loadTasksForList(statusLabel, tasksView, Config.getTasksUri(), listId);
         // Layout
         HBox navButtons = new HBox(8, backButton, mainMenuButton);
         navButtons.setAlignment(Pos.CENTER);
@@ -179,6 +179,6 @@ public class E_TaskView {
      * Called by SceneNavigator when server broadcasts task changes for this list.
      */
     public void autoRefreshTasks() {
-        Methods.loadTasksForList(statusLabel, tasksView, ClientConfig.TASKS_URI, listId);
+        Methods.loadTasksForList(statusLabel, tasksView, Config.getTasksUri(), listId);
     }
 }

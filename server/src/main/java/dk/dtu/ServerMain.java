@@ -1,5 +1,7 @@
 package dk.dtu;
 
+import dk.dtu.shared.Config;
+import dk.dtu.shared.TupleSpaces;
 import org.jspace.*;
 
 /**
@@ -54,13 +56,12 @@ public class ServerMain {
             todoLists.put("l5", "Trips");
 
             // Open a gate so RemoteSpace clients can connect
-            repo.addGate(ServerConfig.gateUri());
+            repo.addGate(Config.getServerGateUri());
 
             // Counter should mirror actual todoLists size
-            ServerConfig.syncCounterToTodoLists(counter, todoLists);
+            syncCounterToTodoLists(counter, todoLists);
 
-            System.out.println("Server started on " + ServerConfig.SERVER_IP + ":" + ServerConfig.PORT);
-            System.out.println("Clients can connect now at: " + ServerConfig.spaceUri(""));
+            System.out.println("Server started on " + Config.SERVER_IP + ":" + Config.PORT + ".\nWaiting for client requests...");
 
             ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, tasks, requests, responses, notifications);
             Thread requestLoop = new Thread(service, "request-loop");
@@ -76,5 +77,18 @@ public class ServerMain {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    // Helper methods for counter management
+    public static int getTodoListCount(Space todoLists) throws InterruptedException {
+        return todoLists.queryAll(
+                new FormalField(String.class),
+                new FormalField(String.class)).size();
+    }
+
+    public static void syncCounterToTodoLists(Space counter, Space todoLists) throws InterruptedException {
+        int count = getTodoListCount(todoLists);
+        counter.getp(new FormalField(Integer.class));
+        counter.put(count);
     }
 }

@@ -1,6 +1,6 @@
 package dk.dtu.scenes;
 
-import dk.dtu.ClientConfig;
+import dk.dtu.shared.Config;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
 import javafx.application.Platform;
@@ -62,7 +62,7 @@ public class C_MainMenu {
         logoutButton.setOnAction(e -> navigator.showLogin());
 
         pingButton.setOnAction(e -> Methods.sendPing(
-                statusLabel, pingButton, ClientConfig.REQUESTS_URI));
+                statusLabel, pingButton, Config.getRequestsUri()));
 
         createToDoListButton.setOnAction(e -> {
             TextInputDialog dialog = new TextInputDialog();
@@ -78,8 +78,8 @@ public class C_MainMenu {
                 Methods.createToDoList(
                         tempMessageLabel,
                         createToDoListButton,
-                        ClientConfig.REQUESTS_URI,
-                        ClientConfig.RESPONSES_URI,
+                        Config.getRequestsUri(),
+                        Config.getResponsesUri(),
                         name);
             });
         });
@@ -109,7 +109,7 @@ public class C_MainMenu {
                 listsView);
         root.setPadding(new Insets(12));
 
-        Methods.loadTodoLists(statusLabel, listsView, ClientConfig.TODO_LISTS_URI);
+        Methods.loadTodoLists(statusLabel, listsView, Config.getTodoListsUri());
 
         return new Scene(root, 520, 420);
     }
@@ -119,6 +119,6 @@ public class C_MainMenu {
      * Called by SceneNavigator when server broadcasts list changes.
      */
     public void autoRefreshLists() {
-        Methods.loadTodoLists(statusLabel, listsView, ClientConfig.TODO_LISTS_URI);
+        Methods.loadTodoLists(statusLabel, listsView, Config.getTodoListsUri());
     }
 }

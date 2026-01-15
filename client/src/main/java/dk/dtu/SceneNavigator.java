@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import dk.dtu.shared.Config;
 import dk.dtu.scenes.A_WelcomeScreen;
 import dk.dtu.scenes.B_LoginScreen;
 import dk.dtu.scenes.C_MainMenu;
@@ -28,7 +29,7 @@ public class SceneNavigator {
     // Start the notification listener thread
     private void startNotificationListener() {
         notificationListener = new NotificationListener(
-            ClientConfig.NOTIFICATIONS_URI,
+            Config.getNotificationsUri(),
             this::refreshCurrentView
         );
         notificationThread = new Thread(notificationListener, "notification-listener");

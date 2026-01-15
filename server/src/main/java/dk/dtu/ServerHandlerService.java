@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import dk.dtu.shared.TupleSpaces;
 import java.util.List;
 import java.util.UUID;
 
@@ -75,14 +76,14 @@ public class ServerHandlerService implements Runnable {
         final String listId;
         final String listName;
         synchronized (todoLists) {
-            int count = ServerConfig.getTodoListCount(todoLists);
+            int count = ServerMain.getTodoListCount(todoLists);
             listId = "l" + (count + 1);
             listName = (providedName != null && !providedName.isBlank())
                     ? providedName
                     : "New List " + (count + 1);
 
             todoLists.put(listId, listName);
-            ServerConfig.syncCounterToTodoLists(counter, todoLists);
+            ServerMain.syncCounterToTodoLists(counter, todoLists);
         }
 
         System.out.println("List created: " + listName);

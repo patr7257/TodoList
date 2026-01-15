@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

@@ -1,6 +1,6 @@
 package dk.dtu.scenes;
 
-import dk.dtu.ClientConfig;
+import dk.dtu.shared.Config;
 import dk.dtu.Methods;
 import dk.dtu.SceneNavigator;
 import javafx.geometry.Pos;
@@ -33,7 +33,7 @@ public class B_LoginScreen {
                     statusLabel,
                     loginButton,
                     usernameField.getText(),
-                    ClientConfig.USERS_URI,
+                    Config.getUsersUri(),
                     (message) -> {
                         navigator.setCurrentUser(usernameField.getText());
                         navigator.showMainMenuWithMessage(message);

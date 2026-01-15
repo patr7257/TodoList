@@ -3,7 +3,7 @@ package dk.dtu;
 import javafx.application.Platform;
 import org.jspace.FormalField;
 import org.jspace.RemoteSpace;
-
+import dk.dtu.shared.Config;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,7 +34,8 @@ public class NotificationListener implements Runnable {
     public void run() {
         try {
             RemoteSpace notifications = new RemoteSpace(notificationsUri);
-            System.out.println("Connected to server");
+            System.out.println();
+            System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
             
             while (running && !Thread.currentThread().isInterrupted()) {
                 // BLOCK and wait for ANY notification - check timestamp to avoid infinite loop
