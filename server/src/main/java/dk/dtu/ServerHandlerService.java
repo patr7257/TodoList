@@ -109,6 +109,7 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
+                new FormalField(String.class),
                 new FormalField(String.class));
 
         for (Object[] t : tuples) {
@@ -119,8 +120,9 @@ public class ServerHandlerService implements Runnable {
             String title = (String) t[2];
             String assignee = (String) t[3];
             String status = (String) t[4];
+            String dueDate = (String) t[5];
 
-            sendOkResponse(req.requestId(), listId, taskId, title + "\t" + assignee, status);
+            sendOkResponse(req.requestId(), listId, taskId, title + "\t" + assignee, status + "\t" + dueDate);
         }
         sendOkResponse(req.requestId(), "END", "", "", "");
     }
@@ -150,6 +152,7 @@ public class ServerHandlerService implements Runnable {
     private void handleTaskAdd(Request req) {
         String listId = req.getString(0);
         String title = req.getString(1);
+        String dueDate = req.getString(2, "");
         String assignee = req.getString(3, "");
 
         if (listId == null || title == null) {
@@ -159,11 +162,11 @@ public class ServerHandlerService implements Runnable {
         String taskId = UUID.randomUUID().toString();
         String status = "TODO";
         try {
-            tasks.put(listId, taskId, title, assignee, status);
+            tasks.put(listId, taskId, title, assignee, status, dueDate);
             System.out.println("Task added: " + title);
             
             sendOkResponse(req.requestId(), listId, taskId, title, status);
-            broadcastDataChange("task_add", listId, title, "");
+            broadcastDataChange("task_add", listId, title, dueDate);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -184,6 +187,7 @@ public class ServerHandlerService implements Runnable {
                 new ActualField(taskId),
                 new FormalField(String.class),
                 new FormalField(String.class),
+                new FormalField(String.class),
                 new FormalField(String.class));
         
         if (existing == null) {
@@ -193,8 +197,9 @@ public class ServerHandlerService implements Runnable {
 
         String title = (String) existing[2];
         String assignee = (String) existing[3];
+        String dueDate = (String) existing[5];
 
-        tasks.put(listId, taskId, title, assignee, newStatus);
+        tasks.put(listId, taskId, title, assignee, newStatus, dueDate);
         sendOkResponse(req.requestId(), listId, taskId, title, newStatus);
         broadcastDataChange("task_status", listId, newStatus, "");
 
@@ -224,6 +229,7 @@ public class ServerHandlerService implements Runnable {
                     new ActualField(taskId),
                     new FormalField(String.class),
                     new FormalField(String.class),
+                    new FormalField(String.class),
                     new FormalField(String.class));
     
             if (existing == null) {
@@ -233,8 +239,9 @@ public class ServerHandlerService implements Runnable {
     
             String title = (String) existing[2];
             String status = (String) existing[4];
+            String dueDate = (String) existing[5];
     
-            tasks.put(listId, taskId, title, newAssignee, status);
+            tasks.put(listId, taskId, title, newAssignee, status, dueDate);
             sendOkResponse(req.requestId(), listId, taskId, newAssignee, "OK");
             broadcastDataChange("task_assign", listId, taskId, newAssignee);
         } catch (InterruptedException e) {
@@ -253,6 +260,7 @@ public class ServerHandlerService implements Runnable {
         Object[] removed = tasks.getp(
                 new FormalField(String.class),
                 new ActualField(taskId),
+                new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class));
