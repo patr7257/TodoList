@@ -9,7 +9,7 @@
         <artifactId>project_02148-parent</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-
+    
     <artifactId>shared</artifactId>
     <packaging>jar</packaging>
 

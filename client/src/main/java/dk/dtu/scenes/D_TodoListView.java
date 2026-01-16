@@ -178,4 +178,9 @@ public class D_TodoListView {
 
         return new Scene(root, 900, 600);
     }
+
+    // Refresh tasks view when notification received
+    public void autoRefreshTasks() {
+        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+    }
 }

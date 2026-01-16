@@ -1,9 +1,10 @@
 package dk.dtu;
 
+import dk.dtu.shared.Config;
+import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import org.jspace.FormalField;
 import org.jspace.RemoteSpace;
-import dk.dtu.shared.Config;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,6 +38,15 @@ public class NotificationListener implements Runnable {
                 notifications = new RemoteSpace(notificationsUri);
                 System.out.println();
                 System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
+                
+                // Notify server that a new client connected
+                try {
+                    RemoteSpace requests = new RemoteSpace(notificationsUri.replace("notifications", "requests"));
+                    requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
+                            java.util.UUID.randomUUID().toString(),
+                            "", "", "", "");
+                } catch (Exception ignored) {}
+                
             } catch (Exception e) {
                 System.err.println("[NotificationListener] Cannot connect to server, retrying in 3 seconds... (" + e.getMessage() + ")");
                 try {

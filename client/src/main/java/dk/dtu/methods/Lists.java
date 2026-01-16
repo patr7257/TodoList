@@ -48,4 +48,20 @@ public class Lists {
             TupleSpaces.CMD_LIST_CREATE,
             listName, "", "", "");
     }
+
+    public static void deleteTodoList(
+            String requestsUri,
+            String responsesUri,
+            String listId) throws Exception {
+        
+        if (listId == null || listId.isBlank()) {
+            throw new IllegalArgumentException("List ID cannot be empty");
+        }
+
+        Helpers.sendAndWaitForResponse(
+            requestsUri,
+            responsesUri,
+            TupleSpaces.CMD_LIST_DELETE,
+            listId, "", "", "");
+    }
 }

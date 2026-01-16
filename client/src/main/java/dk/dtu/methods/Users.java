@@ -1,5 +1,6 @@
 package dk.dtu.methods;
 
+import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import javafx.scene.control.ComboBox;
 import org.jspace.ActualField;
@@ -38,6 +39,15 @@ public class Users {
                         : "Logged in as " + username;
 
                 System.out.println(msg);
+                
+                // Notify server of user login
+                try {
+                    RemoteSpace requests = new RemoteSpace(usersUri.replace(TupleSpaces.USERS, TupleSpaces.REQUESTS));
+                    requests.put(TupleSpaces.CMD_USER_LOGIN,
+                            java.util.UUID.randomUUID().toString(),
+                            username, "", "", "");
+                } catch (Exception ignored) {}
+                
                 Platform.runLater(() -> onSuccessMessage.accept(msg));
 
             } catch (Exception ex) {

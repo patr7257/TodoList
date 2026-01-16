@@ -19,7 +19,10 @@ public final class TupleSpaces {
     
     // Commands
     public static final String CMD_PING = "ping";
+    public static final String CMD_CLIENT_CONNECT = "client_connect";
     public static final String CMD_CLIENT_DISCONNECT = "client_disconnect";
+    public static final String CMD_USER_LOGIN = "user_login";
+    public static final String CMD_USER_LOGOUT = "user_logout";
     public static final String CMD_LIST_CREATE = "list_create";
     public static final String CMD_TASK_ADD = "task_add";
     public static final String CMD_TASK_STATUS = "task_status";

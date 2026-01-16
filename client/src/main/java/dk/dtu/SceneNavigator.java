@@ -19,6 +19,7 @@ public class SceneNavigator {
 
     // References to current scene for auto-refresh
     private C_MainMenu currentMainMenu;
+    private D_TodoListView currentTodoListView;
     private E_TaskView currentTaskView;
 
     // Constructor
@@ -42,6 +43,8 @@ public class SceneNavigator {
         // Refresh whichever scene is currently active
         if (currentMainMenu != null) {
             currentMainMenu.autoRefreshLists();
+        } else if (currentTodoListView != null) {
+            currentTodoListView.autoRefreshTasks();
         } else if (currentTaskView != null) {
             currentTaskView.autoRefreshTasks();
         }
@@ -82,6 +85,7 @@ public class SceneNavigator {
     // A: Show welcome scene (first thing when ClientApp starts)
     public void showWelcome() {
         currentMainMenu = null;
+        currentTodoListView = null;
         currentTaskView = null;
         Scene scene = new A_WelcomeScreen(this).createScene();
         setScene(scene, "What ToDo");
@@ -94,6 +98,7 @@ public class SceneNavigator {
             currentUser = null;
         }
         currentMainMenu = null;
+        currentTodoListView = null;
         currentTaskView = null;
         Scene scene = new B_LoginScreen(this).createScene();
         setScene(scene, "Login - What ToDo");
@@ -102,6 +107,7 @@ public class SceneNavigator {
     // C: Show main menu
     public void showMainMenu() {
         currentMainMenu = new C_MainMenu(this);
+        currentTodoListView = null;
         currentTaskView = null;
         Scene scene = currentMainMenu.createScene();
         setScene(scene, "Main Menu - What ToDo");
@@ -109,6 +115,7 @@ public class SceneNavigator {
 
     public void showMainMenuWithMessage(String loginMessage) {
         currentMainMenu = new C_MainMenu(this, loginMessage);
+        currentTodoListView = null;
         currentTaskView = null;
         Scene scene = currentMainMenu.createScene();
         setScene(scene, "Main Menu - What ToDo");
@@ -117,14 +124,16 @@ public class SceneNavigator {
     // D: Show todo list view for selected list
     public void showTodoList(String listId, String listName) {
         currentMainMenu = null;
+        currentTodoListView = new D_TodoListView(this, listId, listName);
         currentTaskView = null;
-        Scene scene = new D_TodoListView(this, listId, listName).createScene();
+        Scene scene = currentTodoListView.createScene();
         setScene(scene, "Todo List - " + listName);
     }
 
     // E: Show task view for selected list (manages all tasks)
     public void showTaskView(String listId, String listName) {
         currentMainMenu = null;
+        currentTodoListView = null;
         currentTaskView = new E_TaskView(this, listId, listName);
         Scene scene = currentTaskView.createScene();
         setScene(scene, "Task Manager - " + listName);

@@ -39,7 +39,31 @@ public class C_MainMenu {
     public Scene createScene() {
         // Small logout icon button
         logoutButton.getStyleClass().add("logout-icon");
-        logoutButton.setOnAction(e -> navigator.showLogin()); // only set once
+        logoutButton.setOnAction(e -> {
+            String username = navigator.getCurrentUser();
+            if (username == null || username.isEmpty()) {
+                username = "unknown";
+            }
+            System.out.println("User logged out: " + username);
+            
+            // Send logout notification to server (capture username before clearing)
+            final String usernameToSend = username;
+            new Thread(() -> {
+                try {
+                    org.jspace.RemoteSpace requests = new org.jspace.RemoteSpace(Config.getRequestsUri());
+                    requests.put(dk.dtu.shared.TupleSpaces.CMD_USER_LOGOUT,
+                            java.util.UUID.randomUUID().toString(),
+                            usernameToSend, 
+                            "", 
+                            "", 
+                            "");
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }, "logout").start();
+            
+            navigator.showLogin();
+        }); // only set once
 
         // Put logout icon top-right in a full-width bar
         HBox topBar = new HBox(logoutButton);
@@ -136,8 +160,7 @@ public class C_MainMenu {
 
                     new Thread(() -> {
                         try {
-                            // TODO: call real delete when you have it:
-                            // Lists.deleteTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id);
+                            Lists.deleteTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id);
                             Platform.runLater(() -> Lists.loadTodoLists(listsView, Config.getTodoListsUri()));
                         } catch (Exception ex) {
                             ex.printStackTrace();

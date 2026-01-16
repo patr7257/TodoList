@@ -1,16 +1,28 @@
+mvn clean install               // RUN THIS FIRST
+
+mvn -pl server exec:java        // RUN SERVER
+mvn -pl client javafx:run       // RUN CLIENT
+
+Use correct IP: (After any IP change --> RUN "MVN CLEAN INSTALL")
+Check that IP adress is correct in /shared --> Config.java file.
+
+Find server on PC:
+Windows terminal: "ipconfig" --> find "IPv4 Address" like "192.168.0.15" and insert that
+MACOS   terminal: "ifconfig" --> find "IPv4 Address" like "192.168.0.15" and insert that
+
+ELSE TRY RUNNING THESE:
+mvn clean install -pl shared -DskipTests
+mvn -pl client clean compile
+mvn clean install -DskipTests
+mvn -pl client compile
+
+
+
+
+
 Build / Test: 
 mvn -pl server test
 mvn -pl client test
-
-RUN / START 
-Run server: mvn -pl server exec:java        (from repo root)
-Run client: mvn -pl client javafx:run       (from repo root)
-
-
-
-
-
-
 
 
 mvn clean test (from client or server folders) 

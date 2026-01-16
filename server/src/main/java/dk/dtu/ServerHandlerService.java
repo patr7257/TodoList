@@ -44,7 +44,10 @@ public class ServerHandlerService implements Runnable {
                 Request req = Request.fromTuple(tuple);
                 switch (req.cmd()) {
                     case TupleSpaces.CMD_PING -> handlePing(req);
+                    case TupleSpaces.CMD_CLIENT_CONNECT -> handleClientConnect(req);
                     case TupleSpaces.CMD_CLIENT_DISCONNECT -> handleClientDisconnect(req);
+                    case TupleSpaces.CMD_USER_LOGIN -> handleUserLogin(req);
+                    case TupleSpaces.CMD_USER_LOGOUT -> handleUserLogout(req);
                     case TupleSpaces.CMD_LIST_CREATE -> handleListCreate(req);
                     case TupleSpaces.CMD_TASK_ADD -> handleTaskAdd(req);
                     case TupleSpaces.CMD_TASK_STATUS -> handleTaskStatus(req);
@@ -80,9 +83,23 @@ public class ServerHandlerService implements Runnable {
         sendOkResponse(req.requestId(), "pong", "", "", "");
     }
 
+    private void handleClientConnect(Request req) {
+        System.out.println("A new client connected to the server");
+    }
+
     private void handleClientDisconnect(Request req) {
         String username = req.getString(0);
         System.out.println("Client disconnected from server: " + username);
+    }
+    
+    private void handleUserLogin(Request req) {
+        String username = req.getString(0);
+        System.out.println("New user logged in: " + username);
+    }
+    
+    private void handleUserLogout(Request req) {
+        String username = req.getString(0);
+        System.out.println("User logged out: " + username);
     }
     
     private void handleListsGet(Request req) throws InterruptedException {
