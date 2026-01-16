@@ -74,19 +74,22 @@ public class Helpers {
         public final String title;
         public final String owner;
         public final String status;
+        public final String dueDate;
 
-        public TaskEntry(String listId, String id, String title, String owner, String status) {
+        public TaskEntry(String listId, String id, String title, String owner, String status, String dueDate) {
             this.listId = listId;
             this.id = id;
             this.title = title;
             this.owner = owner;
             this.status = status;
+            this.dueDate = dueDate;
         }
 
         @Override
         public String toString() {
             String who = (owner == null || owner.isBlank()) ? " " : "@" + owner;
-            return title + " " + who + " [" + status + "]";
+            String due = (dueDate == null || dueDate.isBlank()) ? "" : " (due: " + dueDate + ")";
+            return title + " " + who + " [" + status + "]" + due;
         }
     }
 }

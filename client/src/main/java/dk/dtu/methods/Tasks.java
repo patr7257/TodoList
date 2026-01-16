@@ -27,19 +27,30 @@ public class Tasks {
                         new FormalField(String.class),
                         new FormalField(String.class),
                         new FormalField(String.class),
+                        new FormalField(String.class),
                         new FormalField(String.class));
 
-                Platform.runLater(() -> {
-                    tasksView.getItems().clear();
-                    for (Object[] t : tuples) {
-                        tasksView.getItems().add(new Helpers.TaskEntry(
-                                (String) t[0],
-                                (String) t[1],
-                                (String) t[2],
-                                (String) t[3],
-                                (String) t[4]));
-                    }
-                });
+                        Platform.runLater(() -> {
+                            tasksView.getItems().clear();
+                        
+                            for (Object[] t : tuples) {
+                                tasksView.getItems().add(new Helpers.TaskEntry(
+                                    (String) t[0],
+                                    (String) t[1],
+                                    (String) t[2],
+                                    (String) t[3],
+                                    (String) t[4],
+                                    (String) t[5]
+                                ));
+                            }
+                        
+                            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
+                                int byTitle = safe(a.title).compareToIgnoreCase(safe(b.title));
+                                if (byTitle != 0) return byTitle;
+                                return safe(a.id).compareTo(safe(b.id));
+                            });
+                        });
+                        
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -51,6 +62,7 @@ public class Tasks {
             String responsesUri,
             String listId,
             String taskTitle,
+            String dueDate,
             String taskOwner) throws Exception {
 
         if (taskTitle == null || taskTitle.isBlank()) {
@@ -63,7 +75,7 @@ public class Tasks {
             TupleSpaces.CMD_TASK_ADD,
             listId,
             taskTitle,
-            "",
+            dueDate != null ? dueDate : "",
             taskOwner != null ? taskOwner : "");
     }
 
@@ -123,4 +135,7 @@ public class Tasks {
             "",
             "");
     }
-}
+    private static String safe(String s) {
+        return s != null ? s : "";
+    }
+} 

@@ -8,6 +8,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
@@ -44,6 +45,8 @@ public class E_TaskView {
 
         Users.loadUsersIntoComboBox(assigneeComboBox, Config.getUsersUri());
 
+        DatePicker dueDatePicker = new DatePicker();
+        dueDatePicker.setPromptText("Due date");
 
         // Task ListView
         tasksView = new ListView<>();
@@ -59,13 +62,17 @@ public class E_TaskView {
             if (selectedAssignee == null || selectedAssignee.isBlank()) {
                 return;
             }
+            String due = (dueDatePicker.getValue() != null)
+            ? dueDatePicker.getValue().toString()
+            : "";
             addTaskButton.setDisable(true);
             new Thread(() -> {
                 try {
-                    Tasks.addTask(Config.getRequestsUri(), Config.getResponsesUri(), listId, newTaskField.getText(), selectedAssignee);
+                    Tasks.addTask(Config.getRequestsUri(), Config.getResponsesUri(), listId, newTaskField.getText(), due, selectedAssignee);
                     javafx.application.Platform.runLater(() -> {
                         addTaskButton.setDisable(false);
                         newTaskField.clear();
+                        dueDatePicker.setValue(null);
                     });
                 } catch (Exception ex) {
                     javafx.application.Platform.runLater(() -> addTaskButton.setDisable(false));
@@ -152,7 +159,7 @@ public class E_TaskView {
         HBox navButtons = new HBox(8, backButton, mainMenuButton);
         navButtons.setAlignment(Pos.CENTER);
 
-        HBox addBox = new HBox(8, newTaskField, addTaskButton);
+        HBox addBox = new HBox(8, newTaskField, dueDatePicker, addTaskButton);
         addBox.setAlignment(Pos.CENTER);
 
         HBox statusBox = new HBox(8, statusComboBox, changeStatusButton);
