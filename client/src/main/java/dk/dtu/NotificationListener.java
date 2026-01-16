@@ -29,11 +29,26 @@ public class NotificationListener implements Runnable {
     
     @Override
     public void run() {
+        RemoteSpace notifications = null;
+        
+        // Keep trying to connect to server with exponential backoff
+        while (running && notifications == null) {
+            try {
+                notifications = new RemoteSpace(notificationsUri);
+                System.out.println();
+                System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
+            } catch (Exception e) {
+                System.err.println("[NotificationListener] Cannot connect to server, retrying in 3 seconds... (" + e.getMessage() + ")");
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+        
         try {
-            RemoteSpace notifications = new RemoteSpace(notificationsUri);
-            System.out.println();
-            System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
-            
             while (running && !Thread.currentThread().isInterrupted()) {
                 // BLOCK and wait for ANY notification - check timestamp to avoid infinite loop
                 Object[] notification = notifications.get(

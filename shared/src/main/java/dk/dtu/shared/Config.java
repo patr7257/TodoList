@@ -4,10 +4,10 @@ package dk.dtu.shared;
 public final class Config {
     
     // Server IP: The IP address where the server is hosted
-    // If running locally on own maching:
-    public static final String SERVER_IP = "127.0.0.1";
-    
     // JOHAN HOME:
+    public static final String SERVER_IP = "192.168.0.15";
+    
+    // If running locally on own machine:
     //public static final String SERVER_IP = "127.0.0.1";
 
     // DTU Secure:
@@ -24,7 +24,6 @@ public final class Config {
     public static String getServerGateUri() {
         return "tcp://" + SERVER_BIND_HOST + ":" + PORT + "/?keep";
     }
-    
     
     // CLIENT CONFIGURATION
     // Base URI for client connections
