@@ -96,6 +96,25 @@ public class Tasks {
             "");
     }
 
+    public static void changeTaskDueDate(
+        String requestsUri,
+        String responsesUri,
+        String listId,
+        String taskId,
+        String newDueDate) throws Exception {
+
+    Helpers.sendAndWaitForResponse(
+            requestsUri,
+            responsesUri,
+            TupleSpaces.CMD_TASK_DUEDATE,
+            listId,
+            taskId,
+            newDueDate != null ? newDueDate : "",
+            ""
+        );
+    }
+
+
     public static void assignTask(
             String requestsUri,
             String responsesUri,

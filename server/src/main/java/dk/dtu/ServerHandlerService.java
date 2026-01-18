@@ -54,6 +54,7 @@ public class ServerHandlerService implements Runnable {
                     case TupleSpaces.CMD_TASK_ASSIGN -> handleTaskAssign(req);
                     case TupleSpaces.CMD_LISTS_GET -> handleListsGet(req);
                     case TupleSpaces.CMD_TASKS_GET -> handleTasksGet(req);
+                    case TupleSpaces.CMD_TASK_DUEDATE -> handleTaskDueDate(req);
                     case TupleSpaces.CMD_TASK_DELETE -> handleTaskDelete(req);
                     case TupleSpaces.CMD_LIST_DELETE -> handleListDelete(req);
                     default -> System.out.println("Unknown command: " + req.cmd());
@@ -105,12 +106,14 @@ public class ServerHandlerService implements Runnable {
     private void handleListsGet(Request req) throws InterruptedException {
         List<Object[]> all = todoLists.queryAll(
                 new FormalField(String.class),
-                new FormalField(String.class));
+                new FormalField(String.class),
+                new FormalField(Integer.class));
 
         for (Object[] l : all) {
             String listId = (String) l[0];
             String listName = (String) l[1];
-            sendOkResponse(req.requestId(), listId, listName, "", "");
+            int completion = (Integer) l[2];
+            sendOkResponse(req.requestId(), listId, listName, String.valueOf(completion), "");
         }
     }
 
@@ -156,7 +159,7 @@ public class ServerHandlerService implements Runnable {
                     ? providedName
                     : "New List " + (count + 1);
 
-            todoLists.put(listId, listName);
+            todoLists.put(listId, listName, 0);  // Start with 0% completion
             counter.getp(new FormalField(Integer.class));
             counter.put(count + 1);
         }
@@ -177,11 +180,11 @@ public class ServerHandlerService implements Runnable {
         }
 
         String taskId = UUID.randomUUID().toString();
-        String status = "TODO";
+        String status = "NOT_STARTED";
         try {
             tasks.put(listId, taskId, title, assignee, status, dueDate);
             System.out.println("Task added: " + title);
-            
+            updateListCompletion(listId);
             sendOkResponse(req.requestId(), listId, taskId, title, status);
             broadcastDataChange("task_add", listId, title, dueDate);
         } catch (InterruptedException e) {
@@ -217,6 +220,7 @@ public class ServerHandlerService implements Runnable {
         String dueDate = (String) existing[5];
 
         tasks.put(listId, taskId, title, assignee, newStatus, dueDate);
+        updateListCompletion(listId);
         sendOkResponse(req.requestId(), listId, taskId, title, newStatus);
         broadcastDataChange("task_status", listId, newStatus, "");
 
@@ -266,6 +270,44 @@ public class ServerHandlerService implements Runnable {
         }
     }
 
+    private void handleTaskDueDate(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String newDueDate = req.getString(2, ""); // tillåt tomt för att rensa datum
+    
+        if (listId == null || taskId == null) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", "", "", "");
+            return;
+        }
+    
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class), // title
+                new FormalField(String.class), // assignee
+                new FormalField(String.class), // status
+                new FormalField(String.class)  // dueDate
+        );
+    
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+    
+        String title = (String) existing[2];
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+    
+        // uppdatera bara dueDate
+        tasks.put(listId, taskId, title, assignee, status, newDueDate);
+    
+        sendOkResponse(req.requestId(), listId, taskId, newDueDate, "OK");
+        broadcastDataChange("task_duedate", listId, taskId, newDueDate);
+    
+        System.out.println("Task due date updated: " + newDueDate);
+    }
+    
+
     private void handleTaskDelete(Request req) throws InterruptedException {
         String taskId = req.getString(1);
 
@@ -288,6 +330,7 @@ public class ServerHandlerService implements Runnable {
         }
         
         String deletedListId = (String) removed[0];
+        updateListCompletion(deletedListId);
         sendOkResponse(req.requestId(), "", taskId, "DELETED", "OK");
         broadcastDataChange("task_delete", deletedListId, taskId, "");
     }
@@ -302,7 +345,8 @@ public class ServerHandlerService implements Runnable {
         
         Object[] removed = todoLists.getp(
                 new ActualField(listId),
-                new FormalField(String.class));
+                new FormalField(String.class),
+                new FormalField(Integer.class));
                 
         if (removed == null) {
             sendErrorResponse(req.requestId(), "List not found", listId, "", "");
@@ -311,9 +355,55 @@ public class ServerHandlerService implements Runnable {
         
         String removedName = (String) removed[1];
         System.out.println("List deleted: " + removedName);
-        
         sendOkResponse(req.requestId(), listId, removedName, "DELETED", "OK");
         broadcastDataChange("list_delete", listId, removedName, "");
+    }
+
+    // Helper method to calculate and update list completion percentage
+    private void updateListCompletion(String listId) {
+        try {
+            // Query all tasks for this list
+            List<Object[]> tuples = tasks.queryAll(
+                    new ActualField(listId),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+            
+            int completion = 0;
+            if (!tuples.isEmpty()) {
+                // Calculate average completion based on task statuses
+                int totalCompletion = 0;
+                int taskCount = 0;
+                
+                for (Object[] t : tuples) {
+                    String statusStr = (String) t[4];
+                    try {
+                        dk.dtu.shared.TaskStatus status = dk.dtu.shared.TaskStatus.valueOf(statusStr);
+                        totalCompletion += status.getCompletionPercentage();
+                        taskCount++;
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("Unknown task status: " + statusStr);
+                    }
+                }
+                
+                completion = taskCount > 0 ? totalCompletion / taskCount : 0;
+            }
+            
+            // Update the list tuple with new completion percentage
+            Object[] existingList = todoLists.getp(
+                    new ActualField(listId),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class));
+            
+            if (existingList != null) {
+                String listName = (String) existingList[1];
+                todoLists.put(listId, listName, completion);
+            }
+        } catch (InterruptedException e) {
+            System.err.println("Error updating list completion: " + e.getMessage());
+        }
     }
   
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {

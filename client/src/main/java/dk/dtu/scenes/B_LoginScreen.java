@@ -25,6 +25,13 @@ public class B_LoginScreen {
         TextField usernameField = new TextField();
         usernameField.setPromptText("Enter username (e.g. alice)");
         usernameField.getStyleClass().add("login-textfield");
+        
+        // Limit username to 15 characters
+        usernameField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null && newValue.length() > 15) {
+                usernameField.setText(oldValue);
+            }
+        });
 
         Button loginButton = new Button("Login");
         loginButton.setDefaultButton(true);

@@ -114,6 +114,22 @@
     -fx-background-color: rgba(211,47,47,0.08);
 }
 
+/* Go back button styling with hover effect */
+.go-back-button {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 5;
+}
+
+.go-back-button:hover {
+    -fx-background-color: #e0e0e0;
+    -fx-border-color: #999999;
+    -fx-cursor: hand;
+}
+
 .create-link {
     -fx-text-fill: #2d6cdf;
     -fx-font-size: 20px;
@@ -160,4 +176,44 @@
 
 .danger-button:hover {
     -fx-background-color: #c62828;
+}
+
+/* TaskStatus styling with colors */
+.status-NOT_STARTED {
+    -fx-text-fill: #e74c3c;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.status-IN_PROGRESS {
+    -fx-text-fill: #3498db;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.status-DELAYED {
+    -fx-text-fill: #f39c12;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.status-NEED_HELP {
+    -fx-text-fill: #9b59b6;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.status-DONE {
+    -fx-text-fill: #27ae60;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+/* Ensure all input fields have consistent height */
+.task-col-status,
+.task-col-due,
+.task-col-owner {
+    -fx-pref-height: 35px;
+    -fx-min-height: 35px;
+    -fx-max-height: 35px;
 }

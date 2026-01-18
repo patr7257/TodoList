@@ -120,7 +120,7 @@ public class NotificationListener implements Runnable {
                 System.out.println("Task status updated: " + name);
                 break;
             case "task_delete":
-                System.out.println("Task deleted");
+                System.out.println("Task deleted???" + name);
                 break;
             case "list_delete":
                 System.out.println("List deleted: " + name);

@@ -3,18 +3,21 @@ package dk.dtu.scenes;
 import dk.dtu.SceneNavigator;
 import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Tasks;
+import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
+import dk.dtu.shared.TaskStatus;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+
+import java.time.LocalDate;
 
 public class D_TodoListView {
 
@@ -22,6 +25,7 @@ public class D_TodoListView {
     private final String listId;
     private final String listName;
 
+    private final Button returnButton = new Button();
     private final ListView<Helpers.TaskEntry> tasksView = new ListView<>();
 
     public D_TodoListView(SceneNavigator navigator, String listId, String listName) {
@@ -31,8 +35,13 @@ public class D_TodoListView {
     }
 
     public Scene createScene() {
+        ImageView returnIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/gobackicon.png")));
+        returnIcon.setFitWidth(32);
+        returnIcon.setFitHeight(32);
+        returnButton.setGraphic(returnIcon);
+        returnButton.getStyleClass().add("go-back-button");
+        returnButton.setOnAction(e -> navigator.showMainMenu());
 
-        // Title + small description
         Label title = new Label("Tasks in: " + listName);
         title.getStyleClass().add("todolist-title");
 
@@ -42,66 +51,202 @@ public class D_TodoListView {
         Label info = new Label("List ID: " + listId);
         info.getStyleClass().add("todolist-meta");
 
-        // Header row: Task | Status | Owner | Delete  (same style idea as main menu)
         Label taskHeader = new Label("Task");
-        taskHeader.setPrefWidth(230);
+        taskHeader.setPrefWidth(250);
+        taskHeader.setAlignment(Pos.CENTER);
+        taskHeader.setStyle("-fx-font-weight: bold;");
 
         Label statusHeader = new Label("Status");
-        statusHeader.setPrefWidth(150);
+        statusHeader.setPrefWidth(145);
+        statusHeader.setAlignment(Pos.CENTER);
+        statusHeader.setStyle("-fx-font-weight: bold;");
+
+        Label dueHeader = new Label("Due date");
+        dueHeader.setPrefWidth(145);
+        dueHeader.setAlignment(Pos.CENTER);
+        dueHeader.setStyle("-fx-font-weight: bold;");
 
         Label ownerHeader = new Label("Owner");
-        ownerHeader.setPrefWidth(150);
+        ownerHeader.setPrefWidth(145);
+        ownerHeader.setAlignment(Pos.CENTER);
+        ownerHeader.setStyle("-fx-font-weight: bold;");
 
-        Label deleteHeader = new Label("Delete");
-        deleteHeader.setPrefWidth(80);
+        Label deleteHeader = new Label("");
+        deleteHeader.setPrefWidth(50);
 
-        HBox header = new HBox(30, taskHeader, statusHeader, ownerHeader, deleteHeader);
+        HBox header = new HBox(20, taskHeader, statusHeader, dueHeader, ownerHeader, deleteHeader);
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setMaxWidth(700);
-        header.getStyleClass().add("tasks-header"); // style similar to list-header
+        header.setMaxWidth(850);
+        header.getStyleClass().add("tasks-header");
 
-        // Task list
-        tasksView.setPrefWidth(700);
-        tasksView.setMaxWidth(700);
-        tasksView.setPrefHeight(260);
+        tasksView.setPrefWidth(850);
+        tasksView.setMaxWidth(850);
+        tasksView.setPrefHeight(400);
         tasksView.getStyleClass().add("todolist-tasks");
-
-        // Custom rows: Task | Status | Owner | Delete button
         tasksView.setCellFactory(lv -> new ListCell<>() {
 
             private final Label taskLabel = new Label();
-            private final Label statusLabel = new Label();
-            private final Label ownerLabel = new Label();
-            private final Button deleteButton = new Button("✖");
+            private final ComboBox<TaskStatus> statusCombo = new ComboBox<>();
+            private final DatePicker duePicker = new DatePicker();
+            private final ComboBox<String> ownerCombo = new ComboBox<>();
+            private final Button deleteButton = new Button();
 
-            private final HBox row = new HBox(taskLabel, statusLabel, ownerLabel, deleteButton);
+            private final HBox row = new HBox(15, taskLabel, statusCombo, duePicker, ownerCombo, deleteButton);
 
             {
-                // Match header widths
-                taskLabel.setPrefWidth(230);
-                statusLabel.setPrefWidth(150);
-                ownerLabel.setPrefWidth(110);
-                deleteButton.setPrefWidth(70);
+                taskLabel.setPrefWidth(250);
+                taskLabel.setMinWidth(250);
+                taskLabel.setMaxWidth(250);
+                
+                statusCombo.setPrefWidth(145);
+                statusCombo.setMinWidth(145);
+                statusCombo.setMaxWidth(145);
+                statusCombo.getItems().addAll(TaskStatus.values());
+                statusCombo.setPromptText("Status");
+                
+                // Apply CSS styling to status cells
+                statusCombo.setCellFactory(lv -> createStatusCell());
+                statusCombo.setButtonCell(createStatusCell());
+                
+                duePicker.setPrefWidth(145);
+                duePicker.setMinWidth(145);
+                duePicker.setMaxWidth(145);
+                duePicker.setPromptText("Due date");
+                
+                ownerCombo.setPrefWidth(145);
+                ownerCombo.setMinWidth(145);
+                ownerCombo.setMaxWidth(145);
+                ownerCombo.setPromptText("Owner");
+                
+                deleteButton.setPrefWidth(50);
+                deleteButton.setMinWidth(50);
+                deleteButton.setMaxWidth(50);
+                
+                ImageView deleteIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/deleteicon.png")));
+                deleteIcon.setFitWidth(28);
+                deleteIcon.setFitHeight(28);
+                deleteButton.setGraphic(deleteIcon);
 
-                row.setSpacing(30);
                 row.setAlignment(Pos.CENTER_LEFT);
 
                 taskLabel.getStyleClass().add("task-col-name");
-                statusLabel.getStyleClass().add("task-col-status");
-                ownerLabel.getStyleClass().add("task-col-owner");
-                deleteButton.getStyleClass().add("task-col-delete-button");
+                statusCombo.getStyleClass().add("task-col-status");
+                duePicker.getStyleClass().add("task-col-due");
+                ownerCombo.getStyleClass().add("task-col-owner");
+                deleteButton.getStyleClass().add("list-col-delete-button");
 
-                // Delete should not trigger row selection
-                deleteButton.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
-                    evt.consume();
+                // Load users once when cell is created
+                Users.loadUsersIntoComboBox(ownerCombo, Config.getUsersUri());
+
+                // Status change handler
+                statusCombo.setOnAction(evt -> {
                     Helpers.TaskEntry item = getItem();
-                    if (item == null) {
-                        return;
-                    }
+                    if (item == null) return;
+                    
+                    TaskStatus newStatus = statusCombo.getValue();
+                    if (newStatus == null) return;
+                    
+                    // Don't trigger if it's the same as current
+                    if (newStatus.name().equals(item.status)) return;
 
-                    System.out.println("Delete task: " + item.id);
+                    statusCombo.setDisable(true);
+                    new Thread(() -> {
+                        try {
+                            Tasks.changeTaskStatus(
+                                    Config.getRequestsUri(),
+                                    Config.getResponsesUri(),
+                                    item.listId,
+                                    item.id,
+                                    newStatus.name()
+                            );
+                            Platform.runLater(() -> {
+                                statusCombo.setDisable(false);
+                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+                            });
+                        } catch (Exception ex) {
+                            System.out.println("[CLIENT] ERROR changing task status:");
+                            ex.printStackTrace();
+                            Platform.runLater(() -> statusCombo.setDisable(false));
+                        }
+                    }, "change-task-status").start();
+                });
+
+                // Due date change handler
+                duePicker.setOnAction(evt -> {
+                    Helpers.TaskEntry item = getItem();
+                    if (item == null) return;
+                    
+                    LocalDate newDate = duePicker.getValue();
+                    if (newDate == null) return;
+                    
+                    String newDueDate = newDate.toString();
+                    // Don't trigger if it's the same as current
+                    if (newDueDate.equals(item.dueDate)) return;
+
+                    duePicker.setDisable(true);
+                    new Thread(() -> {
+                        try {
+                            Tasks.changeTaskDueDate(
+                                    Config.getRequestsUri(),
+                                    Config.getResponsesUri(),
+                                    item.listId,
+                                    item.id,
+                                    newDueDate
+                            );
+                            Platform.runLater(() -> {
+                                duePicker.setDisable(false);
+                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+                            });
+                        } catch (Exception ex) {
+                            System.out.println("[CLIENT] ERROR changing due date:");
+                            ex.printStackTrace();
+                            Platform.runLater(() -> duePicker.setDisable(false));
+                        }
+                    }, "change-due-date").start();
+                });
+
+                // Owner change handler
+                ownerCombo.setOnAction(evt -> {
+                    Helpers.TaskEntry item = getItem();
+                    if (item == null) return;
+                    
+                    String newOwner = ownerCombo.getValue();
+                    if (newOwner == null || newOwner.isBlank()) return;
+                    
+                    // Don't trigger if it's the same as current
+                    if (newOwner.equals(item.owner)) return;
+
+                    ownerCombo.setDisable(true);
+                    new Thread(() -> {
+                        try {
+                            Tasks.assignTask(
+                                    Config.getRequestsUri(),
+                                    Config.getResponsesUri(),
+                                    item.listId,
+                                    item.id,
+                                    newOwner
+                            );
+                            Platform.runLater(() -> {
+                                ownerCombo.setDisable(false);
+                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+                            });
+                        } catch (Exception ex) {
+                            System.out.println("[CLIENT] ERROR assigning task:");
+                            ex.printStackTrace();
+                            Platform.runLater(() -> ownerCombo.setDisable(false));
+                        }
+                    }, "assign-task").start();
+                });
+
+                // Delete handler
+                deleteButton.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
+                    evt.consume(); // prevent row click selection
+
+                    Helpers.TaskEntry item = getItem();
+                    if (item == null) return;
 
                     deleteButton.setDisable(true);
+
                     new Thread(() -> {
                         try {
                             Tasks.deleteTask(
@@ -109,11 +254,14 @@ public class D_TodoListView {
                                     Config.getResponsesUri(),
                                     item.id
                             );
+
                             Platform.runLater(() -> {
                                 deleteButton.setDisable(false);
                                 Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
                             });
+
                         } catch (Exception ex) {
+                            System.out.println("[CLIENT] ERROR deleting task:");
                             ex.printStackTrace();
                             Platform.runLater(() -> deleteButton.setDisable(false));
                         }
@@ -130,47 +278,69 @@ public class D_TodoListView {
                     return;
                 }
 
-                // Task name / description
-                // TODO: replace item.toString() with the real field, e.g. item.description
-                taskLabel.setText(item.toString());
-
-                // TODO: when TaskEntry exposes status/owner, wire real values here
-                statusLabel.setText("–");
-                ownerLabel.setText("–");
+                // Set task name
+                taskLabel.setText(item.nameToString());
+                taskLabel.setTooltip(new Tooltip(item.nameToString()));
+                
+                // Set status dropdown value
+                try {
+                    statusCombo.setValue(TaskStatus.valueOf(item.status));
+                } catch (Exception e) {
+                    statusCombo.setValue(null);
+                }
+                
+                // Set due date value
+                try {
+                    if (item.dueDate != null && !item.dueDate.isBlank()) {
+                        duePicker.setValue(LocalDate.parse(item.dueDate));
+                    } else {
+                        duePicker.setValue(null);
+                    }
+                } catch (Exception e) {
+                    duePicker.setValue(null);
+                }
+                
+                // Set owner dropdown value
+                if (item.owner != null && !item.owner.isBlank()) {
+                    ownerCombo.setValue(item.owner);
+                } else {
+                    ownerCombo.setValue(null);
+                }
 
                 setGraphic(row);
             }
         });
 
-        // Load tasks for this list
+        // Load tasks initially
         Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
 
-        Label hint = new Label("Open the task manager to assign tasks or change their status.");
+        // "+ Add new task" link under the table
+        Hyperlink addTaskLink = new Hyperlink("+  Add new task");
+        addTaskLink.getStyleClass().add("create-link");
+        addTaskLink.setOnAction(e -> showCreateTaskDialog());
+
+        Label hint = new Label("Use the dropdown menus to edit status, due date, and owner for each task.");
         hint.getStyleClass().add("todolist-hint");
+        
+        
+        HBox topBar = new HBox(returnButton);
+        topBar.setAlignment(Pos.TOP_RIGHT);
+        topBar.setPadding(new Insets(0, 0, 10, 0));
+        topBar.setMaxWidth(Double.MAX_VALUE); // allow it to stretch
 
-        // Buttons under the table
-        Button openManagerButton = new Button("Open task manager");
-        openManagerButton.getStyleClass().add("primary-button");
-        openManagerButton.setOnAction(e -> navigator.showTaskView(listId, listName));
-
-        Button backButton = new Button("Back to lists");
-        backButton.getStyleClass().add("nav-button");
-        backButton.setOnAction(e -> navigator.showMainMenu());
-
-        HBox buttonsBox = new HBox(20, openManagerButton, backButton);
-        buttonsBox.setAlignment(Pos.CENTER);
-
-        // Layout container (similar spacing / padding / alignment as main menu)
+        VBox titleSection = new VBox(5, title, subtitle, info);
+        titleSection.setAlignment(Pos.TOP_CENTER);
+        
         VBox root = new VBox(
-                20,
-                title,
-                subtitle,
-                info,
+                topBar,
+                titleSection,
+                new Label(""),
                 header,
                 tasksView,
-                hint,
-                buttonsBox
+                addTaskLink,
+                hint
         );
+        root.setSpacing(10);
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
         root.setFillWidth(true);
@@ -178,9 +348,56 @@ public class D_TodoListView {
 
         return new Scene(root, 900, 600);
     }
-
     // Refresh tasks view when notification received
     public void autoRefreshTasks() {
         Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+    }
+
+    // Helper method to create status cells with CSS styling
+    private ListCell<TaskStatus> createStatusCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(TaskStatus status, boolean empty) {
+                super.updateItem(status, empty);
+                getStyleClass().removeAll("status-NOT_STARTED", "status-IN_PROGRESS", "status-DELAYED", "status-NEED_HELP", "status-DONE");
+                if (empty || status == null) {
+                    setText(null);
+                } else {
+                    setText(status.name());
+                    getStyleClass().add("status-" + status.name());
+                }
+            }
+        };
+    }
+
+    private void showCreateTaskDialog() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Add New Task");
+        dialog.setHeaderText("Enter a description for the new task:");
+        dialog.setContentText("Task:");
+
+        dialog.showAndWait().ifPresent(name -> {
+            if (name == null || name.isBlank()) return;
+
+            new Thread(() -> {
+                try {
+                    // owner is empty here, can be set later in task manager / edit dialog
+                    Tasks.addTask(
+                            Config.getRequestsUri(),
+                            Config.getResponsesUri(),
+                            listId,
+                            name,
+                            "",  
+                            ""
+                    );
+                    Platform.runLater(() ->
+                            Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId)
+                    );
+                } catch (Exception ex) {
+                    System.out.println("[CLIENT] ERROR creating task:");
+                    ex.printStackTrace();
+                }
+            }, "create-task").start();
+        });
     }
 }

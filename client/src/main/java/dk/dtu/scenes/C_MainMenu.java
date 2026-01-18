@@ -14,6 +14,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -25,7 +28,7 @@ public class C_MainMenu {
     private final String loginMessage;
 
     private final ListView<Helpers.ListEntry> listsView = new ListView<>();
-    private final Button logoutButton = new Button("↩"); // logout icon
+    private final Button logoutButton = new Button();
 
     public C_MainMenu(SceneNavigator navigator) {
         this(navigator, null);
@@ -38,7 +41,11 @@ public class C_MainMenu {
 
     public Scene createScene() {
         // Small logout icon button
-        logoutButton.getStyleClass().add("logout-icon");
+        ImageView logoutIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/gobackicon.png")));
+        logoutIcon.setFitWidth(32);
+        logoutIcon.setFitHeight(32);
+        logoutButton.setGraphic(logoutIcon);
+        logoutButton.getStyleClass().add("go-back-button");
         logoutButton.setOnAction(e -> {
             String username = navigator.getCurrentUser();
             if (username == null || username.isEmpty()) {
@@ -67,8 +74,8 @@ public class C_MainMenu {
 
         // Put logout icon top-right in a full-width bar
         HBox topBar = new HBox(logoutButton);
-        topBar.setAlignment(Pos.CENTER_RIGHT);
-        topBar.setPadding(new Insets(10, 20, 0, 0));
+        topBar.setAlignment(Pos.TOP_RIGHT);
+        topBar.setPadding(new Insets(0, 0, 10, 0));
         topBar.setMaxWidth(Double.MAX_VALUE); // allow it to stretch
 
         Label title = new Label("Available todo lists");
@@ -90,27 +97,38 @@ public class C_MainMenu {
             }, "login-message-timer").start();
         }
 
-        // Header row for columns: List | Completion | Tasks | Delete
-        Label nameHeader = new Label("List");
-        nameHeader.setPrefWidth(250);
+        // Header row for columns: List | Completion | Tasks | Overdue | Delete
+        Label nameHeader = new Label("List Name");
+        nameHeader.setPrefWidth(300);
+        nameHeader.setAlignment(Pos.CENTER);
+        nameHeader.setStyle("-fx-font-weight: bold;");
 
         Label completionHeader = new Label("Completion");
-        completionHeader.setPrefWidth(120);
+        completionHeader.setPrefWidth(180);
+        completionHeader.setAlignment(Pos.CENTER);
+        completionHeader.setStyle("-fx-font-weight: bold;");
 
         Label tasksHeader = new Label("Tasks");
-        tasksHeader.setPrefWidth(120);
+        tasksHeader.setPrefWidth(80);
+        tasksHeader.setAlignment(Pos.CENTER);
+        tasksHeader.setStyle("-fx-font-weight: bold;");
 
-        Label deleteHeader = new Label("Delete");
-        deleteHeader.setPrefWidth(100);
+        Label overdueHeader = new Label("Overdue");
+        overdueHeader.setPrefWidth(90);
+        overdueHeader.setAlignment(Pos.CENTER);
+        overdueHeader.setStyle("-fx-font-weight: bold;");
 
-        HBox header = new HBox(30, nameHeader, completionHeader, tasksHeader, deleteHeader);
+        Label deleteHeader = new Label("");
+        deleteHeader.setPrefWidth(50);
+
+        HBox header = new HBox(15, nameHeader, completionHeader, tasksHeader, overdueHeader, deleteHeader);
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setMaxWidth(700);
+        header.setMaxWidth(830);
         header.getStyleClass().add("list-header");
 
         // When a list item is clicked, open that list
         listsView.setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY) {
+            if (e.getButton() != MouseButton.PRIMARY|| e.getClickCount() != 2) {
                 return;
             }
             Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
@@ -120,31 +138,45 @@ public class C_MainMenu {
             navigator.showTodoList(selected.id, selected.name);
         });
 
-        // Make table wider
-        listsView.setPrefWidth(700);
-        listsView.setMaxWidth(700);
+        // Make table match task view dimensions
+        listsView.setPrefWidth(830);
+        listsView.setMaxWidth(830);
+        listsView.setPrefHeight(400);
 
-        // Custom cells: List | Completion | Tasks | Delete button
+        // Custom cells: List Name | Completion | Tasks | Overdue | Delete button
         listsView.setCellFactory(lv -> new ListCell<>() {
 
             private final Label nameLabel = new Label();
-            private final Label completionLabel = new Label();
+            private final javafx.scene.control.ProgressBar progressBar = new javafx.scene.control.ProgressBar();
             private final Label tasksLabel = new Label();
-            private final Button deleteButton = new Button("✖");
+            private final javafx.scene.shape.Circle statusCircle = new javafx.scene.shape.Circle(8);
+            private final javafx.scene.layout.StackPane statusPane = new javafx.scene.layout.StackPane(statusCircle);
+            private final Button deleteButton = new Button();
 
-            private final HBox row = new HBox(nameLabel, completionLabel, tasksLabel, deleteButton);
+            private final HBox row = new HBox(15, nameLabel, progressBar, tasksLabel, statusPane, deleteButton);
 
             {
                 // Make columns line up with header widths
                 nameLabel.setPrefWidth(300);
-                completionLabel.setPrefWidth(120);
-                tasksLabel.setPrefWidth(120);
-                deleteButton.setPrefWidth(100);
+                progressBar.setPrefWidth(180);
+                progressBar.setMaxWidth(180);
+                progressBar.setPrefHeight(20);
+                tasksLabel.setPrefWidth(80);
+                tasksLabel.setAlignment(Pos.CENTER);
+                tasksLabel.setMaxWidth(80);
+                statusPane.setPrefWidth(90);
+                statusPane.setAlignment(Pos.CENTER);
+                statusPane.setMaxWidth(90);
+                deleteButton.setPrefWidth(50);
+                
+                ImageView deleteIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/deleteicon.png")));
+                deleteIcon.setFitWidth(28);
+                deleteIcon.setFitHeight(28);
+                deleteButton.setGraphic(deleteIcon);
 
                 row.setAlignment(Pos.CENTER_LEFT);
 
                 nameLabel.getStyleClass().add("list-col-name");
-                completionLabel.getStyleClass().add("list-col-status");
                 tasksLabel.getStyleClass().add("list-col-count");
                 deleteButton.getStyleClass().add("list-col-delete-button");
 
@@ -166,6 +198,7 @@ public class C_MainMenu {
                             ex.printStackTrace();
                         }
                     }, "delete-list").start();
+                    
                 });
             }
 
@@ -179,8 +212,38 @@ public class C_MainMenu {
                 }
 
                 nameLabel.setText(item.name);
-                completionLabel.setText("–"); // placeholder
-                tasksLabel.setText("–");      // placeholder
+                nameLabel.setTooltip(new Tooltip(item.name));
+                
+                // Status circle: green if no overdue tasks, red if any overdue
+                if (item.overdueTaskCount > 0) {
+                    statusCircle.setFill(javafx.scene.paint.Color.rgb(220, 53, 69)); // Red
+                    Tooltip circleTooltip = new Tooltip("This list contains overdue tasks");
+                    Tooltip.install(statusPane, circleTooltip);
+                } else {
+                    statusCircle.setFill(javafx.scene.paint.Color.rgb(40, 167, 69)); // Green
+                    Tooltip circleTooltip = new Tooltip("This list has no overdue tasks");
+                    Tooltip.install(statusPane, circleTooltip);
+                }
+                
+                // Progress bar with color coding
+                double progress = item.completionPercentage / 100.0;
+                progressBar.setProgress(progress);
+                
+                // Color code the progress bar
+                String barColor;
+                if (progress >= 0.8) {
+                    barColor = "#28a745"; // Green for 80%+
+                } else if (progress >= 0.5) {
+                    barColor = "#ffc107"; // Yellow/amber for 50-79%
+                } else if (progress >= 0.3) {
+                    barColor = "#fd7e14"; // Orange for 30-49%
+                } else {
+                    barColor = "#dc3545"; // Red for <30%
+                }
+                progressBar.setStyle("-fx-accent: " + barColor + ";");
+                progressBar.setTooltip(new Tooltip(item.completionPercentage + "% complete"));
+                
+                tasksLabel.setText(String.valueOf(item.taskCount));
 
                 setGraphic(row);
             }
@@ -191,21 +254,23 @@ public class C_MainMenu {
         createLink.getStyleClass().add("create-link");
         createLink.setOnAction(e -> showCreateListDialog());
 
+        VBox titleSection = new VBox(5, title, userLabel, tempMessageLabel);
+        titleSection.setAlignment(Pos.TOP_CENTER);
+        
         VBox root = new VBox(
                 topBar,
-                title,
-                userLabel,
-                tempMessageLabel,
+                titleSection,
+                new Label(""), // gap spacer
                 header,
                 listsView,
                 createLink);
-        root.setSpacing(20);
+        root.setSpacing(10);
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
         root.setFillWidth(true);           // <- important: let children stretch horizontally
         root.getStyleClass().add("mainmenu-root");
 
-        // Initial load of lists
+        // Initial load of lists (completion is now included in list tuples)
         Lists.loadTodoLists(listsView, Config.getTodoListsUri());
 
         return new Scene(root, 900, 600);

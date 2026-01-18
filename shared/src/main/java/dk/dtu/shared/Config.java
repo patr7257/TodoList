@@ -24,7 +24,7 @@ public final class Config {
 
     // VPN to DTU:
     //public static final String SERVER_IP = "127.0.0.1";
-    
+
     public static final int PORT = 9001;                        // Port for jSpace server
     public static final String SERVER_BIND_HOST = "0.0.0.0";    // Bind to all interfaces
     

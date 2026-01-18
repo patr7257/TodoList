@@ -10,7 +10,8 @@ import java.util.UUID;
 // Helper methods and data structures
 public class Helpers {
 
-    private Helpers() {}
+    private Helpers() {
+    }
 
     // Send request and wait for response
     public static Object[] sendAndWaitForResponse(
@@ -18,7 +19,7 @@ public class Helpers {
             String responsesUri,
             String command,
             String a1, String a2, String a3, String a4) throws Exception {
-        
+
         String requestId = UUID.randomUUID().toString();
         RemoteSpace requests = new RemoteSpace(requestsUri);
         RemoteSpace responses = new RemoteSpace(responsesUri);
@@ -55,10 +56,16 @@ public class Helpers {
     public static class ListEntry {
         public final String id;
         public final String name;
+        public int completionPercentage;
+        public final int taskCount;
+        public final int overdueTaskCount;
 
-        public ListEntry(String id, String name) {
+        public ListEntry(String id, String name, int completionPercentage, int taskCount, int overdueTaskCount) {
             this.id = id;
             this.name = name;
+            this.completionPercentage = completionPercentage;
+            this.taskCount = taskCount;
+            this.overdueTaskCount = overdueTaskCount;
         }
 
         @Override
@@ -76,7 +83,8 @@ public class Helpers {
         public final String status;
         public final String dueDate;
 
-        public TaskEntry(String listId, String id, String title, String owner, String status, String dueDate) {
+        public TaskEntry(String listId, String id, String title,
+                String owner, String status, String dueDate) {
             this.listId = listId;
             this.id = id;
             this.title = title;
@@ -85,11 +93,41 @@ public class Helpers {
             this.dueDate = dueDate;
         }
 
+        // Pretty status text for the UI
+        public String statusToString() {
+            if (status == null)
+                return "";
+
+            return switch (status.trim().toUpperCase()) {
+                case "NOT_STARTED" -> "Not started yet";
+                case "IN_PROGRESS" -> "In progress";
+                case "DELAYED" -> "Delayed";
+                case "NEED_HELP" -> "Needs help";
+                case "DONE" -> "Done";
+                default -> status; // fallback
+            };
+        }
+
+        // Task name for the "Task" column
+        public String nameToString() {
+            return title != null ? title : "";
+        }
+
+        // Owner for the "Owner" column
+        public String ownerToString() {
+            return (owner == null || owner.isBlank()) ? "" : owner;
+        }
+
+        // Optional: nice due date text if you ever want it
+        public String dueDateToString() {
+            return (dueDate == null || dueDate.isBlank()) ? "" : dueDate;
+        }
+
         @Override
         public String toString() {
-            String who = (owner == null || owner.isBlank()) ? " " : "@" + owner;
+            String who = ownerToString();
             String due = (dueDate == null || dueDate.isBlank()) ? "" : " (due: " + dueDate + ")";
-            return title + " " + who + " [" + status + "]" + due;
+            return nameToString() + " " + who + " [" + status + "]" + due;
         }
     }
 }
