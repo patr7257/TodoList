@@ -1,8 +1,8 @@
 package dk.dtu;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jspace.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ServerHandlerServiceTest {
 
@@ -19,8 +19,8 @@ public class ServerHandlerServiceTest {
         ServerHandlerService service = new ServerHandlerService(
                 todoLists, counter, users, tasks, requests, responses, notifications);
 
-        assertNotNull("Service should be created", service);
-        assertTrue("Service should implement Runnable", service instanceof Runnable);
+        assertNotNull(service, "Service should be created");
+        assertTrue(service instanceof Runnable, "Service should implement Runnable");
     }
 
     @Test
@@ -29,8 +29,8 @@ public class ServerHandlerServiceTest {
         space.put("test_key", "test_value");
 
         Object[] tuple = space.get(new ActualField("test_key"), new ActualField("test_value"));
-        assertNotNull("Tuple should be retrieved", tuple);
-        assertEquals("Retrieved value should match", "test_value", tuple[1]);
+        assertNotNull(tuple, "Tuple should be retrieved");
+        assertEquals("test_value", tuple[1], "Retrieved value should match");
     }
 
     @Test
@@ -46,9 +46,9 @@ public class ServerHandlerServiceTest {
                 new FormalField(Object.class),
                 new FormalField(Object.class));
 
-        assertNotNull("Response should be stored and retrieved", tuple);
-        assertEquals("First element should be OK", "OK", tuple[0]);
-        assertEquals("Second element should be req123", "req123", tuple[1]);
+        assertNotNull(tuple, "Response should be stored and retrieved");
+        assertEquals("OK", tuple[0], "First element should be OK");
+        assertEquals("req123", tuple[1], "Second element should be req123");
     }
 
     @Test
@@ -65,8 +65,8 @@ public class ServerHandlerServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class));
 
-        assertNotNull("Notification should be stored", tuple);
-        assertEquals("Operation should be list_create", "list_create", tuple[2]);
+        assertNotNull(tuple, "Notification should be stored");
+        assertEquals("list_create", tuple[2], "Operation should be list_create");
     }
 
     @Test
@@ -82,9 +82,9 @@ public class ServerHandlerServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class));
 
-        assertNotNull("Task should be stored", tuple);
-        assertEquals("Title should be 'Buy milk'", "Buy milk", tuple[2]);
-        assertEquals("Status should be 'TODO'", "TODO", tuple[4]);
+        assertNotNull(tuple, "Task should be stored");
+        assertEquals("Buy milk", tuple[2], "Title should be 'Buy milk'");
+        assertEquals("TODO", tuple[4], "Status should be 'TODO'");
     }
 
 }

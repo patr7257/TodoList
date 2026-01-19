@@ -3,14 +3,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dk.dtu</groupId>
-    <artifactId>project_02148-parent</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <groupId>com.patr7257</groupId>
+    <artifactId>todolist-management-system-parent</artifactId>
+    <version>1.0.0</version>
     <packaging>pom</packaging>
+    
+    <name>TodoList Management System</name>
+    <description>A personal project for managing todo lists with client-server architecture</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
+        <junit.version>5.11.4</junit.version>
+        <javafx.version>21.0.5</javafx.version>
     </properties>
     
     <modules>

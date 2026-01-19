@@ -1,21 +1,21 @@
 package dk.dtu;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.jspace.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ServerMainTest {
 
     @Test
     public void testSpaceRepositoryInitialization() {
         SpaceRepository repo = new SpaceRepository();
-        assertNotNull("SpaceRepository should be created", repo);
+        assertNotNull(repo, "SpaceRepository should be created");
     }
 
     @Test
     public void testSequentialSpaceCreation() {
         SequentialSpace space = new SequentialSpace();
-        assertNotNull("SequentialSpace should be created", space);
+        assertNotNull(space, "SequentialSpace should be created");
     }
 
     @Test
@@ -24,9 +24,9 @@ public class ServerMainTest {
         space.put("test", 123);
 
         Object[] tuple = space.get(new ActualField("test"), new ActualField(123));
-        assertNotNull("Tuple should be retrieved from space", tuple);
-        assertEquals("First element should be 'test'", "test", tuple[0]);
-        assertEquals("Second element should be 123", 123, tuple[1]);
+        assertNotNull(tuple, "Tuple should be retrieved from space");
+        assertEquals("test", tuple[0], "First element should be 'test'");
+        assertEquals(123, tuple[1], "Second element should be 123");
     }
 
     @Test
@@ -36,7 +36,7 @@ public class ServerMainTest {
         counter.put(initialCount);
 
         Object[] tuple = counter.get(new ActualField(initialCount));
-        assertNotNull("Counter should store initial value", tuple);
+        assertNotNull(tuple, "Counter should store initial value");
     }
 
     @Test
@@ -48,9 +48,9 @@ public class ServerMainTest {
         Database.loadDatabase(users, todoLists, tasks);
 
         // Verify data was loaded by checking spaces are not empty
-        assertNotNull("Users space should not be null after loading", users);
-        assertNotNull("TodoLists space should not be null after loading", todoLists);
-        assertNotNull("Tasks space should not be null after loading", tasks);
+        assertNotNull(users, "Users space should not be null after loading");
+        assertNotNull(todoLists, "TodoLists space should not be null after loading");
+        assertNotNull(tasks, "Tasks space should not be null after loading");
     }
 
 }

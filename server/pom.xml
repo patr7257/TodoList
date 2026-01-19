@@ -4,20 +4,24 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>dk.dtu</groupId>
-        <artifactId>project_02148-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <groupId>com.patr7257</groupId>
+        <artifactId>todolist-management-system-parent</artifactId>
+        <version>1.0.0</version>
     </parent>
 
-    <artifactId>project_02148-server</artifactId>
+    <artifactId>todolist-server</artifactId>
+    <name>TodoList Server</name>
+    <description>Server application for the TodoList Management System</description>
+    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    
     <dependencies>
         <dependency>
-            <groupId>dk.dtu</groupId>
-            <artifactId>shared</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>com.patr7257</groupId>
+            <artifactId>todolist-shared</artifactId>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
             <groupId>io.github.pspaces.jspace</groupId>
@@ -25,11 +29,11 @@
             <version>[0.0,)</version>
         </dependency>
         <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>4.13.2</version>
-                <scope>test</scope>
-            </dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

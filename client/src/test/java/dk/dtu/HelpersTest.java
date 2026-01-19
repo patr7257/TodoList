@@ -1,15 +1,16 @@
 package dk.dtu;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import dk.dtu.methods.Helpers;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Validates user-friendly string representations and the handling of empty or missing fields of TaskEntry + ListEntry
  */
 public class HelpersTest {
+    @Test
     public void testListEntryToString() {
         Helpers.ListEntry e = new Helpers.ListEntry("123", "Inbox", 0, 0, 0);
         assertEquals("123 - Inbox", e.toString());
@@ -33,11 +34,11 @@ public class HelpersTest {
         Helpers.TaskEntry t = new Helpers.TaskEntry(
                 "L1", "T1", "Buy milk", "   ", "OPEN", ""
         );
-
         String s = t.toString();
         assertTrue(s.contains("Buy milk"));
-        assertFalse("Should not include @ when owner blank", s.contains("@"));
-        assertFalse("Should not include due date when blank", s.contains("due:"));
+        assertFalse(s.contains("@"), "Should not include @ when owner blank");
+        assertFalse(s.contains("due:"), "Should not include due date when blank");
+
     }
     
 }

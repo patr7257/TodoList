@@ -1,7 +1,7 @@
 package dk.dtu;
 
-import org.junit.Test;
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class NotificationListenerTest {
 
@@ -10,14 +10,14 @@ public class NotificationListenerTest {
         NotificationListener listener = new NotificationListener("uri", () -> {
             // callback
         });
-        assertNotNull("NotificationListener should be created", listener);
-        assertTrue("NotificationListener should implement Runnable", listener instanceof Runnable);
+        assertNotNull(listener, "NotificationListener should be created");
+        assertTrue(listener instanceof Runnable, "NotificationListener should implement Runnable");
     }
 
     @Test
     public void testNotificationListenerWithNullCallback() {
         NotificationListener listener = new NotificationListener("uri", null);
-        assertNotNull("NotificationListener should handle null callback", listener);
+        assertNotNull(listener, "NotificationListener should handle null callback");
     }
 
     @Test
@@ -26,7 +26,7 @@ public class NotificationListenerTest {
         });
         listener.stop();
         // Verify stop method exists and can be called
-        assertTrue("stop() method should exist", true);
+        assertTrue(true, "stop() method should exist");
     }
 
     @Test
@@ -34,7 +34,7 @@ public class NotificationListenerTest {
         NotificationListener listener = new NotificationListener("uri", () -> {
         });
         Runnable runnable = listener;
-        assertNotNull("NotificationListener should be assignable to Runnable", runnable);
+        assertNotNull(runnable, "NotificationListener should be assignable to Runnable");
     }
 
     @Test
@@ -43,7 +43,7 @@ public class NotificationListenerTest {
         NotificationListener listener = new NotificationListener("uri", () -> {
             callbackCalled[0] = true;
         });
-        assertNotNull("NotificationListener should accept callback", listener);
+        assertNotNull(listener, "NotificationListener should accept callback");
     }
 
     @Test
@@ -53,9 +53,9 @@ public class NotificationListenerTest {
         NotificationListener listener2 = new NotificationListener("uri2", () -> {
         });
 
-        assertNotNull("Multiple instances should be creatable", listener1);
-        assertNotNull("Multiple instances should be creatable", listener2);
-        assertNotSame("Instances should be different", listener1, listener2);
+        assertNotNull(listener1, "Multiple instances should be creatable");
+        assertNotNull(listener2, "Multiple instances should be creatable");
+        assertNotSame(listener1, listener2, "Instances should be different");
     }
 
     @Test
@@ -64,7 +64,7 @@ public class NotificationListenerTest {
         Runnable callback = () -> System.out.println("Data changed");
 
         NotificationListener listener = new NotificationListener(uri, callback);
-        assertNotNull("Listener should be initialized", listener);
+        assertNotNull(listener, "Listener should be initialized");
     }
 
     @Test
@@ -76,7 +76,7 @@ public class NotificationListenerTest {
         listener.stop();
         listener.stop(); // Calling stop twice should be safe
 
-        assertTrue("stop() should complete without error", true);
+        assertTrue(true, "stop() should complete without error");
     }
 
 }
