@@ -51,25 +51,72 @@ public class D_TodoListView {
         Label info = new Label("List ID: " + listId);
         info.getStyleClass().add("todolist-meta");
 
-        Label taskHeader = new Label("Task");
+        // Sorting state
+        final boolean[] sortAscending = {true}; // Track sort direction
+
+        // Declare all headers first
+        Label taskHeader = new Label("Task ▲▼");
         taskHeader.setPrefWidth(250);
         taskHeader.setAlignment(Pos.CENTER);
-        taskHeader.setStyle("-fx-font-weight: bold;");
+        taskHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label statusHeader = new Label("Status");
+        Label statusHeader = new Label("Status ▲▼");
         statusHeader.setPrefWidth(145);
         statusHeader.setAlignment(Pos.CENTER);
-        statusHeader.setStyle("-fx-font-weight: bold;");
+        statusHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label dueHeader = new Label("Due date");
+        Label dueHeader = new Label("Due date ▲▼");
         dueHeader.setPrefWidth(145);
         dueHeader.setAlignment(Pos.CENTER);
-        dueHeader.setStyle("-fx-font-weight: bold;");
+        dueHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label ownerHeader = new Label("Owner");
+        Label ownerHeader = new Label("Owner ▲▼");
         ownerHeader.setPrefWidth(145);
         ownerHeader.setAlignment(Pos.CENTER);
-        ownerHeader.setStyle("-fx-font-weight: bold;");
+        ownerHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        
+        // Now add click handlers that reference all headers
+        taskHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
+                int result = a.title.compareToIgnoreCase(b.title);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(taskHeader, statusHeader, dueHeader, ownerHeader);
+        });
+        
+        statusHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
+                String statusA = a.status != null ? a.status : "";
+                String statusB = b.status != null ? b.status : "";
+                int result = statusA.compareToIgnoreCase(statusB);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(statusHeader, taskHeader, dueHeader, ownerHeader);
+        });
+        
+        dueHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
+                String dateA = a.dueDate != null && !a.dueDate.isEmpty() ? a.dueDate : "9999-12-31"; // Empty dates last
+                String dateB = b.dueDate != null && !b.dueDate.isEmpty() ? b.dueDate : "9999-12-31";
+                int result = dateA.compareTo(dateB);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(dueHeader, taskHeader, statusHeader, ownerHeader);
+        });
+        
+        ownerHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
+                String ownerA = a.owner != null ? a.owner : "";
+                String ownerB = b.owner != null ? b.owner : "";
+                int result = ownerA.compareToIgnoreCase(ownerB);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(ownerHeader, taskHeader, statusHeader, dueHeader);
+        });
 
         Label deleteHeader = new Label("");
         deleteHeader.setPrefWidth(50);
@@ -399,5 +446,18 @@ public class D_TodoListView {
                 }
             }, "create-task").start();
         });
+    }
+    
+    /**
+     * Update sort indicators on column headers
+     */
+    private void updateSortIndicators(Label activeHeader, Label header2, Label header3, Label header4) {
+        // Highlight active header
+        activeHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: #007bff;");
+        
+        // Reset other headers
+        header2.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        header3.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        header4.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
     }
 }
