@@ -69,7 +69,7 @@ public class Users {
                         usersComboBox.getItems().add((String) t[0]);
                     }
                     if (!usersComboBox.getItems().isEmpty() && usersComboBox.getValue() == null) {
-                        usersComboBox.setValue(usersComboBox.getItems().get(0));
+                        usersComboBox.setValue(usersComboBox.getItems().getFirst());
                     }
                 });
 
