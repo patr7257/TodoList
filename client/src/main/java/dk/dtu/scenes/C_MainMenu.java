@@ -98,25 +98,64 @@ public class C_MainMenu {
         }
 
         // Header row for columns: List | Completion | Tasks | Overdue | Delete
-        Label nameHeader = new Label("List Name");
+        // Sorting state
+        final boolean[] sortAscending = {true}; // Track sort direction
+        Label nameHeader = new Label("List Name ▲▼");
         nameHeader.setPrefWidth(300);
         nameHeader.setAlignment(Pos.CENTER);
-        nameHeader.setStyle("-fx-font-weight: bold;");
+        nameHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label completionHeader = new Label("Completion");
-        completionHeader.setPrefWidth(180);
+        Label completionHeader = new Label("Completion ▲▼");
+        completionHeader.setPrefWidth(160);
         completionHeader.setAlignment(Pos.CENTER);
-        completionHeader.setStyle("-fx-font-weight: bold;");
+        completionHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label tasksHeader = new Label("Tasks");
-        tasksHeader.setPrefWidth(80);
+        Label tasksHeader = new Label("Tasks ▲▼");
+        tasksHeader.setPrefWidth(95);
         tasksHeader.setAlignment(Pos.CENTER);
-        tasksHeader.setStyle("-fx-font-weight: bold;");
+        tasksHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
 
-        Label overdueHeader = new Label("Overdue");
-        overdueHeader.setPrefWidth(90);
+        Label overdueHeader = new Label("Overdue ▲▼");
+        overdueHeader.setPrefWidth(110);
         overdueHeader.setAlignment(Pos.CENTER);
-        overdueHeader.setStyle("-fx-font-weight: bold;");
+        overdueHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        
+        // Now add click handlers that reference all headers
+        nameHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(listsView.getItems(), (a, b) -> {
+                int result = a.name.compareToIgnoreCase(b.name);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(nameHeader, completionHeader, tasksHeader, overdueHeader);
+        });
+        
+        completionHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(listsView.getItems(), (a, b) -> {
+                int result = Integer.compare(a.completionPercentage, b.completionPercentage);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(completionHeader, nameHeader, tasksHeader, overdueHeader);
+        });
+        
+        tasksHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(listsView.getItems(), (a, b) -> {
+                int result = Integer.compare(a.taskCount, b.taskCount);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(tasksHeader, nameHeader, completionHeader, overdueHeader);
+        });
+        
+        overdueHeader.setOnMouseClicked(e -> {
+            sortAscending[0] = !sortAscending[0];
+            javafx.collections.FXCollections.sort(listsView.getItems(), (a, b) -> {
+                int result = Integer.compare(a.overdueTaskCount, b.overdueTaskCount);
+                return sortAscending[0] ? result : -result;
+            });
+            updateSortIndicators(overdueHeader, nameHeader, completionHeader, tasksHeader);
+        });
 
         Label deleteHeader = new Label("");
         deleteHeader.setPrefWidth(50);
@@ -161,12 +200,12 @@ public class C_MainMenu {
                 progressBar.setPrefWidth(180);
                 progressBar.setMaxWidth(180);
                 progressBar.setPrefHeight(20);
-                tasksLabel.setPrefWidth(80);
+                tasksLabel.setPrefWidth(95);
                 tasksLabel.setAlignment(Pos.CENTER);
-                tasksLabel.setMaxWidth(80);
-                statusPane.setPrefWidth(90);
+                tasksLabel.setMaxWidth(95);
+                statusPane.setPrefWidth(110);
                 statusPane.setAlignment(Pos.CENTER);
-                statusPane.setMaxWidth(90);
+                statusPane.setMaxWidth(110);
                 deleteButton.setPrefWidth(50);
                 
                 ImageView deleteIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/deleteicon.png")));
@@ -306,5 +345,18 @@ public class C_MainMenu {
      */
     public void autoRefreshLists() {
         Lists.loadTodoLists(listsView, Config.getTodoListsUri());
+    }
+    
+    /**
+     * Update sort indicators on column headers
+     */
+    private void updateSortIndicators(Label activeHeader, Label header2, Label header3, Label header4) {
+        // Highlight active header
+        activeHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: #007bff;");
+        
+        // Reset other headers
+        header2.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        header3.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        header4.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
     }
 }
