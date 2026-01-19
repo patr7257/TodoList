@@ -3,13 +3,12 @@ package dk.dtu.shared;
 // Shared configuration class for server and client
 public final class Config {
     
-    // Server IP: The IP address where the server is hosted
-    // OWN MACHINE LOCALLY
-    public static final String SERVER_IP = "127.0.0.1";
-    
-    // HOME IP (check your local IP with "ipconfig" or "ifconfig"):
-    // public static final String SERVER_IP = "192.168.0.15";
+    // SERVER CONFIGURATION
+    // public static final String SERVER_IP = "127.0.0.1";
 
+    // Home network IP
+    public static final String SERVER_IP = "192.168.0.168";
+    
     public static final int PORT = 9001;                        // Port for jSpace server
     public static final String SERVER_BIND_HOST = "0.0.0.0";    // Bind to all interfaces
     
