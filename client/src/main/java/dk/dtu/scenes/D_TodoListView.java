@@ -25,7 +25,6 @@ public class D_TodoListView {
     private final String listId;
     private final String listName;
 
-    private final Button returnButton = new Button();
     private final ListView<Helpers.TaskEntry> tasksView = new ListView<>();
 
     public D_TodoListView(SceneNavigator navigator, String listId, String listName) {
@@ -35,13 +34,6 @@ public class D_TodoListView {
     }
 
     public Scene createScene() {
-        ImageView returnIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/gobackicon.png")));
-        returnIcon.setFitWidth(32);
-        returnIcon.setFitHeight(32);
-        returnButton.setGraphic(returnIcon);
-        returnButton.getStyleClass().add("go-back-button");
-        returnButton.setOnAction(e -> navigator.showMainMenu());
-
         Label title = new Label("Tasks in: " + listName);
         title.getStyleClass().add("todolist-title");
 
@@ -375,18 +367,11 @@ public class D_TodoListView {
 
         Label hint = new Label("Use the dropdown menus to edit status, due date, and owner for each task.");
         hint.getStyleClass().add("todolist-hint");
-        
-        
-        HBox topBar = new HBox(returnButton);
-        topBar.setAlignment(Pos.TOP_RIGHT);
-        topBar.setPadding(new Insets(0, 0, 10, 0));
-        topBar.setMaxWidth(Double.MAX_VALUE); // allow it to stretch
 
         VBox titleSection = new VBox(5, title, info);
         titleSection.setAlignment(Pos.TOP_CENTER);
         
         VBox root = new VBox(
-                topBar,
                 titleSection,
                 new Label(""),
                 header,

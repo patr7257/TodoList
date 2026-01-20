@@ -217,3 +217,29 @@
     -fx-min-height: 35px;
     -fx-max-height: 35px;
 }
+
+/* Sidebar styling */
+.sidebar {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 0 0 0 1;
+}
+
+.sidebar-button {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: #e8e8e8;
+    -fx-border-color: #2d6cdf;
+    -fx-cursor: hand;
+}
+
+.sidebar-button:pressed {
+    -fx-background-color: #d0d0d0;
+}

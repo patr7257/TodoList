@@ -22,7 +22,6 @@ public class C_MainMenu {
     private final String loginMessage;
 
     private final ListView<Helpers.ListEntry> listsView = new ListView<>();
-    private final Button logoutButton = new Button();
 
     public C_MainMenu(SceneNavigator navigator) {
         this(navigator, null);
@@ -34,54 +33,6 @@ public class C_MainMenu {
     }
 
     public Scene createScene() {
-        // Small logout icon button
-        ImageView logoutIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/gobackicon.png")));
-        logoutIcon.setFitWidth(32);
-        logoutIcon.setFitHeight(32);
-        logoutButton.setGraphic(logoutIcon);
-        logoutButton.getStyleClass().add("go-back-button");
-        logoutButton.setOnAction(e -> {
-            // Show confirmation dialog
-            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmAlert.setTitle("Confirm Logout");
-            confirmAlert.setHeaderText("Are you sure you want to log out?");
-            confirmAlert.setContentText("You will be returned to the login screen.");
-            
-            confirmAlert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    String username = navigator.getCurrentUser();
-                    if (username == null || username.isEmpty()) {
-                        username = "unknown";
-                    }
-                    System.out.println("User logged out: " + username);
-                    
-                    // Send logout notification to server (capture username before clearing)
-                    final String usernameToSend = username;
-                    new Thread(() -> {
-                        try {
-                            org.jspace.RemoteSpace requests = new org.jspace.RemoteSpace(Config.getRequestsUri());
-                            requests.put(dk.dtu.shared.TupleSpaces.CMD_USER_LOGOUT,
-                                    java.util.UUID.randomUUID().toString(),
-                                    usernameToSend, 
-                                    "", 
-                                    "", 
-                                    "");
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }, "logout").start();
-                    
-                    navigator.showLogin();
-                }
-            });
-        }); // only set once
-
-        // Put logout icon top-right in a full-width bar
-        HBox topBar = new HBox(logoutButton);
-        topBar.setAlignment(Pos.TOP_RIGHT);
-        topBar.setPadding(new Insets(0, 0, 10, 0));
-        topBar.setMaxWidth(Double.MAX_VALUE); // allow it to stretch
-
         Label title = new Label("Available todo lists");
         title.getStyleClass().add("mainmenu-title");
 
@@ -310,7 +261,6 @@ public class C_MainMenu {
         titleSection.setAlignment(Pos.TOP_CENTER);
         
         VBox root = new VBox(
-                topBar,
                 titleSection,
                 new Label(""), // gap spacer
                 header,
