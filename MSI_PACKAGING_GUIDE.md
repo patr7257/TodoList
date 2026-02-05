@@ -82,6 +82,8 @@ jpackage `
   --win-shortcut `
   --win-per-user-install `
   --java-options "-Dtodolist.data.dir=%APPDATA%\TodoList" `
+  --java-options "-Dtodolist.bind.host=0.0.0.0" `
+  --java-options "-Dtodolist.port=9001" `
   --java-options "-Xmx512m"
 ```
 
@@ -99,7 +101,8 @@ jpackage `
   --win-dir-chooser `
   --win-menu `
   --win-shortcut `
-  --java-options "-Dtodolist.server.ip=192.168.0.168"
+  --java-options "-Dtodolist.server.ip=127.0.0.1" `
+  --java-options "-Dtodolist.port=9001"
 ```
 
 ---
