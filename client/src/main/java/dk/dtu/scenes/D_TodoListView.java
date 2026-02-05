@@ -1,7 +1,11 @@
 package dk.dtu.scenes;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import dk.dtu.SceneNavigator;
+import dk.dtu.collumns.*;
 import dk.dtu.methods.Helpers;
+import dk.dtu.methods.Lists;
 import dk.dtu.methods.Tasks;
 import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
@@ -11,22 +15,56 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Region;
 
-import java.time.LocalDate;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 public class D_TodoListView {
+
+    private static final double COLUMN_GAP = 15;
+
+    private enum EmptyFilter { ALL, EMPTY, NOT_EMPTY }
 
     private final SceneNavigator navigator;
     private final String listId;
     private final String listName;
 
-    private final Button returnButton = new Button();
     private final ListView<Helpers.TaskEntry> tasksView = new ListView<>();
+
+    private List<Helpers.TaskEntry> allTasks = List.of();
+
+    private String ownerFilter = "All";
+    private Integer yearFilter = null;
+    private Integer priorityFilter = null;
+    private TaskStatus statusFilter = null;
+
+    private EmptyFilter titleFilter = EmptyFilter.ALL;
+    private EmptyFilter dueDateFilter = EmptyFilter.ALL;
+    private EmptyFilter locationFilter = EmptyFilter.ALL;
+    private EmptyFilter descriptionFilter = EmptyFilter.ALL;
+
+    private HBox header;
+    private SortState<Helpers.TaskEntry> sortState;
+    private Runnable refreshTasks;
+    private List<Column<Helpers.TaskEntry>> allTaskColumns;
+
+    private static final Gson GSON = new Gson();
+    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
+
+    private static final String PINNED_REORDER_ID = "reorder";
+    private static final String PINNED_TITLE_ID = "title";
+    private static final String PINNED_DELETE_ID = "delete";
 
     public D_TodoListView(SceneNavigator navigator, String listId, String listName) {
         this.navigator = navigator;
@@ -35,338 +73,41 @@ public class D_TodoListView {
     }
 
     public Scene createScene() {
-        ImageView returnIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/gobackicon.png")));
-        returnIcon.setFitWidth(32);
-        returnIcon.setFitHeight(32);
-        returnButton.setGraphic(returnIcon);
-        returnButton.getStyleClass().add("go-back-button");
-        returnButton.setOnAction(e -> navigator.showMainMenu());
-
         Label title = new Label("Tasks in: " + listName);
         title.getStyleClass().add("todolist-title");
 
         Label info = new Label("List ID: " + listId);
         info.getStyleClass().add("todolist-meta");
 
-        // Sorting state
-        final boolean[] sortAscending = {true}; // Track sort direction
+        sortState = new SortState<>();
+        refreshTasks = this::reloadTasks;
 
-        // Declare all headers first
-        Label taskHeader = new Label("Task ▲▼");
-        taskHeader.setPrefWidth(250);
-        taskHeader.setAlignment(Pos.CENTER);
-        taskHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        allTaskColumns = getAllTaskColumns();
+        List<Column<Helpers.TaskEntry>> initialVisibleColumns = allTaskColumns;
 
-        Label statusHeader = new Label("Status ▲▼");
-        statusHeader.setPrefWidth(145);
-        statusHeader.setAlignment(Pos.CENTER);
-        statusHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-
-        Label dueHeader = new Label("Due date ▲▼");
-        dueHeader.setPrefWidth(145);
-        dueHeader.setAlignment(Pos.CENTER);
-        dueHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-
-        Label ownerHeader = new Label("Owner ▲▼");
-        ownerHeader.setPrefWidth(145);
-        ownerHeader.setAlignment(Pos.CENTER);
-        ownerHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-        
-        // Now add click handlers that reference all headers
-        taskHeader.setOnMouseClicked(e -> {
-            sortAscending[0] = !sortAscending[0];
-            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
-                int result = a.title.compareToIgnoreCase(b.title);
-                return sortAscending[0] ? result : -result;
-            });
-            updateSortIndicators(taskHeader, statusHeader, dueHeader, ownerHeader);
-        });
-        
-        statusHeader.setOnMouseClicked(e -> {
-            sortAscending[0] = !sortAscending[0];
-            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
-                String statusA = a.status != null ? a.status : "";
-                String statusB = b.status != null ? b.status : "";
-                int result = statusA.compareToIgnoreCase(statusB);
-                return sortAscending[0] ? result : -result;
-            });
-            updateSortIndicators(statusHeader, taskHeader, dueHeader, ownerHeader);
-        });
-        
-        dueHeader.setOnMouseClicked(e -> {
-            sortAscending[0] = !sortAscending[0];
-            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
-                String dateA = a.dueDate != null && !a.dueDate.isEmpty() ? a.dueDate : "9999-12-31"; // Empty dates last
-                String dateB = b.dueDate != null && !b.dueDate.isEmpty() ? b.dueDate : "9999-12-31";
-                int result = dateA.compareTo(dateB);
-                return sortAscending[0] ? result : -result;
-            });
-            updateSortIndicators(dueHeader, taskHeader, statusHeader, ownerHeader);
-        });
-        
-        ownerHeader.setOnMouseClicked(e -> {
-            sortAscending[0] = !sortAscending[0];
-            javafx.collections.FXCollections.sort(tasksView.getItems(), (a, b) -> {
-                String ownerA = a.owner != null ? a.owner : "";
-                String ownerB = b.owner != null ? b.owner : "";
-                int result = ownerA.compareToIgnoreCase(ownerB);
-                return sortAscending[0] ? result : -result;
-            });
-            updateSortIndicators(ownerHeader, taskHeader, statusHeader, dueHeader);
-        });
-
-        Label deleteHeader = new Label("");
-        deleteHeader.setPrefWidth(50);
-
-        HBox header = new HBox(20, taskHeader, statusHeader, dueHeader, ownerHeader, deleteHeader);
+        header = new HBox(COLUMN_GAP);
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setMaxWidth(850);
+        header.setMaxWidth(Double.MAX_VALUE);
         header.getStyleClass().add("tasks-header");
 
-        tasksView.setPrefWidth(850);
-        tasksView.setMaxWidth(850);
         tasksView.setPrefHeight(400);
+        tasksView.setMaxWidth(Double.MAX_VALUE);
         tasksView.getStyleClass().add("todolist-tasks");
-        tasksView.setCellFactory(lv -> new ListCell<>() {
-
-            private final Label taskLabel = new Label();
-            private final ComboBox<TaskStatus> statusCombo = new ComboBox<>();
-            private final DatePicker duePicker = new DatePicker();
-            private final ComboBox<String> ownerCombo = new ComboBox<>();
-            private final Button deleteButton = new Button();
-
-            private final HBox row = new HBox(15, taskLabel, statusCombo, duePicker, ownerCombo, deleteButton);
-
-            {
-                taskLabel.setPrefWidth(250);
-                taskLabel.setMinWidth(250);
-                taskLabel.setMaxWidth(250);
-                
-                statusCombo.setPrefWidth(145);
-                statusCombo.setMinWidth(145);
-                statusCombo.setMaxWidth(145);
-                statusCombo.getItems().addAll(TaskStatus.values());
-                statusCombo.setPromptText("Status");
-                
-                // Apply CSS styling to status cells
-                statusCombo.setCellFactory(lv -> createStatusCell());
-                statusCombo.setButtonCell(createStatusCell());
-                
-                duePicker.setPrefWidth(145);
-                duePicker.setMinWidth(145);
-                duePicker.setMaxWidth(145);
-                duePicker.setPromptText("Due date");
-                
-                ownerCombo.setPrefWidth(145);
-                ownerCombo.setMinWidth(145);
-                ownerCombo.setMaxWidth(145);
-                ownerCombo.setPromptText("Owner");
-                
-                deleteButton.setPrefWidth(50);
-                deleteButton.setMinWidth(50);
-                deleteButton.setMaxWidth(50);
-                
-                ImageView deleteIcon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/deleteicon.png")));
-                deleteIcon.setFitWidth(28);
-                deleteIcon.setFitHeight(28);
-                deleteButton.setGraphic(deleteIcon);
-
-                row.setAlignment(Pos.CENTER_LEFT);
-
-                taskLabel.getStyleClass().add("task-col-name");
-                statusCombo.getStyleClass().add("task-col-status");
-                duePicker.getStyleClass().add("task-col-due");
-                ownerCombo.getStyleClass().add("task-col-owner");
-                deleteButton.getStyleClass().add("list-col-delete-button");
-
-                // Load users once when cell is created
-                Users.loadUsersIntoComboBox(ownerCombo, Config.getUsersUri());
-
-                // Status change handler
-                statusCombo.setOnAction(evt -> {
-                    Helpers.TaskEntry item = getItem();
-                    if (item == null) return;
-                    
-                    TaskStatus newStatus = statusCombo.getValue();
-                    if (newStatus == null) return;
-                    
-                    // Don't trigger if it's the same as current
-                    if (newStatus.name().equals(item.status)) return;
-
-                    statusCombo.setDisable(true);
-                    new Thread(() -> {
-                        try {
-                            Tasks.changeTaskStatus(
-                                    Config.getRequestsUri(),
-                                    Config.getResponsesUri(),
-                                    item.listId,
-                                    item.id,
-                                    newStatus.name()
-                            );
-                            Platform.runLater(() -> {
-                                statusCombo.setDisable(false);
-                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
-                            });
-                        } catch (Exception ex) {
-                            System.out.println("[CLIENT] ERROR changing task status:");
-                            ex.printStackTrace();
-                            Platform.runLater(() -> statusCombo.setDisable(false));
-                        }
-                    }, "change-task-status").start();
-                });
-
-                // Due date change handler
-                duePicker.setOnAction(evt -> {
-                    Helpers.TaskEntry item = getItem();
-                    if (item == null) return;
-                    
-                    LocalDate newDate = duePicker.getValue();
-                    if (newDate == null) return;
-                    
-                    String newDueDate = newDate.toString();
-                    // Don't trigger if it's the same as current
-                    if (newDueDate.equals(item.dueDate)) return;
-
-                    duePicker.setDisable(true);
-                    new Thread(() -> {
-                        try {
-                            Tasks.changeTaskDueDate(
-                                    Config.getRequestsUri(),
-                                    Config.getResponsesUri(),
-                                    item.listId,
-                                    item.id,
-                                    newDueDate
-                            );
-                            Platform.runLater(() -> {
-                                duePicker.setDisable(false);
-                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
-                            });
-                        } catch (Exception ex) {
-                            System.out.println("[CLIENT] ERROR changing due date:");
-                            ex.printStackTrace();
-                            Platform.runLater(() -> duePicker.setDisable(false));
-                        }
-                    }, "change-due-date").start();
-                });
-
-                // Owner change handler
-                ownerCombo.setOnAction(evt -> {
-                    Helpers.TaskEntry item = getItem();
-                    if (item == null) return;
-                    
-                    String newOwner = ownerCombo.getValue();
-                    if (newOwner == null || newOwner.isBlank()) return;
-                    
-                    // Don't trigger if it's the same as current
-                    if (newOwner.equals(item.owner)) return;
-
-                    ownerCombo.setDisable(true);
-                    new Thread(() -> {
-                        try {
-                            Tasks.assignTask(
-                                    Config.getRequestsUri(),
-                                    Config.getResponsesUri(),
-                                    item.listId,
-                                    item.id,
-                                    newOwner
-                            );
-                            Platform.runLater(() -> {
-                                ownerCombo.setDisable(false);
-                                Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
-                            });
-                        } catch (Exception ex) {
-                            System.out.println("[CLIENT] ERROR assigning task:");
-                            ex.printStackTrace();
-                            Platform.runLater(() -> ownerCombo.setDisable(false));
-                        }
-                    }, "assign-task").start();
-                });
-
-                // Delete handler
-                deleteButton.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
-                    evt.consume(); // prevent row click selection
-
-                    Helpers.TaskEntry item = getItem();
-                    if (item == null) return;
-
-                    // Show confirmation dialog
-                    Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                    confirmAlert.setTitle("Delete Task");
-                    confirmAlert.setHeaderText("Are you sure you want to delete this task?");
-                    confirmAlert.setContentText("Task: " + item.title + "\nThis action cannot be undone.");
-                    
-                    confirmAlert.showAndWait().ifPresent(response -> {
-                        if (response == ButtonType.OK) {
-                            deleteButton.setDisable(true);
-
-                            new Thread(() -> {
-                                try {
-                                    Tasks.deleteTask(
-                                            Config.getRequestsUri(),
-                                            Config.getResponsesUri(),
-                                            item.id
-                                    );
-
-                                    Platform.runLater(() -> {
-                                        deleteButton.setDisable(false);
-                                        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
-                                    });
-
-                                } catch (Exception ex) {
-                                    System.out.println("[CLIENT] ERROR deleting task:");
-                                    ex.printStackTrace();
-                                    Platform.runLater(() -> deleteButton.setDisable(false));
-                                }
-                            }, "delete-task").start();
-                        }
-                    });
-                });
-            }
-
-            @Override
-            protected void updateItem(Helpers.TaskEntry item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty || item == null) {
-                    setGraphic(null);
-                    return;
-                }
-
-                // Set task name
-                taskLabel.setText(item.nameToString());
-                taskLabel.setTooltip(new Tooltip(item.nameToString()));
-                
-                // Set status dropdown value
-                try {
-                    statusCombo.setValue(TaskStatus.valueOf(item.status));
-                } catch (Exception e) {
-                    statusCombo.setValue(null);
-                }
-                
-                // Set due date value
-                try {
-                    if (item.dueDate != null && !item.dueDate.isBlank()) {
-                        duePicker.setValue(LocalDate.parse(item.dueDate));
-                    } else {
-                        duePicker.setValue(null);
-                    }
-                } catch (Exception e) {
-                    duePicker.setValue(null);
-                }
-                
-                // Set owner dropdown value
-                if (item.owner != null && !item.owner.isBlank()) {
-                    ownerCombo.setValue(item.owner);
-                } else {
-                    ownerCombo.setValue(null);
-                }
-
-                setGraphic(row);
-            }
-        });
+        applyTaskColumns(header, tasksView, initialVisibleColumns, sortState, refreshTasks);
 
         // Load tasks initially
-        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+        refreshTasks.run();
+
+        // Apply per-list stored column settings (async)
+        new Thread(() -> {
+            try {
+                String json = Lists.getTaskColumnsJsonForList(Config.getTodoListsUri(), listId);
+                List<Column<Helpers.TaskEntry>> desired = filterTaskColumnsByIds(allTaskColumns, parseColumnIds(json));
+                Platform.runLater(() -> applyTaskColumns(header, tasksView, desired, sortState, refreshTasks));
+            } catch (Exception ex) {
+                // Keep default columns on error
+            }
+        }, "load-list-columns").start();
 
         // "+ Add new task" link under the table
         Hyperlink addTaskLink = new Hyperlink("+  Add new task");
@@ -375,22 +116,27 @@ public class D_TodoListView {
 
         Label hint = new Label("Use the dropdown menus to edit status, due date, and owner for each task.");
         hint.getStyleClass().add("todolist-hint");
-        
-        
-        HBox topBar = new HBox(returnButton);
-        topBar.setAlignment(Pos.TOP_RIGHT);
-        topBar.setPadding(new Insets(0, 0, 10, 0));
-        topBar.setMaxWidth(Double.MAX_VALUE); // allow it to stretch
 
         VBox titleSection = new VBox(5, title, info);
         titleSection.setAlignment(Pos.TOP_CENTER);
+
+        VBox table = new VBox(0, header, tasksView);
+        VBox.setVgrow(tasksView, javafx.scene.layout.Priority.ALWAYS);
+        table.minWidthProperty().bind(header.minWidthProperty());
+
+        ScrollPane horizontalScroll = new ScrollPane(table);
+        horizontalScroll.setPannable(true);
+        // Fill remaining space when table is narrow; still allows scrolling when wider than the viewport.
+        horizontalScroll.setFitToWidth(true);
+        horizontalScroll.setFitToHeight(false);
+        horizontalScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        // Vertical scrolling remains within the ListView.
+        horizontalScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         
         VBox root = new VBox(
-                topBar,
                 titleSection,
                 new Label(""),
-                header,
-                tasksView,
+            horizontalScroll,
                 addTaskLink,
                 hint
         );
@@ -404,24 +150,244 @@ public class D_TodoListView {
     }
     // Refresh tasks view when notification received
     public void autoRefreshTasks() {
-        Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId);
+        reloadTasks();
     }
 
-    // Helper method to create status cells with CSS styling
-    private ListCell<TaskStatus> createStatusCell() {
-        return new ListCell<>() {
-            @Override
-            protected void updateItem(TaskStatus status, boolean empty) {
-                super.updateItem(status, empty);
-                getStyleClass().removeAll("status-NOT_STARTED", "status-IN_PROGRESS", "status-DELAYED", "status-NEED_HELP", "status-DONE");
-                if (empty || status == null) {
-                    setText(null);
-                } else {
-                    setText(status.name());
-                    getStyleClass().add("status-" + status.name());
+    private void reloadTasks() {
+        Helpers.TaskEntry selected = tasksView.getSelectionModel().getSelectedItem();
+        final String previouslySelectedId = (selected != null) ? selected.id : null;
+
+        Tasks.loadTasksForList(Config.getTasksUri(), listId, entries -> {
+            allTasks = (entries != null) ? entries : List.of();
+            applyTaskFilters();
+
+            if (previouslySelectedId != null) {
+                for (Helpers.TaskEntry e : tasksView.getItems()) {
+                    if (e != null && previouslySelectedId.equals(e.id)) {
+                        tasksView.getSelectionModel().select(e);
+                        break;
+                    }
                 }
             }
+        });
+    }
+
+    private void applyTaskFilters() {
+        List<Helpers.TaskEntry> filtered = new ArrayList<>();
+        for (Helpers.TaskEntry e : allTasks) {
+            if (e == null) continue;
+
+            if (!matchesEmptyFilter(e.title, titleFilter)) {
+                continue;
+            }
+
+            if (ownerFilter != null && !"All".equals(ownerFilter)) {
+                if (e.owner == null || !ownerFilter.equals(e.owner)) {
+                    continue;
+                }
+            }
+
+            if (yearFilter != null && e.year != yearFilter) {
+                continue;
+            }
+
+            if (priorityFilter != null && e.priority != priorityFilter) {
+                continue;
+            }
+
+            if (!matchesEmptyFilter(e.dueDate, dueDateFilter)) {
+                continue;
+            }
+
+            if (!matchesEmptyFilter(e.location, locationFilter)) {
+                continue;
+            }
+
+            if (!matchesEmptyFilter(e.description, descriptionFilter)) {
+                continue;
+            }
+
+            if (statusFilter != null) {
+                String s = e.status;
+                if (s == null || s.isBlank()) {
+                    continue;
+                }
+                try {
+                    if (TaskStatus.valueOf(s.trim().toUpperCase()) != statusFilter) {
+                        continue;
+                    }
+                } catch (Exception ex) {
+                    continue;
+                }
+            }
+
+            filtered.add(e);
+        }
+
+        tasksView.getItems().setAll(filtered);
+    }
+
+    private static boolean matchesEmptyFilter(String value, EmptyFilter filter) {
+        if (filter == null || filter == EmptyFilter.ALL) return true;
+        boolean empty = value == null || value.isBlank();
+        return switch (filter) {
+            case EMPTY -> empty;
+            case NOT_EMPTY -> !empty;
+            default -> true;
         };
+    }
+
+    public void openFilterDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Filter tasks");
+
+        ComboBox<String> titleCombo = new ComboBox<>();
+        titleCombo.getItems().addAll("All", "Empty", "Not empty");
+        titleCombo.setValue(switch (titleFilter) {
+            case EMPTY -> "Empty";
+            case NOT_EMPTY -> "Not empty";
+            default -> "All";
+        });
+
+        ComboBox<String> ownerCombo = new ComboBox<>();
+        ownerCombo.setPrefWidth(240);
+        Users.loadUsersIntoComboBox(ownerCombo, Config.getUsersUri(), true);
+        ownerCombo.setValue(ownerFilter != null ? ownerFilter : "All");
+
+        TextField yearField = new TextField(yearFilter != null ? Integer.toString(yearFilter) : "");
+        yearField.setPromptText("Year (blank = All)");
+
+        ComboBox<String> priorityCombo = new ComboBox<>();
+        priorityCombo.getItems().add("All");
+        for (int p = 1; p <= 10; p++) {
+            priorityCombo.getItems().add(Integer.toString(p));
+        }
+        priorityCombo.setValue(priorityFilter != null ? Integer.toString(priorityFilter) : "All");
+
+        ComboBox<String> statusCombo = new ComboBox<>();
+        statusCombo.getItems().add("All");
+        for (TaskStatus s : TaskStatus.values()) {
+            statusCombo.getItems().add(s.name());
+        }
+        statusCombo.setValue(statusFilter != null ? statusFilter.name() : "All");
+
+        ComboBox<String> dueDateCombo = new ComboBox<>();
+        dueDateCombo.getItems().addAll("All", "Empty", "Not empty");
+        dueDateCombo.setValue(switch (dueDateFilter) {
+            case EMPTY -> "Empty";
+            case NOT_EMPTY -> "Not empty";
+            default -> "All";
+        });
+
+        ComboBox<String> locationCombo = new ComboBox<>();
+        locationCombo.getItems().addAll("All", "Empty", "Not empty");
+        locationCombo.setValue(switch (locationFilter) {
+            case EMPTY -> "Empty";
+            case NOT_EMPTY -> "Not empty";
+            default -> "All";
+        });
+
+        ComboBox<String> descriptionCombo = new ComboBox<>();
+        descriptionCombo.getItems().addAll("All", "Empty", "Not empty");
+        descriptionCombo.setValue(switch (descriptionFilter) {
+            case EMPTY -> "Empty";
+            case NOT_EMPTY -> "Not empty";
+            default -> "All";
+        });
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+        grid.addRow(0, new Label("Name"), titleCombo);
+        grid.addRow(1, new Label("Owner"), ownerCombo);
+        grid.addRow(2, new Label("Year"), yearField);
+        grid.addRow(3, new Label("Priority"), priorityCombo);
+        grid.addRow(4, new Label("Status"), statusCombo);
+        grid.addRow(5, new Label("Due date"), dueDateCombo);
+        grid.addRow(6, new Label("Location"), locationCombo);
+        grid.addRow(7, new Label("Description"), descriptionCombo);
+
+        dialog.getDialogPane().setContent(grid);
+        ButtonType apply = new ButtonType("Apply", ButtonBar.ButtonData.OK_DONE);
+        ButtonType clear = new ButtonType("Clear", ButtonBar.ButtonData.OTHER);
+        dialog.getDialogPane().getButtonTypes().addAll(apply, clear, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(btn -> {
+            if (btn == clear) {
+                ownerFilter = "All";
+                yearFilter = null;
+                priorityFilter = null;
+                statusFilter = null;
+                titleFilter = EmptyFilter.ALL;
+                dueDateFilter = EmptyFilter.ALL;
+                locationFilter = EmptyFilter.ALL;
+                descriptionFilter = EmptyFilter.ALL;
+                applyTaskFilters();
+                return;
+            }
+            if (btn != apply) return;
+
+            titleFilter = switch (titleCombo.getValue()) {
+                case "Empty" -> EmptyFilter.EMPTY;
+                case "Not empty" -> EmptyFilter.NOT_EMPTY;
+                default -> EmptyFilter.ALL;
+            };
+
+            String ownerVal = ownerCombo.getValue();
+            ownerFilter = (ownerVal == null || ownerVal.isBlank()) ? "All" : ownerVal;
+
+            String yearText = yearField.getText();
+            if (yearText == null || yearText.isBlank()) {
+                yearFilter = null;
+            } else {
+                try {
+                    yearFilter = Integer.parseInt(yearText.trim());
+                } catch (NumberFormatException ex) {
+                    yearFilter = null;
+                }
+            }
+
+            String prioVal = priorityCombo.getValue();
+            if (prioVal == null || prioVal.isBlank() || "All".equals(prioVal)) {
+                priorityFilter = null;
+            } else {
+                try {
+                    priorityFilter = Integer.parseInt(prioVal);
+                } catch (NumberFormatException ex) {
+                    priorityFilter = null;
+                }
+            }
+
+            String statusVal = statusCombo.getValue();
+            if (statusVal == null || statusVal.isBlank() || "All".equals(statusVal)) {
+                statusFilter = null;
+            } else {
+                try {
+                    statusFilter = TaskStatus.valueOf(statusVal.trim().toUpperCase());
+                } catch (Exception ex) {
+                    statusFilter = null;
+                }
+            }
+
+            dueDateFilter = switch (dueDateCombo.getValue()) {
+                case "Empty" -> EmptyFilter.EMPTY;
+                case "Not empty" -> EmptyFilter.NOT_EMPTY;
+                default -> EmptyFilter.ALL;
+            };
+            locationFilter = switch (locationCombo.getValue()) {
+                case "Empty" -> EmptyFilter.EMPTY;
+                case "Not empty" -> EmptyFilter.NOT_EMPTY;
+                default -> EmptyFilter.ALL;
+            };
+            descriptionFilter = switch (descriptionCombo.getValue()) {
+                case "Empty" -> EmptyFilter.EMPTY;
+                case "Not empty" -> EmptyFilter.NOT_EMPTY;
+                default -> EmptyFilter.ALL;
+            };
+
+            applyTaskFilters();
+        });
     }
 
     private void showCreateTaskDialog() {
@@ -444,9 +410,7 @@ public class D_TodoListView {
                             "",  
                             ""
                     );
-                    Platform.runLater(() ->
-                            Tasks.loadTasksForList(tasksView, Config.getTasksUri(), listId)
-                    );
+                    Platform.runLater(this::reloadTasks);
                 } catch (Exception ex) {
                     System.out.println("[CLIENT] ERROR creating task:");
                     ex.printStackTrace();
@@ -454,17 +418,494 @@ public class D_TodoListView {
             }, "create-task").start();
         });
     }
-    
-    /**
-     * Update sort indicators on column headers
-     */
-    private void updateSortIndicators(Label activeHeader, Label header2, Label header3, Label header4) {
-        // Highlight active header
-        activeHeader.setStyle("-fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: #007bff;");
-        
-        // Reset other headers
-        header2.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-        header3.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-        header4.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+
+    private List<Column<Helpers.TaskEntry>> getAllTaskColumns() {
+        return List.of(
+                new TaskReorderColumn(),
+                new TaskTitleColumn(),
+                Priority.forTasks(),
+                Year.forTasks(),
+                Location.forTasks(),
+                Description.forTasks(),
+                new TaskStatusColumn(),
+                new TaskDueDateColumn(),
+                new TaskOwnerColumn(),
+                new TaskDeleteColumn()
+        );
+    }
+
+    private List<String> parseColumnIds(String json) {
+        List<String> defaultIds = ensurePinnedTaskColumnOrder(getAllTaskColumns().stream().map(Column::id).toList());
+        if (json == null || json.isBlank()) return defaultIds;
+        try {
+            List<String> parsed = GSON.fromJson(json, STRING_LIST_TYPE);
+            if (parsed == null || parsed.isEmpty()) return defaultIds;
+            return ensurePinnedTaskColumnOrder(parsed);
+        } catch (Exception e) {
+            return defaultIds;
+        }
+    }
+
+    private List<String> ensurePinnedTaskColumnOrder(List<String> ids) {
+        List<String> allowedIds = getAllTaskColumns().stream().map(Column::id).toList();
+        Set<String> allowed = new LinkedHashSet<>(allowedIds);
+
+        List<String> cleaned = new ArrayList<>();
+        if (ids != null) {
+            for (String id : ids) {
+                if (id == null) continue;
+                if (!allowed.contains(id)) continue;
+                if (cleaned.contains(id)) continue;
+                cleaned.add(id);
+            }
+        }
+
+        cleaned.remove(PINNED_REORDER_ID);
+        cleaned.remove(PINNED_TITLE_ID);
+        cleaned.remove(PINNED_DELETE_ID);
+        cleaned.add(0, PINNED_TITLE_ID);
+        cleaned.add(0, PINNED_REORDER_ID);
+
+        // Delete is always the last column.
+        cleaned.add(PINNED_DELETE_ID);
+        return cleaned;
+    }
+
+    private List<Column<Helpers.TaskEntry>> filterTaskColumnsByIds(List<Column<Helpers.TaskEntry>> all, List<String> ids) {
+        List<String> desired = ensurePinnedTaskColumnOrder(ids);
+        java.util.Map<String, Column<Helpers.TaskEntry>> byId = new java.util.HashMap<>();
+        for (Column<Helpers.TaskEntry> col : all) {
+            byId.put(col.id(), col);
+        }
+
+        List<Column<Helpers.TaskEntry>> result = new ArrayList<>();
+        for (String id : desired) {
+            Column<Helpers.TaskEntry> col = byId.get(id);
+            if (col != null) {
+                result.add(col);
+            }
+        }
+        if (result.isEmpty()) {
+            result.addAll(all);
+        }
+        return result;
+    }
+
+    private void applyTaskColumns(
+            HBox header,
+            ListView<Helpers.TaskEntry> view,
+            List<Column<Helpers.TaskEntry>> visibleColumns,
+            SortState<Helpers.TaskEntry> sortState,
+            Runnable refreshTasks) {
+
+        List<javafx.scene.Node> headerNodes = new ArrayList<>();
+        List<Label> headerLabels = new ArrayList<>();
+        for (Column<Helpers.TaskEntry> col : visibleColumns) {
+            javafx.scene.Node headerNode = col.createHeader(new ColumnHeaderContext<>(
+                    view,
+                    requested -> sortState.requestSort(requested, view, headerLabels)
+            ));
+
+            if (PINNED_TITLE_ID.equals(col.id())) {
+                HBox.setHgrow(headerNode, javafx.scene.layout.Priority.ALWAYS);
+                if (headerNode instanceof Region r) {
+                    r.setMaxWidth(Double.MAX_VALUE);
+                }
+            }
+            if (headerNode instanceof Label l) {
+                l.setUserData(col);
+                headerLabels.add(l);
+            }
+            headerNodes.add(headerNode);
+        }
+        header.getChildren().setAll(headerNodes);
+
+        double tableWidth = 0;
+        for (Column<Helpers.TaskEntry> col : visibleColumns) {
+            tableWidth += col.prefWidth();
+        }
+        tableWidth += header.getSpacing() * Math.max(0, visibleColumns.size() - 1);
+        header.setMinWidth(tableWidth);
+        header.setPrefWidth(tableWidth);
+        view.setMinWidth(tableWidth);
+        view.setPrefWidth(tableWidth);
+
+        view.setCellFactory(lv -> new ListCell<>() {
+            private final HBox row;
+            private final List<ColumnCell<Helpers.TaskEntry>> cells;
+            private final ContextMenu contextMenu = new ContextMenu();
+            private javafx.scene.Node reorderHandle;
+
+            {
+                cells = new ArrayList<>();
+                List<javafx.scene.Node> cellNodes = new ArrayList<>();
+                for (Column<Helpers.TaskEntry> col : visibleColumns) {
+                    ColumnCell<Helpers.TaskEntry> cellPart = col.createCell(new ColumnCellContext<>(this, refreshTasks));
+                    cells.add(cellPart);
+                    javafx.scene.Node n = cellPart.node();
+
+                    StackPane wrapper = new StackPane(n);
+                    wrapper.setAlignment(Pos.CENTER);
+                    wrapper.setMinWidth(col.prefWidth());
+                    wrapper.setPrefWidth(col.prefWidth());
+                    wrapper.setMaxWidth(col.prefWidth());
+
+                    if (PINNED_REORDER_ID.equals(col.id())) {
+                        reorderHandle = n;
+                    }
+
+                    if (PINNED_TITLE_ID.equals(col.id())) {
+                        HBox.setHgrow(wrapper, javafx.scene.layout.Priority.ALWAYS);
+                        wrapper.setMaxWidth(Double.MAX_VALUE);
+                        if (n instanceof Region r) {
+                            r.setMaxWidth(Double.MAX_VALUE);
+                        }
+                    }
+
+                    cellNodes.add(wrapper);
+                }
+                row = new HBox(COLUMN_GAP, cellNodes.toArray(javafx.scene.Node[]::new));
+                row.setAlignment(Pos.CENTER_LEFT);
+
+                // Drag start only from the reorder handle icon
+                if (reorderHandle != null) {
+                    reorderHandle.setOnDragDetected(evt -> {
+                        Helpers.TaskEntry item = getItem();
+                        if (item == null) return;
+
+                        Dragboard db = reorderHandle.startDragAndDrop(TransferMode.MOVE);
+                        ClipboardContent content = new ClipboardContent();
+                        content.putString(item.id);
+                        db.setContent(content);
+
+                        try {
+                            db.setDragView(row.snapshot(null, null));
+                        } catch (Exception ignored) {
+                        }
+
+                        setOpacity(0.4);
+                        evt.consume();
+                    });
+                }
+
+                setOnDragDone(evt -> {
+                    setOpacity(1.0);
+                    row.setStyle("");
+                });
+
+                // Accept drop anywhere on the row
+                setOnDragOver(evt -> {
+                    Dragboard db = evt.getDragboard();
+                    if (db.hasString()) {
+                        evt.acceptTransferModes(TransferMode.MOVE);
+                    }
+                    evt.consume();
+                });
+
+                setOnDragEntered(evt -> {
+                    if (evt.getGestureSource() == this) return;
+                    if (evt.getDragboard() != null && evt.getDragboard().hasString() && !isEmpty()) {
+                        row.setStyle("-fx-background-color: rgba(0, 0, 0, 0.08);");
+                    }
+                });
+
+                setOnDragExited(evt -> row.setStyle(""));
+
+                setOnDragDropped(evt -> {
+                    Dragboard db = evt.getDragboard();
+                    if (!db.hasString()) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+
+                    String draggedId = db.getString();
+                    ListView<Helpers.TaskEntry> view = getListView();
+                    if (view == null) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+
+                    int draggedIdx = -1;
+                    for (int i = 0; i < view.getItems().size(); i++) {
+                        Helpers.TaskEntry e = view.getItems().get(i);
+                        if (e != null && draggedId.equals(e.id)) {
+                            draggedIdx = i;
+                            break;
+                        }
+                    }
+                    if (draggedIdx < 0) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+
+                    int targetIdx = isEmpty() ? view.getItems().size() : Math.max(0, getIndex());
+                    Helpers.TaskEntry dragged = view.getItems().remove(draggedIdx);
+                    if (targetIdx > view.getItems().size()) targetIdx = view.getItems().size();
+                    if (targetIdx > draggedIdx) targetIdx--; // account for removal
+                    view.getItems().add(targetIdx, dragged);
+
+                    view.getSelectionModel().select(dragged);
+
+                    evt.setDropCompleted(true);
+                    evt.consume();
+
+                    row.setStyle("");
+
+                    // Persist order
+                    List<String> orderedIds = view.getItems().stream().map(e -> e.id).toList();
+                    new Thread(() -> {
+                        try {
+                            Tasks.setTaskOrderBulk(Config.getRequestsUri(), Config.getResponsesUri(), listId, orderedIds);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }, "persist-task-order").start();
+                });
+
+                MenuItem renameItem = new MenuItem("Rename task");
+                renameItem.setOnAction(evt -> {
+                    Helpers.TaskEntry item = getItem();
+                    if (item == null) return;
+
+                    TextInputDialog dialog = new TextInputDialog(item.title);
+                    dialog.setTitle("Rename Task");
+                    dialog.setHeaderText("Rename task");
+                    dialog.setContentText("New name:");
+
+                    dialog.showAndWait().ifPresent(newTitle -> {
+                        if (newTitle == null) return;
+                        String trimmed = newTitle.trim();
+                        if (trimmed.isBlank() || trimmed.equals(item.title)) return;
+
+                        new Thread(() -> {
+                            try {
+                                Tasks.renameTask(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, trimmed);
+                                Platform.runLater(refreshTasks);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }, "rename-task").start();
+                    });
+                });
+                contextMenu.getItems().add(renameItem);
+            }
+
+            @Override
+            protected void updateItem(Helpers.TaskEntry item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setContextMenu(null);
+                    return;
+                }
+
+                for (ColumnCell<Helpers.TaskEntry> c : cells) {
+                    c.update(item);
+                }
+
+                setGraphic(row);
+                setContextMenu(contextMenu);
+            }
+        });
+
+        view.refresh();
+    }
+
+    private void showTaskColumnDialog() {
+        List<Column<Helpers.TaskEntry>> all = this.allTaskColumns != null ? this.allTaskColumns : getAllTaskColumns();
+        HBox header = this.header;
+        SortState<Helpers.TaskEntry> sortState = this.sortState != null ? this.sortState : new SortState<>();
+        Runnable refreshTasks = this.refreshTasks != null ? this.refreshTasks : this::reloadTasks;
+
+        if (header == null) {
+            return;
+        }
+        // Determine current visible ids by inspecting the header labels' userData (in order)
+        List<String> current = new ArrayList<>();
+        for (javafx.scene.Node n : header.getChildren()) {
+            if (n instanceof Label l && l.getUserData() instanceof Column<?> c) {
+                @SuppressWarnings("unchecked")
+                Column<Helpers.TaskEntry> col = (Column<Helpers.TaskEntry>) c;
+                current.add(col.id());
+            }
+        }
+        if (current.isEmpty()) {
+            for (Column<Helpers.TaskEntry> col : all) current.add(col.id());
+        }
+        current = ensurePinnedTaskColumnOrder(current);
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Choose columns");
+        dialog.setHeaderText("Select which columns to show for this list");
+
+        java.util.Map<String, Column<Helpers.TaskEntry>> byId = new java.util.HashMap<>();
+        for (Column<Helpers.TaskEntry> col : all) {
+            byId.put(col.id(), col);
+        }
+
+        class Choice {
+            final Column<Helpers.TaskEntry> col;
+            boolean selected;
+
+            Choice(Column<Helpers.TaskEntry> col, boolean selected) {
+                this.col = col;
+                this.selected = selected;
+            }
+        }
+
+        ListView<Choice> choicesView = new ListView<>();
+        choicesView.setPrefHeight(260);
+
+        Set<String> currentVisible = new LinkedHashSet<>(current);
+        List<String> optionalIds = new ArrayList<>();
+        for (String id : current) {
+            if (PINNED_REORDER_ID.equals(id) || PINNED_TITLE_ID.equals(id) || PINNED_DELETE_ID.equals(id)) continue;
+            if (byId.containsKey(id) && !optionalIds.contains(id)) optionalIds.add(id);
+        }
+        for (Column<Helpers.TaskEntry> col : all) {
+            if (PINNED_REORDER_ID.equals(col.id()) || PINNED_TITLE_ID.equals(col.id()) || PINNED_DELETE_ID.equals(col.id())) continue;
+            if (!optionalIds.contains(col.id())) optionalIds.add(col.id());
+        }
+
+        for (String id : optionalIds) {
+            Column<Helpers.TaskEntry> col = byId.get(id);
+            if (col == null) continue;
+            choicesView.getItems().add(new Choice(col, currentVisible.contains(id)));
+        }
+
+        choicesView.setCellFactory(lv -> new ListCell<>() {
+            private final CheckBox cb = new CheckBox();
+            private final Label dragHandle = new Label("≡");
+            private final HBox row = new HBox(8, dragHandle, cb);
+
+            {
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+
+                dragHandle.setMinWidth(18);
+                dragHandle.setPrefWidth(18);
+                dragHandle.setAlignment(Pos.CENTER);
+                dragHandle.setStyle("-fx-text-fill: #666; -fx-cursor: open-hand; -fx-font-size: 14px;");
+
+                dragHandle.setOnDragDetected(evt -> {
+                    if (getItem() == null) return;
+                    Dragboard db = startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent cc = new ClipboardContent();
+                    cc.putString(Integer.toString(getIndex()));
+                    db.setContent(cc);
+
+                    try {
+                        db.setDragView(snapshot(null, null));
+                    } catch (Exception ignored) {
+                    }
+                    evt.consume();
+                });
+
+                setOnDragOver(evt -> {
+                    Dragboard db = evt.getDragboard();
+                    if (db.hasString()) {
+                        evt.acceptTransferModes(TransferMode.MOVE);
+                    }
+                    evt.consume();
+                });
+
+                setOnDragEntered(evt -> {
+                    if (evt.getGestureSource() == this) return;
+                    if (evt.getDragboard() != null && evt.getDragboard().hasString() && !isEmpty()) {
+                        setStyle("-fx-background-color: rgba(0, 0, 0, 0.08);");
+                    }
+                });
+
+                setOnDragExited(evt -> setStyle(""));
+
+                setOnDragDropped(evt -> {
+                    Dragboard db = evt.getDragboard();
+                    if (!db.hasString()) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+
+                    int from;
+                    try {
+                        from = Integer.parseInt(db.getString());
+                    } catch (Exception e) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+                    int to = getIndex();
+                    if (from == to || from < 0 || from >= choicesView.getItems().size()) {
+                        evt.setDropCompleted(false);
+                        evt.consume();
+                        return;
+                    }
+
+                    Choice moved = choicesView.getItems().remove(from);
+                    if (to > choicesView.getItems().size()) to = choicesView.getItems().size();
+                    choicesView.getItems().add(to, moved);
+
+                    evt.setDropCompleted(true);
+                    evt.consume();
+                });
+
+                setOnDragDone(evt -> setStyle(""));
+            }
+
+            @Override
+            protected void updateItem(Choice item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
+                String label = item.col.title().isBlank() ? "Delete" : item.col.title();
+                cb.setText(label);
+                cb.setSelected(item.selected);
+                cb.setOnAction(e -> item.selected = cb.isSelected());
+                setGraphic(row);
+            }
+        });
+
+        Label pinnedNote = new Label("Pinned: reorder handle + task name (always visible) • Delete is always last");
+        VBox content = new VBox(10, pinnedNote, choicesView);
+        content.setPadding(new Insets(10));
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(btn -> {
+            if (btn != ButtonType.OK) return;
+
+            List<String> selectedIds = new ArrayList<>();
+            selectedIds.add(PINNED_REORDER_ID);
+            selectedIds.add(PINNED_TITLE_ID);
+            for (Choice c : choicesView.getItems()) {
+                if (c.selected) {
+                    selectedIds.add(c.col.id());
+                }
+            }
+
+            // Always include delete as the last column.
+            selectedIds.add(PINNED_DELETE_ID);
+
+            String json = GSON.toJson(selectedIds);
+            new Thread(() -> {
+                try {
+                    Lists.setTaskColumnsForList(Config.getRequestsUri(), Config.getResponsesUri(), listId, json);
+                    List<Column<Helpers.TaskEntry>> desired = filterTaskColumnsByIds(all, selectedIds);
+                    Platform.runLater(() -> applyTaskColumns(header, tasksView, desired, sortState, refreshTasks));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }, "save-list-columns").start();
+        });
+    }
+
+    public void openColumnsDialog() {
+        showTaskColumnDialog();
     }
 }

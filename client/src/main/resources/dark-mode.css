@@ -1,0 +1,244 @@
+/* Dark Mode Theme Overrides */
+
+/* Root backgrounds */
+.root {
+    -fx-base: #1e1e1e;
+    -fx-background: #1e1e1e;
+}
+
+.welcome-screen,
+.login-root,
+.mainmenu-root,
+.todolist-root {
+    -fx-background-color: #1e1e1e;
+}
+
+/* Text colors */
+.welcome-title,
+.login-title,
+.mainmenu-title,
+.todolist-title {
+    -fx-text-fill: #e0e0e0;
+}
+
+.welcome-tagline,
+.login-root,
+.mainmenu-root,
+.todolist-root,
+Label {
+    -fx-text-fill: #c0c0c0;
+}
+
+.todolist-subtitle {
+    -fx-text-fill: #a0a0a0;
+}
+
+.todolist-meta {
+    -fx-text-fill: #808080;
+}
+
+/* Input fields */
+.login-textfield,
+.text-field {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+    -fx-border-color: #404040;
+}
+
+.login-textfield:focused,
+.text-field:focused {
+    -fx-border-color: #707070;
+}
+
+/* Buttons */
+.button {
+    -fx-background-color: #000000;
+    -fx-text-fill: white;
+    -fx-border-color: #404040;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.button:hover {
+    -fx-background-color: #1a1a1a;
+}
+
+.primary-button {
+    -fx-background-color: #000000;
+}
+
+.primary-button:hover {
+    -fx-background-color: #1a1a1a;
+}
+
+.go-back-button {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #404040;
+}
+
+.go-back-button:hover {
+    -fx-background-color: #3d3d3d;
+    -fx-border-color: #606060;
+}
+
+.danger-button {
+    -fx-background-color: #e53935;
+}
+
+.danger-button:hover {
+    -fx-background-color: #c62828;
+}
+
+/* Sidebar styling */
+.sidebar {
+    -fx-background-color: #252525;
+    -fx-border-color: #3a3a3a;
+    -fx-border-width: 0 0 0 1;
+}
+
+.sidebar-button {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #404040;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8;
+}
+
+.sidebar-button:hover {
+    -fx-background-color: #3d3d3d;
+    -fx-border-color: #707070;
+    -fx-cursor: hand;
+}
+
+.sidebar-button:pressed {
+    -fx-background-color: #1d1d1d;
+}
+
+/* ListView and ComboBox */
+.list-view,
+.combo-box {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #404040;
+}
+
+.list-cell {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+}
+
+.list-cell:hover {
+    -fx-background-color: #3d3d3d;
+}
+
+.list-cell:selected {
+    -fx-background-color: #000000;
+    -fx-text-fill: white;
+}
+
+/* Make ComboBox selection highlight neutral (not bright blue) */
+.combo-box-base,
+.combo-box {
+    -fx-background-color: #000000;
+    -fx-border-color: #404040;
+}
+
+.combo-box .list-cell:filled:selected,
+.combo-box .list-cell:filled:selected:hover,
+.combo-box-popup .list-cell:filled:selected,
+.combo-box-popup .list-cell:filled:selected:hover {
+    -fx-background-color: #000000;
+    -fx-text-fill: white;
+}
+
+/* Column delete buttons should not inherit blue-looking button styling */
+.list-col-delete-button,
+.task-col-delete-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.list-col-delete-button:hover,
+.task-col-delete-button:hover {
+    -fx-background-color: #1a1a1a;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #2d2d2d;
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #3d3d3d;
+}
+
+/* Date picker */
+.date-picker {
+    -fx-background-color: #2d2d2d;
+}
+
+.date-picker .text-field {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+}
+
+.date-picker-popup {
+    -fx-background-color: #2d2d2d;
+}
+
+/* Headers */
+.list-header {
+    -fx-text-fill: #a0a0a0;
+}
+
+/* Links */
+.create-link {
+    -fx-text-fill: #4a90e2;
+}
+
+.create-link:hover {
+    -fx-text-fill: #357abd;
+}
+
+.create-new-item {
+    -fx-text-fill: #4a90e2;
+}
+
+/* Keep status colors vibrant in dark mode */
+.status-NOT_STARTED {
+    -fx-text-fill: #ff6b6b;
+}
+
+.status-IN_PROGRESS {
+    -fx-text-fill: #4ecdc4;
+}
+
+.status-DELAYED {
+    -fx-text-fill: #ffd93d;
+}
+
+.status-NEED_HELP {
+    -fx-text-fill: #bb86fc;
+}
+
+.status-DONE {
+    -fx-text-fill: #6bcf7f;
+}
+
+/* Dialog styling */
+.dialog-pane {
+    -fx-background-color: #2d2d2d;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #e0e0e0;
+}
+
+.dialog-pane .button {
+    -fx-background-color: #4a90e2;
+    -fx-text-fill: white;
+}

@@ -73,7 +73,7 @@ public class ServerHandlerServiceTest {
     @Test
     public void testTasksSpaceCanStoreTuple() throws Exception {
         Space tasks = new SequentialSpace();
-        tasks.put("l1", "task123", "Buy milk", "John", "TODO", "2025-12-12");
+        tasks.put("l1", "task123", "Buy milk", "John", "TODO", "2025-12-12", 5, 0, 0);
 
         Object[] tuple = tasks.get(
                 new ActualField("l1"),
@@ -81,7 +81,10 @@ public class ServerHandlerServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class));
 
         assertNotNull(tuple, "Task should be stored");
         assertEquals("Buy milk", tuple[2], "Title should be 'Buy milk'");

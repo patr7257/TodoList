@@ -70,12 +70,12 @@ class PersistenceServiceTest {
         users.put("Alice");
         users.put("Bob");
         
-        todoLists.put("l1", "Shopping List", 50);
-        todoLists.put("l2", "Work Tasks", 75);
+        todoLists.put("l1", "Shopping List", 50, "Alice", "", 3, 0, 0, "", "");
+        todoLists.put("l2", "Work Tasks", 75, "Bob", "", 7, 0, 1, "", "");
         
-        tasks.put("l1", "t1", "Buy milk", "Alice", "NOT_STARTED", "2026-01-20");
-        tasks.put("l1", "t2", "Buy bread", "Bob", "DONE", "2026-01-19");
-        tasks.put("l2", "t3", "Write report", "Alice", "IN_PROGRESS", "");
+        tasks.put("l1", "t1", "Buy milk", "Alice", "NOT_STARTED", "2026-01-20", 2, 0, 0, "", "");
+        tasks.put("l1", "t2", "Buy bread", "Bob", "DONE", "2026-01-19", 9, 0, 1, "", "");
+        tasks.put("l2", "t3", "Write report", "Alice", "IN_PROGRESS", "", 5, 0, 0, "", "");
 
         // Save session
         boolean saved = persistenceService.saveSession(users, todoLists, tasks);
@@ -101,7 +101,14 @@ class PersistenceServiceTest {
         List<Object[]> listTuples = loadedLists.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(Integer.class));
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         assertEquals(2, listTuples.size(), "Should have 2 lists");
         
         Object[] list1 = listTuples.stream()
@@ -111,6 +118,10 @@ class PersistenceServiceTest {
         assertNotNull(list1);
         assertEquals("Shopping List", list1[1]);
         assertEquals(50, list1[2]);
+        assertEquals("Alice", list1[3]);
+        assertEquals(3, list1[5]);
+        assertEquals(0, list1[6]);
+        assertEquals(0, list1[7]);
 
         // Verify tasks
         List<Object[]> taskTuples = loadedTasks.queryAll(
@@ -119,7 +130,12 @@ class PersistenceServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         assertEquals(3, taskTuples.size(), "Should have 3 tasks");
         
         Object[] task1 = taskTuples.stream()
@@ -132,6 +148,9 @@ class PersistenceServiceTest {
         assertEquals("Alice", task1[3]);
         assertEquals("NOT_STARTED", task1[4]);
         assertEquals("2026-01-20", task1[5]);
+        assertEquals(2, task1[6]);
+        assertEquals(0, task1[7]);
+        assertEquals(0, task1[8]);
     }
 
     @Test
@@ -153,27 +172,39 @@ class PersistenceServiceTest {
         assertEquals(0, loadedLists.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(Integer.class)).size());
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class)).size());
         assertEquals(0, loadedTasks.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class)).size());
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class)).size());
     }
 
     @Test
     void testMultipleSaves() throws InterruptedException {
         // First save
         users.put("Alice");
-        todoLists.put("l1", "List 1", 0);
+        todoLists.put("l1", "List 1", 0, "Alice", "", 1, 0, 0, "", "");
         persistenceService.saveSession(users, todoLists, tasks);
 
         // Second save with more data
         users.put("Bob");
-        todoLists.put("l2", "List 2", 50);
-        tasks.put("l1", "t1", "Task 1", "Alice", "NOT_STARTED", "");
+        todoLists.put("l2", "List 2", 50, "Bob", "", 10, 0, 1, "", "");
+        tasks.put("l1", "t1", "Task 1", "Alice", "NOT_STARTED", "", 4, 0, 0, "", "");
         persistenceService.saveSession(users, todoLists, tasks);
 
         // Load and verify latest state
@@ -187,14 +218,26 @@ class PersistenceServiceTest {
         assertEquals(2, loadedLists.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(Integer.class)).size());
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class)).size());
         assertEquals(1, loadedTasks.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class)).size());
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class)).size());
     }
 
     @Test
@@ -227,8 +270,8 @@ class PersistenceServiceTest {
     @Test
     void testTasksWithEmptyFields() throws InterruptedException {
         // Add tasks with empty assignees and due dates
-        tasks.put("l1", "t1", "Unassigned task", "", "NOT_STARTED", "");
-        tasks.put("l1", "t2", "No due date", "Alice", "IN_PROGRESS", "");
+        tasks.put("l1", "t1", "Unassigned task", "", "NOT_STARTED", "", 5, 0, 0, "", "");
+        tasks.put("l1", "t2", "No due date", "Alice", "IN_PROGRESS", "", 5, 0, 1, "", "");
         
         persistenceService.saveSession(users, todoLists, tasks);
 
@@ -242,7 +285,12 @@ class PersistenceServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         
         assertEquals(2, taskTuples.size());
         
@@ -259,8 +307,8 @@ class PersistenceServiceTest {
     void testSpecialCharactersInData() throws InterruptedException {
         // Test with special characters
         users.put("User_With-Special.Chars@123");
-        todoLists.put("l1", "List with émojis 🎉 and quotes \"test\"", 33);
-        tasks.put("l1", "t1", "Task with\nnewlines\tand\ttabs", "User_With-Special.Chars@123", "DONE", "");
+        todoLists.put("l1", "List with émojis 🎉 and quotes \"test\"", 33, "User_With-Special.Chars@123", "", 6, 0, 0, "", "");
+        tasks.put("l1", "t1", "Task with\nnewlines\tand\ttabs", "User_With-Special.Chars@123", "DONE", "", 6, 0, 0, "", "");
 
         persistenceService.saveSession(users, todoLists, tasks);
 
@@ -278,7 +326,14 @@ class PersistenceServiceTest {
         List<Object[]> listTuples = loadedLists.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(Integer.class));
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         assertTrue(((String) listTuples.get(0)[1]).contains("émojis"));
         assertTrue(((String) listTuples.get(0)[1]).contains("🎉"));
 
@@ -288,7 +343,12 @@ class PersistenceServiceTest {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         assertTrue(((String) taskTuples.get(0)[2]).contains("\n"));
         assertTrue(((String) taskTuples.get(0)[2]).contains("\t"));
     }

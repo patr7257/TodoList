@@ -12,14 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HelpersTest {
     @Test
     public void testListEntryToString() {
-        Helpers.ListEntry e = new Helpers.ListEntry("123", "Inbox", 0, 0, 0);
+        Helpers.ListEntry e = new Helpers.ListEntry("123", "Inbox", "", "", 5, 0, 0, "", "", 0, 0, 0);
         assertEquals("123 - Inbox", e.toString());
     }
 
     @Test
     public void testTaskEntryToStringWithOwnerAndDueDate() {
         Helpers.TaskEntry t = new Helpers.TaskEntry(
-                "L1", "T1", "Buy milk", "alice", "OPEN", "2026-02-01"
+            "L1", "T1", "Buy milk", "alice", "OPEN", "2026-02-01", 5, 0, 0, "", ""
         );
 
         String s = t.toString();
@@ -32,7 +32,7 @@ public class HelpersTest {
     @Test
     public void testTaskEntryToStringWithoutOwnerAndDueDate() {
         Helpers.TaskEntry t = new Helpers.TaskEntry(
-                "L1", "T1", "Buy milk", "   ", "OPEN", ""
+            "L1", "T1", "Buy milk", "   ", "OPEN", "", 5, 0, 0, "", ""
         );
         String s = t.toString();
         assertTrue(s.contains("Buy milk"));

@@ -16,7 +16,8 @@ public class ListsTest {
             Lists.createTodoList(
                     "jndi://requests",
                     "jndi://responses",
-                    "   "   // invalid (blank)
+                    "   ",  // invalid (blank)
+                    "alice"
             );
         });
     }
@@ -27,7 +28,8 @@ public class ListsTest {
             Lists.createTodoList(
                     "jndi://requests",
                     "jndi://responses",
-                    null   // invalid
+                    null,   // invalid
+                    "alice"
             );
         });
     }

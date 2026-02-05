@@ -58,17 +58,35 @@ public class Users {
 
     // Load all users into a ComboBox
     public static void loadUsersIntoComboBox(ComboBox<String> usersComboBox, String usersUri) {
+        loadUsersIntoComboBox(usersComboBox, usersUri, false);
+    }
+
+    // Load all users into a ComboBox, optionally including an "All" option.
+    public static void loadUsersIntoComboBox(ComboBox<String> usersComboBox, String usersUri, boolean includeAllOption) {
         new Thread(() -> {
             try {
                 RemoteSpace users = new RemoteSpace(usersUri);
                 List<Object[]> tuples = users.queryAll(new FormalField(String.class));
 
                 Platform.runLater(() -> {
+                    String previousValue = usersComboBox.getValue();
                     usersComboBox.getItems().clear();
+
+                    if (includeAllOption) {
+                        usersComboBox.getItems().add("All");
+                    }
                     for (Object[] t : tuples) {
                         usersComboBox.getItems().add((String) t[0]);
                     }
-                    if (!usersComboBox.getItems().isEmpty() && usersComboBox.getValue() == null) {
+
+                    if (previousValue != null && usersComboBox.getItems().contains(previousValue)) {
+                        usersComboBox.setValue(previousValue);
+                        return;
+                    }
+
+                    if (includeAllOption) {
+                        usersComboBox.setValue("All");
+                    } else if (!usersComboBox.getItems().isEmpty() && usersComboBox.getValue() == null) {
                         usersComboBox.setValue(usersComboBox.getItems().getFirst());
                     }
                 });
@@ -160,5 +178,23 @@ public class Users {
                 Platform.runLater(() -> onError.accept("Error creating user: " + ex.getMessage()));
             }
         }, "create-new-user").start();
+    }
+
+    public static void deleteUser(
+            String requestsUri,
+            String responsesUri,
+            String username) throws Exception {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+
+        Helpers.sendAndWaitForResponse(
+                requestsUri,
+                responsesUri,
+                TupleSpaces.CMD_USER_DELETE,
+                username,
+                "",
+                "",
+                "");
     }
 }

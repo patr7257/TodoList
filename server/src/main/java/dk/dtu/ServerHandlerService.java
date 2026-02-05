@@ -1,8 +1,11 @@
 package dk.dtu;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import dk.dtu.shared.TupleSpaces;
 import java.util.List;
 import java.util.UUID;
+import java.lang.reflect.Type;
 
 import org.jspace.ActualField;
 import org.jspace.FormalField;
@@ -18,6 +21,14 @@ public class ServerHandlerService implements Runnable {
     private final Space responses;
     private final Space notifications;
     private final PersistenceService persistenceService;
+
+    private static final String DEFAULT_TASK_COLUMNS_JSON = "[\"reorder\",\"title\",\"status\",\"dueDate\",\"owner\",\"delete\"]";
+    private static final int DEFAULT_PRIORITY = 5;
+    private static final int DEFAULT_YEAR = 0;
+    private static final int DEFAULT_ORDER_INDEX = 0;
+
+    private static final Gson GSON = new Gson();
+    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
 
     public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests,
             Space responses, Space notifications, PersistenceService persistenceService) {
@@ -54,11 +65,28 @@ public class ServerHandlerService implements Runnable {
                     case TupleSpaces.CMD_TASK_ADD -> handleTaskAdd(req);
                     case TupleSpaces.CMD_TASK_STATUS -> handleTaskStatus(req);
                     case TupleSpaces.CMD_TASK_ASSIGN -> handleTaskAssign(req);
+                    case TupleSpaces.CMD_TASK_UNASSIGN -> handleTaskUnassign(req);
                     case TupleSpaces.CMD_LISTS_GET -> handleListsGet(req);
                     case TupleSpaces.CMD_TASKS_GET -> handleTasksGet(req);
                     case TupleSpaces.CMD_TASK_DUEDATE -> handleTaskDueDate(req);
                     case TupleSpaces.CMD_TASK_DELETE -> handleTaskDelete(req);
                     case TupleSpaces.CMD_LIST_DELETE -> handleListDelete(req);
+                    case TupleSpaces.CMD_LIST_RENAME -> handleListRename(req);
+                    case TupleSpaces.CMD_TASK_RENAME -> handleTaskRename(req);
+                    case TupleSpaces.CMD_LIST_OWNER_SET -> handleListOwnerSet(req);
+                    case TupleSpaces.CMD_LIST_OWNER_CLEAR -> handleListOwnerClear(req);
+                    case TupleSpaces.CMD_LIST_COLUMNS_SET -> handleListColumnsSet(req);
+                    case TupleSpaces.CMD_USER_DELETE -> handleUserDelete(req);
+                    case TupleSpaces.CMD_LIST_PRIORITY_SET -> handleListPrioritySet(req);
+                    case TupleSpaces.CMD_TASK_PRIORITY_SET -> handleTaskPrioritySet(req);
+                    case TupleSpaces.CMD_LIST_YEAR_SET -> handleListYearSet(req);
+                    case TupleSpaces.CMD_TASK_YEAR_SET -> handleTaskYearSet(req);
+                    case TupleSpaces.CMD_LIST_LOCATION_SET -> handleListLocationSet(req);
+                    case TupleSpaces.CMD_LIST_DESCRIPTION_SET -> handleListDescriptionSet(req);
+                    case TupleSpaces.CMD_TASK_LOCATION_SET -> handleTaskLocationSet(req);
+                    case TupleSpaces.CMD_TASK_DESCRIPTION_SET -> handleTaskDescriptionSet(req);
+                    case TupleSpaces.CMD_LIST_ORDER_BULK_SET -> handleListOrderBulkSet(req);
+                    case TupleSpaces.CMD_TASK_ORDER_BULK_SET -> handleTaskOrderBulkSet(req);
                     default -> System.out.println("Unknown command: " + req.cmd());
                 }
             }
@@ -120,13 +148,27 @@ public class ServerHandlerService implements Runnable {
         List<Object[]> all = todoLists.queryAll(
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(Integer.class));
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
 
         for (Object[] l : all) {
             String listId = (String) l[0];
             String listName = (String) l[1];
             int completion = (Integer) l[2];
-            sendOkResponse(req.requestId(), listId, listName, String.valueOf(completion), "");
+            String owner = (String) l[3];
+            String taskColumnsJson = (String) l[4];
+            int priority = (Integer) l[5];
+            int year = (Integer) l[6];
+            int orderIndex = (Integer) l[7];
+            String location = (String) l[8];
+            String description = (String) l[9];
+            sendOkResponse(req.requestId(), listId, listName, String.valueOf(completion), owner + "\t" + taskColumnsJson + "\t" + priority + "\t" + year + "\t" + orderIndex + "\t" + location + "\t" + description);
         }
     }
 
@@ -143,7 +185,12 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
 
         for (Object[] t : tuples) {
             String tListId = (String) t[0];
@@ -154,17 +201,37 @@ public class ServerHandlerService implements Runnable {
             String assignee = (String) t[3];
             String status = (String) t[4];
             String dueDate = (String) t[5];
+            int priority = (Integer) t[6];
+            int year = (Integer) t[7];
+            int orderIndex = (Integer) t[8];
+            String location = (String) t[9];
+            String description = (String) t[10];
 
-            sendOkResponse(req.requestId(), listId, taskId, title + "\t" + assignee, status + "\t" + dueDate);
+            sendOkResponse(req.requestId(), listId, taskId, title + "\t" + assignee, status + "\t" + dueDate + "\t" + priority + "\t" + year + "\t" + orderIndex + "\t" + location + "\t" + description);
         }
         sendOkResponse(req.requestId(), "END", "", "", "");
     }
     
     private void handleListCreate(Request req) throws InterruptedException {
         String providedName = req.getString(0);
+        String owner = req.getString(1, "");
+        String taskColumnsJson = req.getString(2, "");
+        String priorityStr = req.getString(3, "");
+        if (taskColumnsJson == null || taskColumnsJson.isBlank()) {
+            taskColumnsJson = DEFAULT_TASK_COLUMNS_JSON;
+        }
+
+        int priority = DEFAULT_PRIORITY;
+        if (priorityStr != null && !priorityStr.isBlank()) {
+            try {
+                priority = Integer.parseInt(priorityStr.trim());
+            } catch (Exception ignored) {}
+        }
+        priority = clampPriority(priority);
         
         final String listId;
         final String listName;
+        final int orderIndex;
         synchronized (todoLists) {
             int count = Database.getTodoListCount(todoLists);
             listId = "l" + (count + 1);
@@ -172,7 +239,10 @@ public class ServerHandlerService implements Runnable {
                     ? providedName
                     : "New List " + (count + 1);
 
-            todoLists.put(listId, listName, 0);  // Start with 0% completion
+            orderIndex = nextListOrderIndex();
+
+            // Lists: (listId, name, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description)
+            todoLists.put(listId, listName, 0, owner, taskColumnsJson, priority, DEFAULT_YEAR, orderIndex, "", "");  // Start with 0% completion
             counter.getp(new FormalField(Integer.class));
             counter.put(count + 1);
         }
@@ -180,6 +250,46 @@ public class ServerHandlerService implements Runnable {
         System.out.println("List created: " + listName);
         sendOkResponse(req.requestId(), listId, listName, "", "");
         broadcastDataChange("list_create", listId, listName, "");
+    }
+
+    private void handleListRename(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String newName = req.getString(1);
+
+        if (listId == null || listId.isBlank() || newName == null || newName.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, newName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, newName, "OK", "");
+        broadcastDataChange("list_rename", listId, newName, "");
     }
 
     private void handleTaskAdd(Request req) {
@@ -195,7 +305,8 @@ public class ServerHandlerService implements Runnable {
         String taskId = UUID.randomUUID().toString();
         String status = "NOT_STARTED";
         try {
-            tasks.put(listId, taskId, title, assignee, status, dueDate);
+            int orderIndex = nextTaskOrderIndex(listId);
+            tasks.put(listId, taskId, title, assignee, status, dueDate, DEFAULT_PRIORITY, DEFAULT_YEAR, orderIndex, "", "");
             System.out.println("Task added: " + title);
             updateListCompletion(listId);
             sendOkResponse(req.requestId(), listId, taskId, title, status);
@@ -203,6 +314,48 @@ public class ServerHandlerService implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleTaskRename(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String newTitle = req.getString(2);
+
+        if (listId == null || listId.isBlank() || taskId == null || taskId.isBlank() || newTitle == null || newTitle.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", taskId != null ? taskId : "", "");
+            return;
+        }
+
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+        String dueDate = (String) existing[5];
+        int priority = (Integer) existing[6];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+        String description = (String) existing[10];
+
+        tasks.put(listId, taskId, newTitle, assignee, status, dueDate, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, taskId, newTitle, "OK");
+        broadcastDataChange("task_rename", listId, taskId, newTitle);
     }
     
     private void handleTaskStatus(Request req) throws InterruptedException {
@@ -221,7 +374,12 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
         
         if (existing == null) {
             sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
@@ -231,8 +389,13 @@ public class ServerHandlerService implements Runnable {
         String title = (String) existing[2];
         String assignee = (String) existing[3];
         String dueDate = (String) existing[5];
+        int priority = (Integer) existing[6];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+        String description = (String) existing[10];
 
-        tasks.put(listId, taskId, title, assignee, newStatus, dueDate);
+        tasks.put(listId, taskId, title, assignee, newStatus, dueDate, priority, year, orderIndex, location, description);
         updateListCompletion(listId);
         sendOkResponse(req.requestId(), listId, taskId, title, newStatus);
         broadcastDataChange("task_status", listId, newStatus, "");
@@ -264,6 +427,11 @@ public class ServerHandlerService implements Runnable {
                     new FormalField(String.class),
                     new FormalField(String.class),
                     new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
                     new FormalField(String.class));
     
             if (existing == null) {
@@ -274,13 +442,556 @@ public class ServerHandlerService implements Runnable {
             String title = (String) existing[2];
             String status = (String) existing[4];
             String dueDate = (String) existing[5];
+            int priority = (Integer) existing[6];
+            int year = (Integer) existing[7];
+            int orderIndex = (Integer) existing[8];
+            String location = (String) existing[9];
+            String description = (String) existing[10];
     
-            tasks.put(listId, taskId, title, newAssignee, status, dueDate);
+            tasks.put(listId, taskId, title, newAssignee, status, dueDate, priority, year, orderIndex, location, description);
             sendOkResponse(req.requestId(), listId, taskId, newAssignee, "OK");
             broadcastDataChange("task_assign", listId, taskId, newAssignee);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleTaskUnassign(Request req) {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+
+        if (listId == null || taskId == null) {
+            try {
+                sendErrorResponse(req.requestId(), "Invalid parameters", "", "", "");
+            } catch (InterruptedException ignored) {
+            }
+            return;
+        }
+
+        try {
+            Object[] existing = tasks.getp(
+                    new ActualField(listId),
+                    new ActualField(taskId),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+
+            if (existing == null) {
+                sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+                return;
+            }
+
+            String title = (String) existing[2];
+            String status = (String) existing[4];
+            String dueDate = (String) existing[5];
+            int priority = (Integer) existing[6];
+            int year = (Integer) existing[7];
+            int orderIndex = (Integer) existing[8];
+            String location = (String) existing[9];
+            String description = (String) existing[10];
+
+            tasks.put(listId, taskId, title, "", status, dueDate, priority, year, orderIndex, location, description);
+            sendOkResponse(req.requestId(), listId, taskId, "", "OK");
+            broadcastDataChange("task_unassign", listId, taskId, "");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleListOwnerSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String newOwner = req.getString(1);
+
+        if (listId == null || listId.isBlank() || newOwner == null || newOwner.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        Object[] user = users.queryp(new ActualField(newOwner));
+        if (user == null) {
+            sendErrorResponse(req.requestId(), "Unknown user", listId, newOwner, "");
+            return;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, newOwner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, newOwner, "OK", "");
+        broadcastDataChange("list_owner_set", listId, newOwner, "");
+    }
+
+    private void handleListOwnerClear(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+
+        if (listId == null || listId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", "", "", "");
+            return;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, "", taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, "OK", "", "");
+        broadcastDataChange("list_owner_clear", listId, "", "");
+    }
+
+    private void handleListColumnsSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskColumnsJson = req.getString(1, "");
+
+        if (listId == null || listId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", "", "", "");
+            return;
+        }
+        if (taskColumnsJson == null || taskColumnsJson.isBlank()) {
+            taskColumnsJson = DEFAULT_TASK_COLUMNS_JSON;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, "OK", "", "");
+        broadcastDataChange("list_columns_set", listId, taskColumnsJson, "");
+    }
+
+    private void handleListPrioritySet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String priorityStr = req.getString(1);
+
+        if (listId == null || listId.isBlank() || priorityStr == null || priorityStr.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        int priority;
+        try {
+            priority = Integer.parseInt(priorityStr.trim());
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid priority", listId, priorityStr, "");
+            return;
+        }
+        priority = clampPriority(priority);
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        String taskColumnsJson = (String) existing[4];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, String.valueOf(priority), "OK", "");
+        broadcastDataChange("list_priority_set", listId, String.valueOf(priority), "");
+    }
+
+    private void handleListYearSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String yearStr = req.getString(1);
+
+        if (listId == null || listId.isBlank() || yearStr == null || yearStr.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        int year;
+        try {
+            year = Integer.parseInt(yearStr.trim());
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid year", listId, yearStr, "");
+            return;
+        }
+        year = clampYear(year);
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, String.valueOf(year), "OK", "");
+        broadcastDataChange("list_year_set", listId, String.valueOf(year), "");
+    }
+
+    private void handleTaskPrioritySet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String priorityStr = req.getString(2);
+
+        if (listId == null || listId.isBlank() || taskId == null || taskId.isBlank() || priorityStr == null || priorityStr.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", taskId != null ? taskId : "", "");
+            return;
+        }
+
+        int priority;
+        try {
+            priority = Integer.parseInt(priorityStr.trim());
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid priority", listId, taskId, priorityStr);
+            return;
+        }
+        priority = clampPriority(priority);
+
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String title = (String) existing[2];
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+        String dueDate = (String) existing[5];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+        String description = (String) existing[10];
+
+        tasks.put(listId, taskId, title, assignee, status, dueDate, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, taskId, String.valueOf(priority), "OK");
+        broadcastDataChange("task_priority_set", listId, taskId, String.valueOf(priority));
+    }
+
+    private void handleTaskYearSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String yearStr = req.getString(2);
+
+        if (listId == null || listId.isBlank() || taskId == null || taskId.isBlank() || yearStr == null || yearStr.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", taskId != null ? taskId : "", "");
+            return;
+        }
+
+        int year;
+        try {
+            year = Integer.parseInt(yearStr.trim());
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid year", listId, taskId, yearStr);
+            return;
+        }
+        year = clampYear(year);
+
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String title = (String) existing[2];
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+        String dueDate = (String) existing[5];
+        int priority = (Integer) existing[6];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+        String description = (String) existing[10];
+
+        tasks.put(listId, taskId, title, assignee, status, dueDate, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, taskId, String.valueOf(year), "OK");
+        broadcastDataChange("task_year_set", listId, taskId, String.valueOf(year));
+    }
+
+    private void handleListLocationSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String location = req.getString(1, "");
+        if (listId == null || listId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String description = (String) existing[9];
+
+        todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, location, "OK", "");
+        broadcastDataChange("list_location_set", listId, location, "");
+    }
+
+    private void handleListDescriptionSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String description = req.getString(1, "");
+        if (listId == null || listId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        Object[] existing = todoLists.getp(
+                new ActualField(listId),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "List not found", listId, "", "");
+            return;
+        }
+
+        String listName = (String) existing[1];
+        int completion = (Integer) existing[2];
+        String owner = (String) existing[3];
+        String taskColumnsJson = (String) existing[4];
+        int priority = (Integer) existing[5];
+        int year = (Integer) existing[6];
+        int orderIndex = (Integer) existing[7];
+        String location = (String) existing[8];
+
+        todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, "OK", "", "");
+        broadcastDataChange("list_description_set", listId, "", "");
+    }
+
+    private void handleTaskLocationSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String location = req.getString(2, "");
+
+        if (listId == null || listId.isBlank() || taskId == null || taskId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", taskId != null ? taskId : "", "");
+            return;
+        }
+
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String title = (String) existing[2];
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+        String dueDate = (String) existing[5];
+        int priority = (Integer) existing[6];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String description = (String) existing[10];
+
+        tasks.put(listId, taskId, title, assignee, status, dueDate, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, taskId, location, "OK");
+        broadcastDataChange("task_location_set", listId, taskId, location);
+    }
+
+    private void handleTaskDescriptionSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String taskId = req.getString(1);
+        String description = req.getString(2, "");
+
+        if (listId == null || listId.isBlank() || taskId == null || taskId.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid parameters", listId != null ? listId : "", taskId != null ? taskId : "", "");
+            return;
+        }
+
+        Object[] existing = tasks.getp(
+                new ActualField(listId),
+                new ActualField(taskId),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+
+        if (existing == null) {
+            sendErrorResponse(req.requestId(), "Task not found", listId, taskId, "");
+            return;
+        }
+
+        String title = (String) existing[2];
+        String assignee = (String) existing[3];
+        String status = (String) existing[4];
+        String dueDate = (String) existing[5];
+        int priority = (Integer) existing[6];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+
+        tasks.put(listId, taskId, title, assignee, status, dueDate, priority, year, orderIndex, location, description);
+        sendOkResponse(req.requestId(), listId, taskId, "OK", "");
+        broadcastDataChange("task_description_set", listId, taskId, "");
     }
 
     private void handleTaskDueDate(Request req) throws InterruptedException {
@@ -299,7 +1010,12 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class), // title
                 new FormalField(String.class), // assignee
                 new FormalField(String.class), // status
-                new FormalField(String.class)  // dueDate
+            new FormalField(String.class),  // dueDate
+            new FormalField(Integer.class),  // priority
+            new FormalField(Integer.class),  // year
+            new FormalField(Integer.class),  // orderIndex
+            new FormalField(String.class),  // location
+            new FormalField(String.class)  // description
         );
     
         if (existing == null) {
@@ -310,9 +1026,14 @@ public class ServerHandlerService implements Runnable {
         String title = (String) existing[2];
         String assignee = (String) existing[3];
         String status = (String) existing[4];
+        int priority = (Integer) existing[6];
+        int year = (Integer) existing[7];
+        int orderIndex = (Integer) existing[8];
+        String location = (String) existing[9];
+        String description = (String) existing[10];
     
         // uppdatera bara dueDate
-        tasks.put(listId, taskId, title, assignee, status, newDueDate);
+        tasks.put(listId, taskId, title, assignee, status, newDueDate, priority, year, orderIndex, location, description);
     
         sendOkResponse(req.requestId(), listId, taskId, newDueDate, "OK");
         broadcastDataChange("task_duedate", listId, taskId, newDueDate);
@@ -335,7 +1056,12 @@ public class ServerHandlerService implements Runnable {
                 new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(String.class),
-                new FormalField(String.class));
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
 
         if (removed == null) {
             sendErrorResponse(req.requestId(), "Task not found", "", taskId, "");
@@ -359,7 +1085,14 @@ public class ServerHandlerService implements Runnable {
         Object[] removed = todoLists.getp(
                 new ActualField(listId),
                 new FormalField(String.class),
-                new FormalField(Integer.class));
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
                 
         if (removed == null) {
             sendErrorResponse(req.requestId(), "List not found", listId, "", "");
@@ -372,6 +1105,94 @@ public class ServerHandlerService implements Runnable {
         broadcastDataChange("list_delete", listId, removedName, "");
     }
 
+    private void handleUserDelete(Request req) throws InterruptedException {
+        String username = req.getString(0);
+        if (username == null || username.isBlank()) {
+            sendErrorResponse(req.requestId(), "Missing username", "", "", "");
+            return;
+        }
+
+        Object[] user = users.queryp(new ActualField(username));
+        if (user == null) {
+            sendErrorResponse(req.requestId(), "User not found", username, "", "");
+            return;
+        }
+
+        // Prevent deletion if user owns any lists
+        List<Object[]> listTuples = todoLists.queryAll(
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        for (Object[] l : listTuples) {
+            String owner = (String) l[3];
+            if (username.equals(owner)) {
+                sendErrorResponse(req.requestId(), "User is owner of one or more lists", username, "", "");
+                return;
+            }
+        }
+
+        // Remove user tuple
+        users.getp(new ActualField(username));
+
+        // Clear assignee on any tasks assigned to this user
+        List<Object[]> taskTuples = tasks.queryAll(
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+            new FormalField(String.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(Integer.class),
+            new FormalField(String.class),
+            new FormalField(String.class));
+
+        for (Object[] t : taskTuples) {
+            String listId = (String) t[0];
+            String taskId = (String) t[1];
+            String title = (String) t[2];
+            String assignee = (String) t[3];
+            String status = (String) t[4];
+            String dueDate = (String) t[5];
+            int priority = (Integer) t[6];
+            int year = (Integer) t[7];
+            int orderIndex = (Integer) t[8];
+            String location = (String) t[9];
+            String description = (String) t[10];
+
+            if (username.equals(assignee)) {
+                // Remove the old tuple and reinsert updated one
+                Object[] removed = tasks.getp(
+                        new ActualField(listId),
+                        new ActualField(taskId),
+                        new FormalField(String.class),
+                        new FormalField(String.class),
+                        new FormalField(String.class),
+                        new FormalField(String.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(String.class),
+                        new FormalField(String.class));
+                if (removed != null) {
+                    tasks.put(listId, taskId, title, "", status, dueDate, priority, year, orderIndex, location, description);
+                }
+            }
+        }
+
+        sendOkResponse(req.requestId(), username, "DELETED", "OK", "");
+        broadcastDataChange("user_delete", username, "", "");
+    }
+
     // Helper method to calculate and update list completion percentage
     private void updateListCompletion(String listId) {
         try {
@@ -381,6 +1202,11 @@ public class ServerHandlerService implements Runnable {
                     new FormalField(String.class),
                     new FormalField(String.class),
                     new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
                     new FormalField(String.class),
                     new FormalField(String.class));
             
@@ -408,15 +1234,197 @@ public class ServerHandlerService implements Runnable {
             Object[] existingList = todoLists.getp(
                     new ActualField(listId),
                     new FormalField(String.class),
-                    new FormalField(Integer.class));
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
             
             if (existingList != null) {
                 String listName = (String) existingList[1];
-                todoLists.put(listId, listName, completion);
+                String owner = (String) existingList[3];
+                String taskColumnsJson = (String) existingList[4];
+                int priority = (Integer) existingList[5];
+                int year = (Integer) existingList[6];
+                int orderIndex = (Integer) existingList[7];
+                String location = (String) existingList[8];
+                String description = (String) existingList[9];
+                todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description);
             }
         } catch (InterruptedException e) {
             System.err.println("Error updating list completion: " + e.getMessage());
         }
+    }
+
+    private void handleListOrderBulkSet(Request req) throws InterruptedException {
+        String json = req.getString(0);
+        if (json == null || json.isBlank()) {
+            sendErrorResponse(req.requestId(), "Missing order payload", "", "", "");
+            return;
+        }
+
+        List<String> ids;
+        try {
+            ids = GSON.fromJson(json, STRING_LIST_TYPE);
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid order payload", json, "", "");
+            return;
+        }
+        if (ids == null || ids.isEmpty()) {
+            sendErrorResponse(req.requestId(), "Empty order payload", "", "", "");
+            return;
+        }
+
+        for (int i = 0; i < ids.size(); i++) {
+            String listId = ids.get(i);
+            if (listId == null || listId.isBlank()) continue;
+
+            Object[] existing = todoLists.getp(
+                    new ActualField(listId),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+            if (existing == null) continue;
+
+            String listName = (String) existing[1];
+            int completion = (Integer) existing[2];
+            String owner = (String) existing[3];
+            String taskColumnsJson = (String) existing[4];
+            int priority = (Integer) existing[5];
+            int year = (Integer) existing[6];
+            String location = (String) existing[8];
+            String description = (String) existing[9];
+
+            todoLists.put(listId, listName, completion, owner, taskColumnsJson, priority, year, i, location, description);
+        }
+
+        sendOkResponse(req.requestId(), "OK", "", "", "");
+        broadcastDataChange("list_order_bulk_set", "", "", "");
+    }
+
+    private void handleTaskOrderBulkSet(Request req) throws InterruptedException {
+        String listId = req.getString(0);
+        String json = req.getString(1);
+        if (listId == null || listId.isBlank() || json == null || json.isBlank()) {
+            sendErrorResponse(req.requestId(), "Missing parameters", listId != null ? listId : "", "", "");
+            return;
+        }
+
+        List<String> ids;
+        try {
+            ids = GSON.fromJson(json, STRING_LIST_TYPE);
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Invalid order payload", listId, json, "");
+            return;
+        }
+        if (ids == null || ids.isEmpty()) {
+            sendErrorResponse(req.requestId(), "Empty order payload", listId, "", "");
+            return;
+        }
+
+        for (int i = 0; i < ids.size(); i++) {
+            String taskId = ids.get(i);
+            if (taskId == null || taskId.isBlank()) continue;
+
+            Object[] existing = tasks.getp(
+                    new ActualField(listId),
+                    new ActualField(taskId),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+            if (existing == null) continue;
+
+            String title = (String) existing[2];
+            String assignee = (String) existing[3];
+            String status = (String) existing[4];
+            String dueDate = (String) existing[5];
+            int priority = (Integer) existing[6];
+            int year = (Integer) existing[7];
+            String location = (String) existing[9];
+            String description = (String) existing[10];
+
+            tasks.put(listId, taskId, title, assignee, status, dueDate, priority, year, i, location, description);
+        }
+
+        sendOkResponse(req.requestId(), listId, "OK", "", "");
+        broadcastDataChange("task_order_bulk_set", listId, "", "");
+    }
+
+    private int nextListOrderIndex() {
+        try {
+            List<Object[]> all = todoLists.queryAll(
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+
+            int max = -1;
+            for (Object[] l : all) {
+                int idx = (l[7] instanceof Integer i) ? i : DEFAULT_ORDER_INDEX;
+                if (idx > max) max = idx;
+            }
+            return max + 1;
+        } catch (InterruptedException e) {
+            return 0;
+        }
+    }
+
+    private int nextTaskOrderIndex(String listId) {
+        try {
+            List<Object[]> all = tasks.queryAll(
+                    new ActualField(listId),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
+            int max = -1;
+            for (Object[] t : all) {
+                int idx = (t[8] instanceof Integer i) ? i : DEFAULT_ORDER_INDEX;
+                if (idx > max) max = idx;
+            }
+            return max + 1;
+        } catch (InterruptedException e) {
+            return 0;
+        }
+    }
+
+    private static int clampPriority(int value) {
+        if (value < 1) return 1;
+        if (value > 10) return 10;
+        return value;
+    }
+
+    private static int clampYear(int value) {
+        if (value < 0) return 0;
+        if (value > 9999) return 9999;
+        return value;
     }
   
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {

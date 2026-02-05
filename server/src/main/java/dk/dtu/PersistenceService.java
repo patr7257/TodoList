@@ -80,13 +80,27 @@ public class PersistenceService {
             List<Object[]> listTuples = todoLists.queryAll(
                     new FormalField(String.class),
                     new FormalField(String.class),
-                    new FormalField(Integer.class));
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
+                    new FormalField(String.class));
             List<TodoListData> listData = new ArrayList<>();
             for (Object[] tuple : listTuples) {
                 listData.add(new TodoListData(
                         (String) tuple[0],
                         (String) tuple[1],
-                        (Integer) tuple[2]
+                    (Integer) tuple[2],
+                    (String) tuple[3],
+                    (String) tuple[4],
+                    (Integer) tuple[5],
+                    (Integer) tuple[6],
+                    (Integer) tuple[7],
+                    (String) tuple[8],
+                    (String) tuple[9]
                 ));
             }
             session.setTodoLists(listData);
@@ -98,6 +112,11 @@ public class PersistenceService {
                     new FormalField(String.class),
                     new FormalField(String.class),
                     new FormalField(String.class),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
                     new FormalField(String.class));
             List<TaskData> taskData = new ArrayList<>();
             for (Object[] tuple : taskTuples) {
@@ -107,7 +126,12 @@ public class PersistenceService {
                         (String) tuple[2],
                         (String) tuple[3],
                         (String) tuple[4],
-                        (String) tuple[5]
+                    (String) tuple[5],
+                    (Integer) tuple[6],
+                    (Integer) tuple[7],
+                    (Integer) tuple[8],
+                    (String) tuple[9],
+                    (String) tuple[10]
                 ));
             }
             session.setTasks(taskData);
@@ -157,14 +181,30 @@ public class PersistenceService {
             }
             
             // Load todo lists
+            int listIdx = 0;
             for (TodoListData list : session.getTodoLists()) {
-                todoLists.put(list.getListId(), list.getListName(), list.getCompletionPercentage());
+                String owner = list.getOwner() != null ? list.getOwner() : "";
+                String taskColumnsJson = list.getTaskColumnsJson() != null ? list.getTaskColumnsJson() : "";
+                int priority = list.getPriority() != null ? list.getPriority() : 5;
+                int year = list.getYear() != null ? list.getYear() : 0;
+                int orderIndex = list.getOrderIndex() != null ? list.getOrderIndex() : listIdx;
+                String location = list.getLocation() != null ? list.getLocation() : "";
+                String description = list.getDescription() != null ? list.getDescription() : "";
+                todoLists.put(list.getListId(), list.getListName(), list.getCompletionPercentage(), owner, taskColumnsJson, priority, year, orderIndex, location, description);
+                listIdx++;
             }
             
             // Load tasks
+            int taskIdx = 0;
             for (TaskData task : session.getTasks()) {
+                int priority = task.getPriority() != null ? task.getPriority() : 5;
+                int year = task.getYear() != null ? task.getYear() : 0;
+                int orderIndex = task.getOrderIndex() != null ? task.getOrderIndex() : taskIdx;
+                String location = task.getLocation() != null ? task.getLocation() : "";
+                String description = task.getDescription() != null ? task.getDescription() : "";
                 tasks.put(task.getListId(), task.getTaskId(), task.getTitle(),
-                        task.getAssignee(), task.getStatus(), task.getDueDate());
+                    task.getAssignee(), task.getStatus(), task.getDueDate(), priority, year, orderIndex, location, description);
+                taskIdx++;
             }
             
             System.out.println("Session loaded: " + session.getUsers().size() + " users, " 

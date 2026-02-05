@@ -12,6 +12,12 @@ public class ClientApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        // Set initial window size
+        primaryStage.setWidth(970);
+        primaryStage.setHeight(600);
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(500);
+        
         SceneNavigator navigator = new SceneNavigator(primaryStage);
         navigator.showWelcome();
         

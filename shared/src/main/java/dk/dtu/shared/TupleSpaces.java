@@ -33,6 +33,33 @@ public final class TupleSpaces {
     public static final String CMD_TASK_DELETE = "task_delete";
     public static final String CMD_LIST_DELETE = "list_delete";
 
+    // New commands (2026-02 UI features)
+    public static final String CMD_LIST_RENAME = "list_rename";
+    public static final String CMD_TASK_RENAME = "task_rename";
+    public static final String CMD_LIST_OWNER_SET = "list_owner_set";
+    /** Clear list owner (set to empty string). */
+    public static final String CMD_LIST_OWNER_CLEAR = "list_owner_clear";
+    public static final String CMD_LIST_COLUMNS_SET = "list_columns_set";
+    public static final String CMD_USER_DELETE = "user_delete";
+
+    public static final String CMD_LIST_PRIORITY_SET = "list_priority_set";
+    public static final String CMD_LIST_YEAR_SET = "list_year_set";
+    public static final String CMD_TASK_PRIORITY_SET = "task_priority_set";
+    public static final String CMD_TASK_YEAR_SET = "task_year_set";
+
+    public static final String CMD_LIST_LOCATION_SET = "list_location_set";
+    public static final String CMD_LIST_DESCRIPTION_SET = "list_description_set";
+    public static final String CMD_TASK_LOCATION_SET = "task_location_set";
+    public static final String CMD_TASK_DESCRIPTION_SET = "task_description_set";
+
+    /** Clear task owner/assignee (set to empty string). */
+    public static final String CMD_TASK_UNASSIGN = "task_unassign";
+
+    /** Persist manual order of lists. a1 = JSON array of listIds in desired order. */
+    public static final String CMD_LIST_ORDER_BULK_SET = "list_order_bulk_set";
+    /** Persist manual order of tasks within a list. a1 = listId, a2 = JSON array of taskIds in desired order. */
+    public static final String CMD_TASK_ORDER_BULK_SET = "task_order_bulk_set";
+
     // Response status (first field in response tuples).
     public static final String RESP_OK = "ok";
     public static final String RESP_ERROR = "error";

@@ -6,7 +6,6 @@ import dk.dtu.SceneNavigator;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 public class B_LoginScreen {
@@ -21,8 +20,8 @@ public class B_LoginScreen {
         Label title = new Label("Login");
         title.getStyleClass().add("login-title");
 
-        // Section for existing users
-        Label existingUserLabel = new Label("Login as existing user:");
+        // Main section: login as existing user
+        Label existingUserLabel = new Label("Login as user");
         existingUserLabel.getStyleClass().add("login-section-label");
 
         ComboBox<String> userComboBox = new ComboBox<>();
@@ -35,6 +34,7 @@ public class B_LoginScreen {
 
         Button loginExistingButton = new Button("Login");
         loginExistingButton.setDefaultButton(true);
+        loginExistingButton.getStyleClass().add("primary-button");
         loginExistingButton.setOnAction(evt -> {
             String username = userComboBox.getValue();
             if (username == null || username.isBlank()) {
@@ -58,67 +58,106 @@ public class B_LoginScreen {
         VBox existingUserSection = new VBox(10, existingUserLabel, userComboBox, loginExistingButton);
         existingUserSection.setAlignment(Pos.CENTER);
         existingUserSection.setStyle("-fx-padding: 20; -fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;");
-        existingUserSection.setPrefWidth(350);
+        existingUserSection.setPrefWidth(420);
 
-        // Section for creating new user
-        Label newUserLabel = new Label("Create new user:");
-        newUserLabel.getStyleClass().add("login-section-label");
-
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Enter new username");
-        usernameField.setPrefWidth(300);
-        usernameField.getStyleClass().add("login-textfield");
-        
-        // Limit username to 15 characters
-        usernameField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null && newValue.length() > 15) {
-                usernameField.setText(oldValue);
-            }
-        });
-
-        Button createUserButton = new Button("Create & Login");
-        createUserButton.setOnAction(evt -> {
-            String username = usernameField.getText();
-            if (username.isBlank()) {
+        Button deleteUserButton = new Button("Delete selected user");
+        deleteUserButton.setOnAction(evt -> {
+            String username = userComboBox.getValue();
+            if (username == null || username.isBlank()) {
                 return;
             }
-            createUserButton.setDisable(true);
-            new Thread(() -> {
-                try {
-                    Users.createNewUser(username, Config.getUsersUri(), (message) -> {
-                        navigator.setCurrentUser(username);
-                        navigator.showMainMenuWithMessage(message);
-                        javafx.application.Platform.runLater(() -> createUserButton.setDisable(false));
-                    }, (error) -> {
+
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Delete User");
+            confirm.setHeaderText("Delete user '" + username + "'?");
+            confirm.setContentText("This is only allowed if the user does not own any lists.");
+
+            confirm.showAndWait().ifPresent(response -> {
+                if (response != ButtonType.OK) return;
+                deleteUserButton.setDisable(true);
+                new Thread(() -> {
+                    try {
+                        Users.deleteUser(Config.getRequestsUri(), Config.getResponsesUri(), username);
+                        javafx.application.Platform.runLater(() -> {
+                            Users.loadUsersIntoComboBox(userComboBox, Config.getUsersUri());
+                            deleteUserButton.setDisable(false);
+                        });
+                    } catch (Exception ex) {
                         javafx.application.Platform.runLater(() -> {
                             Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Error");
-                            alert.setHeaderText("Cannot create user");
-                            alert.setContentText(error);
+                            alert.setTitle("Cannot delete user");
+                            alert.setHeaderText("User could not be deleted");
+                            alert.setContentText(ex.getMessage());
                             alert.showAndWait();
-                            createUserButton.setDisable(false);
+                            deleteUserButton.setDisable(false);
                         });
-                    });
-                } catch (Exception ex) {
-                    javafx.application.Platform.runLater(() -> createUserButton.setDisable(false));
-                    ex.printStackTrace();
-                }
-            }, "create-user").start();
+                    }
+                }, "delete-user").start();
+            });
         });
 
-        VBox newUserSection = new VBox(10, newUserLabel, usernameField, createUserButton);
-        newUserSection.setAlignment(Pos.CENTER);
-        newUserSection.setStyle("-fx-padding: 20; -fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;");
-        newUserSection.setPrefWidth(350);
+        Button createUserPopupButton = new Button("Create new user...");
+        createUserPopupButton.setOnAction(evt -> {
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Create new user");
+            dialog.setHeaderText("Create a new username (max 15 characters)");
 
-        // Place both sections side by side
-        HBox loginSections = new HBox(30, existingUserSection, newUserSection);
-        loginSections.setAlignment(Pos.CENTER);
+            TextField usernameField = new TextField();
+            usernameField.setPromptText("Enter new username");
+            usernameField.setPrefWidth(320);
 
-        Button backButton = new Button("Back to Welcome Screen");
-        backButton.setOnAction(e -> navigator.showWelcome());
+            usernameField.textProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue != null && newValue.length() > 15) {
+                    usernameField.setText(oldValue);
+                }
+            });
 
-        VBox root = new VBox(30, title, loginSections, backButton);
+            VBox content = new VBox(10, new Label("Username:"), usernameField);
+            content.setAlignment(Pos.CENTER_LEFT);
+            dialog.getDialogPane().setContent(content);
+
+            ButtonType createAndLogin = new ButtonType("Create & Login", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(createAndLogin, ButtonType.CANCEL);
+
+            javafx.scene.Node okButton = dialog.getDialogPane().lookupButton(createAndLogin);
+            okButton.setDisable(true);
+
+            usernameField.textProperty().addListener((obs, oldVal, newVal) -> {
+                okButton.setDisable(newVal == null || newVal.trim().isBlank());
+            });
+
+            dialog.showAndWait().ifPresent(btn -> {
+                if (btn != createAndLogin) return;
+
+                String username = usernameField.getText() != null ? usernameField.getText().trim() : "";
+                if (username.isBlank()) return;
+
+                createUserPopupButton.setDisable(true);
+                new Thread(() -> {
+                    try {
+                        Users.createNewUser(username, Config.getUsersUri(), (message) -> {
+                            navigator.setCurrentUser(username);
+                            navigator.showMainMenuWithMessage(message);
+                            javafx.application.Platform.runLater(() -> createUserPopupButton.setDisable(false));
+                        }, (error) -> {
+                            javafx.application.Platform.runLater(() -> {
+                                Alert alert = new Alert(Alert.AlertType.ERROR);
+                                alert.setTitle("Error");
+                                alert.setHeaderText("Cannot create user");
+                                alert.setContentText(error);
+                                alert.showAndWait();
+                                createUserPopupButton.setDisable(false);
+                            });
+                        });
+                    } catch (Exception ex) {
+                        javafx.application.Platform.runLater(() -> createUserPopupButton.setDisable(false));
+                        ex.printStackTrace();
+                    }
+                }, "create-user").start();
+            });
+        });
+
+        VBox root = new VBox(18, title, existingUserSection, deleteUserButton, createUserPopupButton);
         root.setAlignment(Pos.CENTER);
         root.setFillWidth(false);  
         root.getStyleClass().add("login-root");

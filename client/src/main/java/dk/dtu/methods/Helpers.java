@@ -56,13 +56,27 @@ public class Helpers {
     public static class ListEntry {
         public final String id;
         public final String name;
+        public final String owner;
+        public final String taskColumnsJson;
+        public final int priority;
+        public final int year;
+        public final int orderIndex;
+        public final String location;
+        public final String description;
         public int completionPercentage;
         public final int taskCount;
         public final int overdueTaskCount;
 
-        public ListEntry(String id, String name, int completionPercentage, int taskCount, int overdueTaskCount) {
+        public ListEntry(String id, String name, String owner, String taskColumnsJson, int priority, int year, int orderIndex, String location, String description, int completionPercentage, int taskCount, int overdueTaskCount) {
             this.id = id;
             this.name = name;
+            this.owner = owner;
+            this.taskColumnsJson = taskColumnsJson;
+            this.priority = priority;
+            this.year = year;
+            this.orderIndex = orderIndex;
+            this.location = location;
+            this.description = description;
             this.completionPercentage = completionPercentage;
             this.taskCount = taskCount;
             this.overdueTaskCount = overdueTaskCount;
@@ -82,15 +96,25 @@ public class Helpers {
         public final String owner;
         public final String status;
         public final String dueDate;
+        public final int priority;
+        public final int year;
+        public final int orderIndex;
+        public final String location;
+        public final String description;
 
         public TaskEntry(String listId, String id, String title,
-                String owner, String status, String dueDate) {
+                String owner, String status, String dueDate, int priority, int year, int orderIndex, String location, String description) {
             this.listId = listId;
             this.id = id;
             this.title = title;
             this.owner = owner;
             this.status = status;
             this.dueDate = dueDate;
+            this.priority = priority;
+            this.year = year;
+            this.orderIndex = orderIndex;
+            this.location = location;
+            this.description = description;
         }
 
         // Pretty status text for the UI
@@ -121,6 +145,14 @@ public class Helpers {
         // Optional: nice due date text if you ever want it
         public String dueDateToString() {
             return (dueDate == null || dueDate.isBlank()) ? "" : dueDate;
+        }
+
+        public String locationToString() {
+            return (location == null || location.isBlank()) ? "" : location;
+        }
+
+        public String descriptionToString() {
+            return (description == null || description.isBlank()) ? "" : description;
         }
 
         @Override
