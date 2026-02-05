@@ -100,7 +100,19 @@ public class Lists {
                     String location = (String) t[8];
                     String description = (String) t[9];
                     int overdueCount = overdueCounts.getOrDefault(listId, 0);
-                    entries.add(new Helpers.ListEntry(listId, listName, owner, taskColumnsJson, priority, year, orderIndex, safe(location), safe(description), completion, count, overdueCount));
+                    entries.add(new Helpers.ListEntry(
+                            listId,
+                            listName,
+                            owner,
+                            taskColumnsJson,
+                            priority,
+                            year,
+                            orderIndex,
+                            safe(location),
+                            safe(description),
+                            completion,
+                            count,
+                            overdueCount));
                 }
 
                 Platform.runLater(() -> {

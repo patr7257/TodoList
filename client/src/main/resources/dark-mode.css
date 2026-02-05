@@ -3,6 +3,7 @@
 /* Root backgrounds */
 .root {
     -fx-base: #1e1e1e;
+    background: #1e1e1e;
     -fx-background: #1e1e1e;
 }
 
@@ -10,6 +11,7 @@
 .login-root,
 .mainmenu-root,
 .todolist-root {
+    background-color: #1e1e1e;
     -fx-background-color: #1e1e1e;
 }
 
@@ -40,98 +42,130 @@ Label {
 /* Input fields */
 .login-textfield,
 .text-field {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
     -fx-text-fill: #e0e0e0;
+    border-color: #404040;
     -fx-border-color: #404040;
 }
 
 .login-textfield:focused,
 .text-field:focused {
+    border-color: #707070;
     -fx-border-color: #707070;
 }
 
 /* Buttons */
 .button {
+    background-color: #000000;
     -fx-background-color: #000000;
     -fx-text-fill: white;
+    border-color: #404040;
     -fx-border-color: #404040;
+    border-radius: 6px;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
 }
 
 .button:hover {
+    background-color: #1a1a1a;
     -fx-background-color: #1a1a1a;
 }
 
 .primary-button {
+    background-color: #000000;
     -fx-background-color: #000000;
 }
 
 .primary-button:hover {
+    background-color: #1a1a1a;
     -fx-background-color: #1a1a1a;
 }
 
 .go-back-button {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
+    border-color: #404040;
     -fx-border-color: #404040;
 }
 
 .go-back-button:hover {
+    background-color: #3d3d3d;
     -fx-background-color: #3d3d3d;
+    border-color: #606060;
     -fx-border-color: #606060;
 }
 
 .danger-button {
+    background-color: #e53935;
     -fx-background-color: #e53935;
 }
 
 .danger-button:hover {
+    background-color: #c62828;
     -fx-background-color: #c62828;
 }
 
 /* Sidebar styling */
 .sidebar {
+    background-color: #252525;
     -fx-background-color: #252525;
+    border-color: #3a3a3a;
     -fx-border-color: #3a3a3a;
+    border-width: 0 0 0 1px;
     -fx-border-width: 0 0 0 1;
 }
 
 .sidebar-button {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
+    border-color: #404040;
     -fx-border-color: #404040;
+    border-width: 1px;
     -fx-border-width: 1px;
+    border-radius: 8px;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
+    padding: 8px;
     -fx-padding: 8;
 }
 
 .sidebar-button:hover {
+    background-color: #3d3d3d;
     -fx-background-color: #3d3d3d;
+    border-color: #707070;
     -fx-border-color: #707070;
+    cursor: pointer;
     -fx-cursor: hand;
 }
 
 .sidebar-button:pressed {
+    background-color: #1d1d1d;
     -fx-background-color: #1d1d1d;
 }
 
 /* ListView and ComboBox */
 .list-view,
 .combo-box {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
+    border-color: #404040;
     -fx-border-color: #404040;
 }
 
 .list-cell {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
     -fx-text-fill: #e0e0e0;
 }
 
 .list-cell:hover {
+    background-color: #3d3d3d;
     -fx-background-color: #3d3d3d;
 }
 
 .list-cell:selected {
+    background-color: #000000;
     -fx-background-color: #000000;
     -fx-text-fill: white;
 }
@@ -139,7 +173,9 @@ Label {
 /* Make ComboBox selection highlight neutral (not bright blue) */
 .combo-box-base,
 .combo-box {
+    background-color: #000000;
     -fx-background-color: #000000;
+    border-color: #404040;
     -fx-border-color: #404040;
 }
 
@@ -147,6 +183,7 @@ Label {
 .combo-box .list-cell:filled:selected:hover,
 .combo-box-popup .list-cell:filled:selected,
 .combo-box-popup .list-cell:filled:selected:hover {
+    background-color: #000000;
     -fx-background-color: #000000;
     -fx-text-fill: white;
 }
@@ -154,39 +191,48 @@ Label {
 /* Column delete buttons should not inherit blue-looking button styling */
 .list-col-delete-button,
 .task-col-delete-button {
+    background-color: transparent;
     -fx-background-color: transparent;
+    border-color: transparent;
     -fx-border-color: transparent;
 }
 
 .list-col-delete-button:hover,
 .task-col-delete-button:hover {
+    background-color: #1a1a1a;
     -fx-background-color: #1a1a1a;
 }
 
 .combo-box-popup .list-view {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
 }
 
 .combo-box-popup .list-cell {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
     -fx-text-fill: #e0e0e0;
 }
 
 .combo-box-popup .list-cell:hover {
+    background-color: #3d3d3d;
     -fx-background-color: #3d3d3d;
 }
 
 /* Date picker */
 .date-picker {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
 }
 
 .date-picker .text-field {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
     -fx-text-fill: #e0e0e0;
 }
 
 .date-picker-popup {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
 }
 
@@ -231,6 +277,7 @@ Label {
 
 /* Dialog styling */
 .dialog-pane {
+    background-color: #2d2d2d;
     -fx-background-color: #2d2d2d;
 }
 
@@ -239,6 +286,7 @@ Label {
 }
 
 .dialog-pane .button {
+    background-color: #4a90e2;
     -fx-background-color: #4a90e2;
     -fx-text-fill: white;
 }

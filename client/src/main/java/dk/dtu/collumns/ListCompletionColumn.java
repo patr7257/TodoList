@@ -2,7 +2,6 @@ package dk.dtu.collumns;
 
 import dk.dtu.methods.Helpers;
 import javafx.scene.Node;
-import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 
 import java.util.Comparator;

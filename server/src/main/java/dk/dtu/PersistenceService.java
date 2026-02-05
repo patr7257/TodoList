@@ -10,7 +10,6 @@ import dk.dtu.shared.models.UserData;
 import org.jspace.FormalField;
 import org.jspace.Space;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;

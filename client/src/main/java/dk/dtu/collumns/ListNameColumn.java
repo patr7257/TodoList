@@ -3,7 +3,6 @@ package dk.dtu.collumns;
 import dk.dtu.methods.Helpers;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.Tooltip;
 import javafx.geometry.Pos;
 import javafx.scene.text.TextAlignment;
@@ -39,7 +38,6 @@ public class ListNameColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-        ListCell<Helpers.ListEntry> cell = ctx.cell();
         Label label = new Label();
         label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());

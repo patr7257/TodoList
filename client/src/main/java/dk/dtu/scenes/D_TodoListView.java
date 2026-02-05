@@ -36,6 +36,7 @@ public class D_TodoListView {
 
     private enum EmptyFilter { ALL, EMPTY, NOT_EMPTY }
 
+    @SuppressWarnings("unused")
     private final SceneNavigator navigator;
     private final String listId;
     private final String listName;
