@@ -33,8 +33,17 @@ public final class UiConsoleRedirect implements AutoCloseable {
         this.originalOut = System.out;
         this.originalErr = System.err;
 
-        this.uiOut = new PrintStream(new LineBufferingOutputStream(false, consumer), true, StandardCharsets.UTF_8);
-        this.uiErr = new PrintStream(new LineBufferingOutputStream(true, consumer), true, StandardCharsets.UTF_8);
+        OutputStream teeOut = new TeeOutputStream(
+            new PrintStreamOutputStream(originalOut),
+            new LineBufferingOutputStream(false, consumer)
+        );
+        OutputStream teeErr = new TeeOutputStream(
+            new PrintStreamOutputStream(originalErr),
+            new LineBufferingOutputStream(true, consumer)
+        );
+
+        this.uiOut = new PrintStream(teeOut, true, StandardCharsets.UTF_8);
+        this.uiErr = new PrintStream(teeErr, true, StandardCharsets.UTF_8);
 
         System.setOut(uiOut);
         System.setErr(uiErr);
@@ -99,6 +108,75 @@ public final class UiConsoleRedirect implements AutoCloseable {
             String line = prefix + msg;
 
             Platform.runLater(() -> consumer.accept(line));
+        }
+    }
+
+    private static final class TeeOutputStream extends OutputStream {
+        private final OutputStream a;
+        private final OutputStream b;
+
+        private TeeOutputStream(OutputStream a, OutputStream b) {
+            this.a = Objects.requireNonNull(a);
+            this.b = Objects.requireNonNull(b);
+        }
+
+        @Override
+        public synchronized void write(int bByte) {
+            try {
+                a.write(bByte);
+            } catch (Exception ignored) {
+            }
+            try {
+                b.write(bByte);
+            } catch (Exception ignored) {
+            }
+        }
+
+        @Override
+        public synchronized void write(byte[] bytes, int off, int len) {
+            try {
+                a.write(bytes, off, len);
+            } catch (Exception ignored) {
+            }
+            try {
+                b.write(bytes, off, len);
+            } catch (Exception ignored) {
+            }
+        }
+
+        @Override
+        public synchronized void flush() {
+            try {
+                a.flush();
+            } catch (Exception ignored) {
+            }
+            try {
+                b.flush();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static final class PrintStreamOutputStream extends OutputStream {
+        private final PrintStream target;
+
+        private PrintStreamOutputStream(PrintStream target) {
+            this.target = Objects.requireNonNull(target);
+        }
+
+        @Override
+        public void write(int b) {
+            target.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            target.write(b, off, len);
+        }
+
+        @Override
+        public void flush() {
+            target.flush();
         }
     }
 }

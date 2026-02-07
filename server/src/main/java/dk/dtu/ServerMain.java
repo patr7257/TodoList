@@ -59,19 +59,12 @@ public class ServerMain {
             // Initialize counter with current todoLists count
             counter.put(Database.getTodoListCount(todoLists));
 
-<<<<<<< Updated upstream
-                System.out.println(
+            System.out.println(
                     "Server started.\n" +
                     "- Bind: tcp://" + Config.getServerBindHost() + ":" + Config.getPort() + "/\n" +
                     "- Clients connect to: " + Config.getClientBaseUri() + "\n" +
                     "Waiting for client requests..."
-                );
-=======
-                System.out.println("Server started.\n" +
-                    "- Bind: tcp://" + Config.getServerBindHost() + ":" + Config.getPort() + "/\n" +
-                    "- Clients connect to: " + Config.getClientBaseUri() + "\n" +
-                    "Waiting for client requests...");
->>>>>>> Stashed changes
+            );
 
             ServerHandlerService service = new ServerHandlerService(todoLists, counter, users, tasks, requests, responses, notifications, persistenceService);
             Thread requestLoop = new Thread(service, "request-loop");

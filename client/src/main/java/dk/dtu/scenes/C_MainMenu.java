@@ -159,8 +159,11 @@ public class C_MainMenu {
         listsView.setMaxWidth(Double.MAX_VALUE);
         listsView.setPrefHeight(400);
 
-        Runnable refreshLists = this::reloadLists;
+        // Load lists initially (previously only refreshed via notifications/user actions)
+        reloadLists();
 
+        Runnable refreshLists = this::reloadLists;
+        
         // Custom cells: built from visible columns
         listsView.setCellFactory(lv -> new ListCell<>() {
 

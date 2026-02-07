@@ -42,15 +42,15 @@ public class NotificationListener implements Runnable {
                 
                 // Notify server that a new client connected
                 try {
-                    RemoteSpace requests = new RemoteSpace(notificationsUri.replace("notifications", "requests"));
-                    RemoteSpace responses = new RemoteSpace(notificationsUri.replace("notifications", "responses"));
+                    RemoteSpace requests = new RemoteSpace(Config.getRequestsUri());
+                    RemoteSpace responses = new RemoteSpace(Config.getResponsesUri());
                     String requestId = java.util.UUID.randomUUID().toString();
                     requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
                             requestId,
                             "", "", "", "");
 
                     // Best-effort: consume response if the server sends one.
-                    responses.getp(
+                    Object[] ack = responses.getp(
                             new FormalField(Object.class),
                             new ActualField(requestId),
                             new FormalField(Object.class),
@@ -58,6 +58,9 @@ public class NotificationListener implements Runnable {
                             new FormalField(Object.class),
                             new FormalField(Object.class)
                     );
+                    if (ack != null) {
+                        System.out.println("Server acknowledged client connection.");
+                    }
                 } catch (Exception e) {
                     System.err.println("[NotificationListener] Could not notify server about client connection: " + e.getMessage());
                 }

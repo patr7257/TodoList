@@ -59,78 +59,86 @@ public final class ServerEngine implements AutoCloseable {
 
         SpaceRepository repo = new SpaceRepository();
 
-        SequentialSpace todoLists = new SequentialSpace();
-        repo.add(TupleSpaces.LISTS, todoLists);
+        try {
+            SequentialSpace todoLists = new SequentialSpace();
+            repo.add(TupleSpaces.LISTS, todoLists);
 
-        SequentialSpace counter = new SequentialSpace();
-        repo.add("counter", counter);
+            SequentialSpace counter = new SequentialSpace();
+            repo.add("counter", counter);
 
-        SequentialSpace users = new SequentialSpace();
-        repo.add(TupleSpaces.USERS, users);
+            SequentialSpace users = new SequentialSpace();
+            repo.add(TupleSpaces.USERS, users);
 
-        SequentialSpace tasks = new SequentialSpace();
-        repo.add(TupleSpaces.TASKS, tasks);
+            SequentialSpace tasks = new SequentialSpace();
+            repo.add(TupleSpaces.TASKS, tasks);
 
-        SequentialSpace requests = new SequentialSpace();
-        repo.add(TupleSpaces.REQUESTS, requests);
+            SequentialSpace requests = new SequentialSpace();
+            repo.add(TupleSpaces.REQUESTS, requests);
 
-        SequentialSpace responses = new SequentialSpace();
-        repo.add(TupleSpaces.RESPONSES, responses);
+            SequentialSpace responses = new SequentialSpace();
+            repo.add(TupleSpaces.RESPONSES, responses);
 
-        SequentialSpace notifications = new SequentialSpace();
-        repo.add(TupleSpaces.NOTIFICATIONS, notifications);
+            SequentialSpace notifications = new SequentialSpace();
+            repo.add(TupleSpaces.NOTIFICATIONS, notifications);
 
-        boolean sessionLoaded = persistenceService.loadSession(users, todoLists, tasks);
-        if (!sessionLoaded) {
-            System.out.println("Loading preset database...");
-            Database.loadDatabase(users, todoLists, tasks);
-            persistenceService.saveSession(users, todoLists, tasks);
-        }
+            boolean sessionLoaded = persistenceService.loadSession(users, todoLists, tasks);
+            if (!sessionLoaded) {
+                System.out.println("Loading preset database...");
+                Database.loadDatabase(users, todoLists, tasks);
+                persistenceService.saveSession(users, todoLists, tasks);
+            }
 
-        boolean gateOk = repo.addGate(Config.getServerGateUri());
-        if (!gateOk) {
-            throw new IllegalStateException(
-                    "Failed to bind server gate to " + Config.getServerGateUri() + ". " +
-                            "Port may already be in use (stale server still running?)."
+            boolean gateOk = repo.addGate(Config.getServerGateUri());
+            if (!gateOk) {
+                throw new IllegalStateException(
+                        "Failed to bind server gate to " + Config.getServerGateUri() + ". " +
+                                "Port may already be in use (stale server still running?)."
+                );
+            }
+
+            counter.put(Database.getTodoListCount(todoLists));
+
+            System.out.println(
+                    "Server started.\n" +
+                            "- Bind: tcp://" + Config.getServerBindHost() + ":" + Config.getPort() + "/\n" +
+                            "- Clients connect to: " + Config.getClientBaseUri() + "\n" +
+                            "Waiting for client requests..."
             );
+
+            ServerHandlerService service = new ServerHandlerService(
+                    todoLists,
+                    counter,
+                    users,
+                    tasks,
+                    requests,
+                    responses,
+                    notifications,
+                    persistenceService
+            );
+
+            Thread requestLoop = new Thread(service, "request-loop");
+            requestLoop.setDaemon(true);
+            requestLoop.start();
+
+            return new ServerEngine(
+                    persistenceService,
+                    repo,
+                    todoLists,
+                    counter,
+                    users,
+                    tasks,
+                    requests,
+                    responses,
+                    notifications,
+                    requestLoop
+            );
+        } catch (Exception e) {
+            try {
+                repo.shutDown();
+            } catch (Exception ignored) {
+            }
+            throw e;
         }
-
-        counter.put(Database.getTodoListCount(todoLists));
-
-        System.out.println(
-                "Server started.\n" +
-                        "- Bind: tcp://" + Config.getServerBindHost() + ":" + Config.getPort() + "/\n" +
-                        "- Clients connect to: " + Config.getClientBaseUri() + "\n" +
-                        "Waiting for client requests..."
-        );
-
-        ServerHandlerService service = new ServerHandlerService(
-                todoLists,
-                counter,
-                users,
-                tasks,
-                requests,
-                responses,
-                notifications,
-                persistenceService
-        );
-
-        Thread requestLoop = new Thread(service, "request-loop");
-        requestLoop.setDaemon(true);
-        requestLoop.start();
-
-        return new ServerEngine(
-                persistenceService,
-                repo,
-                todoLists,
-                counter,
-                users,
-                tasks,
-                requests,
-                responses,
-                notifications,
-                requestLoop
-        );
     }
 
     public boolean isRunning() {

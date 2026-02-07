@@ -125,23 +125,28 @@ public class ServerHandlerService implements Runnable {
         sendOkResponse(req.requestId(), "pong", "", "", "");
     }
 
-    private void handleClientConnect(Request req) {
+    private void handleClientConnect(Request req) throws InterruptedException {
         System.out.println("A new client connected to the server");
+        // Acknowledge so clients can verify the request loop is alive.
+        sendOkResponse(req.requestId(), "connected", "", "", "");
     }
 
-    private void handleClientDisconnect(Request req) {
+    private void handleClientDisconnect(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("Client disconnected from server: " + username);
+        sendOkResponse(req.requestId(), "disconnected", "", "", "");
     }
     
-    private void handleUserLogin(Request req) {
+    private void handleUserLogin(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("New user logged in: " + username);
+        sendOkResponse(req.requestId(), "logged_in", username != null ? username : "", "", "");
     }
     
-    private void handleUserLogout(Request req) {
+    private void handleUserLogout(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("User logged out: " + username);
+        sendOkResponse(req.requestId(), "logged_out", username != null ? username : "", "", "");
     }
     
     private void handleListsGet(Request req) throws InterruptedException {
