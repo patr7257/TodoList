@@ -2,10 +2,16 @@ package dk.dtu;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import dk.dtu.shared.Defaults;
 import dk.dtu.shared.TupleSpaces;
 import java.util.List;
 import java.util.UUID;
 import java.lang.reflect.Type;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jspace.ActualField;
 import org.jspace.FormalField;
@@ -22,13 +28,15 @@ public class ServerHandlerService implements Runnable {
     private final Space notifications;
     private final PersistenceService persistenceService;
 
-    private static final String DEFAULT_TASK_COLUMNS_JSON = "[\"reorder\",\"title\",\"status\",\"dueDate\",\"owner\",\"delete\"]";
-    private static final int DEFAULT_PRIORITY = 5;
-    private static final int DEFAULT_YEAR = 0;
     private static final int DEFAULT_ORDER_INDEX = 0;
+
+    private static final long AUTOSAVE_DEBOUNCE_MS = 250;
 
     private static final Gson GSON = new Gson();
     private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
+
+    private final ScheduledExecutorService autosaveExecutor;
+    private final AtomicBoolean autosaveScheduled = new AtomicBoolean(false);
 
     public ServerHandlerService(Space todoLists, Space counter, Space users, Space tasks, Space requests,
             Space responses, Space notifications, PersistenceService persistenceService) {
@@ -40,6 +48,13 @@ public class ServerHandlerService implements Runnable {
         this.responses = responses;
         this.notifications = notifications;
         this.persistenceService = persistenceService;
+
+        ThreadFactory tf = r -> {
+            Thread t = new Thread(r, "autosave");
+            t.setDaemon(true);
+            return t;
+        };
+        this.autosaveExecutor = Executors.newSingleThreadScheduledExecutor(tf);
     }
 
     @Override
@@ -107,17 +122,44 @@ public class ServerHandlerService implements Runnable {
     
     private void broadcastDataChange(String operation, String data1, String data2, String data3) throws InterruptedException {
         notifications.put(TupleSpaces.NOTIFY_DATA_CHANGED, System.currentTimeMillis(), operation, data1, data2, data3);
-        // Auto-save after data changes
-        autoSave();
+        requestAutosave();
     }
     
     /**
-     * Auto-save session data asynchronously to avoid blocking request processing
+     * Auto-save session data asynchronously (debounced) to avoid blocking request processing
+     * and to avoid spawning a new thread on every mutation.
      */
-    private void autoSave() {
-        new Thread(() -> {
-            persistenceService.saveSession(users, todoLists, tasks);
-        }, "auto-save").start();
+    private void requestAutosave() {
+        if (!autosaveScheduled.compareAndSet(false, true)) {
+            return;
+        }
+
+        autosaveExecutor.schedule(() -> {
+            try {
+                persistenceService.saveSession(users, todoLists, tasks);
+            } finally {
+                // Allow scheduling again.
+                autosaveScheduled.set(false);
+            }
+        }, AUTOSAVE_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Stop background workers (safe to call multiple times).
+     */
+    public void close() {
+        try {
+            autosaveExecutor.shutdown();
+            autosaveExecutor.awaitTermination(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception ignored) {
+        } finally {
+            try {
+                autosaveExecutor.shutdownNow();
+            } catch (Exception ignored) {
+            }
+        }
     }
     
     private void handlePing(Request req) throws InterruptedException {
@@ -125,23 +167,28 @@ public class ServerHandlerService implements Runnable {
         sendOkResponse(req.requestId(), "pong", "", "", "");
     }
 
-    private void handleClientConnect(Request req) {
+    private void handleClientConnect(Request req) throws InterruptedException {
         System.out.println("A new client connected to the server");
+        // Acknowledge so clients can verify the request loop is alive.
+        sendOkResponse(req.requestId(), "connected", "", "", "");
     }
 
-    private void handleClientDisconnect(Request req) {
+    private void handleClientDisconnect(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("Client disconnected from server: " + username);
+        sendOkResponse(req.requestId(), "disconnected", "", "", "");
     }
     
-    private void handleUserLogin(Request req) {
+    private void handleUserLogin(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("New user logged in: " + username);
+        sendOkResponse(req.requestId(), "logged_in", username != null ? username : "", "", "");
     }
     
-    private void handleUserLogout(Request req) {
+    private void handleUserLogout(Request req) throws InterruptedException {
         String username = req.getString(0);
         System.out.println("User logged out: " + username);
+        sendOkResponse(req.requestId(), "logged_out", username != null ? username : "", "", "");
     }
     
     private void handleListsGet(Request req) throws InterruptedException {
@@ -218,10 +265,10 @@ public class ServerHandlerService implements Runnable {
         String taskColumnsJson = req.getString(2, "");
         String priorityStr = req.getString(3, "");
         if (taskColumnsJson == null || taskColumnsJson.isBlank()) {
-            taskColumnsJson = DEFAULT_TASK_COLUMNS_JSON;
+            taskColumnsJson = Defaults.TASK_COLUMNS_JSON;
         }
 
-        int priority = DEFAULT_PRIORITY;
+        int priority = Defaults.PRIORITY;
         if (priorityStr != null && !priorityStr.isBlank()) {
             try {
                 priority = Integer.parseInt(priorityStr.trim());
@@ -242,7 +289,7 @@ public class ServerHandlerService implements Runnable {
             orderIndex = nextListOrderIndex();
 
             // Lists: (listId, name, completion, owner, taskColumnsJson, priority, year, orderIndex, location, description)
-            todoLists.put(listId, listName, 0, owner, taskColumnsJson, priority, DEFAULT_YEAR, orderIndex, "", "");  // Start with 0% completion
+            todoLists.put(listId, listName, 0, owner, taskColumnsJson, priority, Defaults.YEAR, orderIndex, "", "");  // Start with 0% completion
             counter.getp(new FormalField(Integer.class));
             counter.put(count + 1);
         }
@@ -306,7 +353,7 @@ public class ServerHandlerService implements Runnable {
         String status = "NOT_STARTED";
         try {
             int orderIndex = nextTaskOrderIndex(listId);
-            tasks.put(listId, taskId, title, assignee, status, dueDate, DEFAULT_PRIORITY, DEFAULT_YEAR, orderIndex, "", "");
+            tasks.put(listId, taskId, title, assignee, status, dueDate, Defaults.PRIORITY, Defaults.YEAR, orderIndex, "", "");
             System.out.println("Task added: " + title);
             updateListCompletion(listId);
             sendOkResponse(req.requestId(), listId, taskId, title, status);
@@ -598,7 +645,7 @@ public class ServerHandlerService implements Runnable {
             return;
         }
         if (taskColumnsJson == null || taskColumnsJson.isBlank()) {
-            taskColumnsJson = DEFAULT_TASK_COLUMNS_JSON;
+            taskColumnsJson = Defaults.TASK_COLUMNS_JSON;
         }
 
         Object[] existing = todoLists.getp(

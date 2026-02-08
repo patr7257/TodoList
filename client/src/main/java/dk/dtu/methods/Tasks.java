@@ -1,6 +1,7 @@
 package dk.dtu.methods;
 
 import com.google.gson.Gson;
+import dk.dtu.shared.Defaults;
 import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import javafx.scene.control.ListView;
@@ -50,6 +51,10 @@ public class Tasks {
                     new FormalField(String.class),
                     new FormalField(String.class));
 
+                if (tuples == null) {
+                    tuples = java.util.Collections.emptyList();
+                }
+
                 tuples.sort(Comparator.comparingInt(t -> (t[8] instanceof Integer i) ? i : 0));
                 List<Helpers.TaskEntry> entries = new java.util.ArrayList<>(tuples.size());
 
@@ -61,8 +66,8 @@ public class Tasks {
                             (String) t[3],
                             (String) t[4],
                             (String) t[5],
-                            (t[6] instanceof Integer p) ? p : 5,
-                            (t[7] instanceof Integer y) ? y : 0,
+                            (t[6] instanceof Integer p) ? p : Defaults.PRIORITY,
+                            (t[7] instanceof Integer y) ? y : Defaults.YEAR,
                             (t[8] instanceof Integer o) ? o : 0,
                             safe((String) t[9]),
                             safe((String) t[10])

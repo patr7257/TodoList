@@ -3,6 +3,7 @@ package dk.dtu;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dk.dtu.shared.Config;
+import dk.dtu.shared.Defaults;
 import dk.dtu.shared.models.SessionData;
 import dk.dtu.shared.models.TaskData;
 import dk.dtu.shared.models.TodoListData;
@@ -184,8 +185,8 @@ public class PersistenceService {
             for (TodoListData list : session.getTodoLists()) {
                 String owner = list.getOwner() != null ? list.getOwner() : "";
                 String taskColumnsJson = list.getTaskColumnsJson() != null ? list.getTaskColumnsJson() : "";
-                int priority = list.getPriority() != null ? list.getPriority() : 5;
-                int year = list.getYear() != null ? list.getYear() : 0;
+                int priority = list.getPriority() != null ? list.getPriority() : Defaults.PRIORITY;
+                int year = list.getYear() != null ? list.getYear() : Defaults.YEAR;
                 int orderIndex = list.getOrderIndex() != null ? list.getOrderIndex() : listIdx;
                 String location = list.getLocation() != null ? list.getLocation() : "";
                 String description = list.getDescription() != null ? list.getDescription() : "";
@@ -196,8 +197,8 @@ public class PersistenceService {
             // Load tasks
             int taskIdx = 0;
             for (TaskData task : session.getTasks()) {
-                int priority = task.getPriority() != null ? task.getPriority() : 5;
-                int year = task.getYear() != null ? task.getYear() : 0;
+                int priority = task.getPriority() != null ? task.getPriority() : Defaults.PRIORITY;
+                int year = task.getYear() != null ? task.getYear() : Defaults.YEAR;
                 int orderIndex = task.getOrderIndex() != null ? task.getOrderIndex() : taskIdx;
                 String location = task.getLocation() != null ? task.getLocation() : "";
                 String description = task.getDescription() != null ? task.getDescription() : "";

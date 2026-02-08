@@ -2,6 +2,7 @@ package dk.dtu.methods;
 
 import com.google.gson.Gson;
 import dk.dtu.shared.Config;
+import dk.dtu.shared.Defaults;
 import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import javafx.scene.control.ListView;
@@ -45,6 +46,10 @@ public class Lists {
                     new FormalField(String.class),
                     new FormalField(String.class));
 
+                if (tuples == null) {
+                    tuples = java.util.Collections.emptyList();
+                }
+
                 // Query all tasks to count them per list
                 RemoteSpace tasks = new RemoteSpace(Config.getTasksUri());
                 List<Object[]> allTasks = tasks.queryAll(
@@ -59,6 +64,10 @@ public class Lists {
                     new FormalField(Integer.class),
                     new FormalField(String.class),
                     new FormalField(String.class));
+
+                if (allTasks == null) {
+                    allTasks = java.util.Collections.emptyList();
+                }
 
                 // Count tasks per list
                 Map<String, Integer> taskCounts = new HashMap<>();
@@ -94,8 +103,8 @@ public class Lists {
                     int completion = (Integer) t[2];
                     String owner = (String) t[3];
                     String taskColumnsJson = (String) t[4];
-                    int priority = (t[5] instanceof Integer p) ? p : 5;
-                    int year = (t[6] instanceof Integer y) ? y : 0;
+                    int priority = (t[5] instanceof Integer p) ? p : Defaults.PRIORITY;
+                    int year = (t[6] instanceof Integer y) ? y : Defaults.YEAR;
                     int orderIndex = (t[7] instanceof Integer o) ? o : 0;
                     String location = (String) t[8];
                     String description = (String) t[9];

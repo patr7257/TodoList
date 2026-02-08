@@ -3,6 +3,7 @@ package dk.dtu;
 import dk.dtu.shared.Config;
 import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
+import org.jspace.ActualField;
 import org.jspace.FormalField;
 import org.jspace.RemoteSpace;
 import java.util.HashSet;
@@ -41,11 +42,28 @@ public class NotificationListener implements Runnable {
                 
                 // Notify server that a new client connected
                 try {
-                    RemoteSpace requests = new RemoteSpace(notificationsUri.replace("notifications", "requests"));
+                    RemoteSpace requests = new RemoteSpace(Config.getRequestsUri());
+                    RemoteSpace responses = new RemoteSpace(Config.getResponsesUri());
+                    String requestId = java.util.UUID.randomUUID().toString();
                     requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
-                            java.util.UUID.randomUUID().toString(),
+                            requestId,
                             "", "", "", "");
-                } catch (Exception ignored) {}
+
+                    // Best-effort: consume response if the server sends one.
+                    Object[] ack = responses.getp(
+                            new FormalField(Object.class),
+                            new ActualField(requestId),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class)
+                    );
+                    if (ack != null) {
+                        System.out.println("Server acknowledged client connection.");
+                    }
+                } catch (Exception e) {
+                    System.err.println("[NotificationListener] Could not notify server about client connection: " + e.getMessage());
+                }
                 
             } catch (Exception e) {
                 System.err.println("[NotificationListener] Cannot connect to server, retrying in 3 seconds... (" + e.getMessage() + ")");
