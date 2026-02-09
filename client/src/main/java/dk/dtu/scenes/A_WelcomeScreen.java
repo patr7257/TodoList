@@ -30,7 +30,7 @@ public class A_WelcomeScreen {
 
     // Logo
     ImageView logo = new ImageView(new Image(
-            getClass().getResource("/icons/todo.png").toExternalForm()));
+            getClass().getResource("/Icons/todo.png").toExternalForm()));
     logo.setFitWidth(70);
     logo.setPreserveRatio(true);
 

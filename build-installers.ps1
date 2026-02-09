@@ -186,7 +186,7 @@ jlink `
   --strip-debug `
   --no-header-files `
   --no-man-pages `
-  --compress=2
+  --compress=zip-6
 
 if ($LASTEXITCODE -ne 0) {
   Write-Host "jlink failed. Attempting fallback approach..." -ForegroundColor Yellow
@@ -202,7 +202,7 @@ if ($LASTEXITCODE -ne 0) {
     --strip-debug `
     --no-header-files `
     --no-man-pages `
-    --compress=2
+    --compress=zip-6
   
   if ($LASTEXITCODE -ne 0) {
     throw "jlink failed to create runtime image even with fallback"
@@ -259,7 +259,6 @@ $serverArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
-  "--java-options", "-Dtodolist.data.dir=%APPDATA%\TodoList",
   "--java-options", "-Dtodolist.port=9001"
 )
 
