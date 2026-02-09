@@ -57,29 +57,162 @@ Label {
 
 /* Buttons */
 .button {
-    background-color: #000000;
-    -fx-background-color: #000000;
+    background-color: #1a1a1a;
+    -fx-background-color: #1a1a1a;
     -fx-text-fill: white;
     border-color: #404040;
     -fx-border-color: #404040;
-    border-radius: 6px;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
+    -fx-border-width: 1px;
 }
 
 .button:hover {
-    background-color: #1a1a1a;
-    -fx-background-color: #1a1a1a;
+    background-color: #2d2d2d;
+    -fx-background-color: #2d2d2d;
+    border-color: #606060;
+    -fx-border-color: #606060;
+}
+
+.button:pressed {
+    background-color: #0d0d0d;
+    -fx-background-color: #0d0d0d;
 }
 
 .primary-button {
-    background-color: #000000;
-    -fx-background-color: #000000;
+    background-color: #1a1a1a;
+    -fx-background-color: #1a1a1a;
+    border-color: #404040;
+    -fx-border-color: #404040;
+    -fx-border-width: 1px;
 }
 
 .primary-button:hover {
-    background-color: #1a1a1a;
-    -fx-background-color: #1a1a1a;
+    background-color: #2d2d2d;
+    -fx-background-color: #2d2d2d;
+    border-color: #707070;
+    -fx-border-color: #707070;
+}
+
+.primary-button:pressed {
+    background-color: #0d0d0d;
+    -fx-background-color: #0d0d0d;
+}
+
+.success-button {
+    background-color: #1e5631;
+    -fx-background-color: #1e5631;
+}
+
+.success-button:hover {
+    background-color: #27ae60;
+    -fx-background-color: #27ae60;
+}
+
+.success-button:pressed {
+    background-color: #186842;
+    -fx-background-color: #186842;
+}
+
+.secondary-button {
+    background-color: #2d2d2d;
+    -fx-background-color: #2d2d2d;
+    border-color: #505050;
+    -fx-border-color: #505050;
+}
+
+.secondary-button:hover {
+    background-color: #3d3d3d;
+    -fx-background-color: #3d3d3d;
+    border-color: #707070;
+    -fx-border-color: #707070;
+}
+
+/* Connection and Status Labels */
+.connection-status {
+    -fx-text-fill: #c0c0c0;
+}
+
+.status-label {
+    -fx-text-fill: #c0c0c0;
+}
+
+.connect-info-label {
+    -fx-text-fill: #5a9fd4;
+}
+
+/* Config Panel */
+.config-panel {
+    background-color: #2d2d2d;
+    -fx-background-color: #2d2d2d;
+    border-color: #505050;
+    -fx-border-color: #505050;
+}
+
+/* Main User Buttons - Eline (Light Blue) */
+.main-user-button-eline {
+    background-color: linear-gradient(to bottom, #0288d1, #0277bd);
+    -fx-background-color: linear-gradient(to bottom, #0288d1, #0277bd);
+    border-color: #01579b;
+    -fx-border-color: #01579b;
+}
+
+.main-user-button-eline:hover {
+    background-color: linear-gradient(to bottom, #039be5, #0288d1);
+    -fx-background-color: linear-gradient(to bottom, #039be5, #0288d1);
+    -fx-effect: dropshadow(gaussian, rgba(3,155,229,0.5), 25, 0, 0, 6);
+}
+
+.main-user-button-eline:pressed {
+    background-color: linear-gradient(to bottom, #01579b, #014a7d);
+    -fx-background-color: linear-gradient(to bottom, #01579b, #014a7d);
+}
+
+/* Main User Buttons - Patrick (Green) */
+.main-user-button-patrick {
+    background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
+    -fx-background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
+    border-color: #1b5e20;
+    -fx-border-color: #1b5e20;
+}
+
+.main-user-button-patrick:hover {
+    background-color: linear-gradient(to bottom, #43a047, #388e3c);
+    -fx-background-color: linear-gradient(to bottom, #43a047, #388e3c);
+    -fx-effect: dropshadow(gaussian, rgba(67,160,71,0.5), 25, 0, 0, 6);
+}
+
+.main-user-button-patrick:pressed {
+    background-color: linear-gradient(to bottom, #1b5e20, #155d18);
+    -fx-background-color: linear-gradient(to bottom, #1b5e20, #155d18);
+}
+
+/* Action Buttons (Dark Grey) */
+.action-button {
+    background-color: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+    -fx-background-color: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+    border-color: #1a1a1a;
+    -fx-border-color: #1a1a1a;
+}
+
+.action-button:hover {
+    background-color: linear-gradient(to bottom, #5a5a5a, #3d3d3d);
+    -fx-background-color: linear-gradient(to bottom, #5a5a5a, #3d3d3d);
+    border-color: #000000;
+    -fx-border-color: #000000;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.2), 15, 0, 0, 0),
+                dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 4);
+}
+
+.action-button:pressed {
+    background-color: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
+    -fx-background-color: linear-gradient(to bottom, #2d2d2d, #1a1a1a);
+}
+
+/* Login box - dark background in dark mode */
+.login-box {
+    background-color: #2d2d2d !important;
+    -fx-background-color: #2d2d2d !important;
+    border-color: #505050 !important;
+    -fx-border-color: #505050 !important;
 }
 
 .go-back-button {
@@ -170,9 +303,14 @@ Label {
     -fx-text-fill: white;
 }
 
-/* Make ComboBox selection highlight neutral (not bright blue) */
-.combo-box-base,
-.combo-box {
+/* Make ComboBox selection highlight neutral (not bright blue) but preserve status colors */
+.combo-box-base {
+    border-color: #404040;
+    -fx-border-color: #404040;
+}
+
+/* Only apply black background to non-status comboboxes */
+.combo-box:not(.status-combo) {
     background-color: #000000;
     -fx-background-color: #000000;
     border-color: #404040;
@@ -257,22 +395,32 @@ Label {
 /* Keep status colors vibrant in dark mode */
 .status-NOT_STARTED {
     -fx-text-fill: #ff6b6b;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 .status-IN_PROGRESS {
     -fx-text-fill: #4ecdc4;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 .status-DELAYED {
     -fx-text-fill: #ffd93d;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 .status-NEED_HELP {
     -fx-text-fill: #bb86fc;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 .status-DONE {
     -fx-text-fill: #6bcf7f;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 /* Dialog styling */

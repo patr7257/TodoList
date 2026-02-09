@@ -135,9 +135,10 @@ public final class Description {
                 try {
                     Lists.setListDescription(Config.getRequestsUri(), Config.getResponsesUri(), item.id, desired);
                     Platform.runLater(() -> {
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -246,9 +247,10 @@ public final class Description {
                 try {
                     Tasks.setTaskDescription(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, desired);
                     Platform.runLater(() -> {
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();

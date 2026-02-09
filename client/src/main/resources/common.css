@@ -24,24 +24,252 @@
     -fx-min-width: 170px;
     -fx-min-height: 46px;
     -fx-background-color: #2d6cdf;
-    -fx-background-radius: 30;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 25;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 20, 0, 0, 4);
+    -fx-cursor: hand;
 }
+
 .primary-button:hover {
     -fx-background-color: #1e4fa8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.28), 25, 0, 0, 5);
 }
+
+.primary-button:pressed {
+    -fx-background-color: #163a7a;
+}
+
+.primary-button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-effect: none;
+}
+
+/* Success/Connect Button */
+.success-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
+}
+
+.success-button:hover {
+    -fx-background-color: #229954;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+
+.success-button:pressed {
+    -fx-background-color: #1e8449;
+}
+
+.success-button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-effect: none;
+}
+
+/* Secondary Button */
+.secondary-button {
+    -fx-min-width: 110px;
+    -fx-min-height: 36px;
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #333333;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1.5px;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0, 0, 1);
+    -fx-cursor: hand;
+}
+
+.secondary-button:hover {
+    -fx-background-color: #e8e8e8;
+    -fx-border-color: #2d6cdf;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+
+.secondary-button:pressed {
+    -fx-background-color: #d0d0d0;
+}
+
+/* Connection status label */
+.connection-status {
+    -fx-font-size: 16px;
+    -fx-font-weight: 500;
+    -fx-padding: 5 0;
+}
+
+/* Status Label */
+.status-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 0;
+}
+
+/* Connect Info Label */
+.connect-info-label {
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 14px;
+    -fx-text-fill: #2d6cdf;
+    -fx-font-weight: 600;
+    -fx-padding: 5 0;
+}
+
+/* Container for config dialogs */
+.config-panel {
+    -fx-background-color: white;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);
+}
+
+/* Main User Login Buttons - Eline (Light Blue) */
+.main-user-button-eline {
+    -fx-min-width: 220px;
+    -fx-min-height: 80px;
+    -fx-background-color: linear-gradient(to bottom, #4fc3f7, #29b6f6);
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-border-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 18, 0, 0, 4);
+    -fx-cursor: hand;
+}
+
+.main-user-button-eline:hover {
+    -fx-background-color: linear-gradient(to bottom, #29b6f6, #039be5);
+    -fx-border-color: #000000;
+    -fx-border-width: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0,136,209,0.5), 25, 0, 0, 6);
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.main-user-button-eline:pressed {
+    -fx-background-color: linear-gradient(to bottom, #0288d1, #0277bd);
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 2);
+}
+
+/* Main User Login Buttons - Patrick (Green) */
+.main-user-button-patrick {
+    -fx-min-width: 220px;
+    -fx-min-height: 80px;
+    -fx-background-color: linear-gradient(to bottom, #66bb6a, #4caf50);
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15;
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-border-radius: 15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 18, 0, 0, 4);
+    -fx-cursor: hand;
+}
+
+.main-user-button-patrick:hover {
+    -fx-background-color: linear-gradient(to bottom, #4caf50, #43a047);
+    -fx-border-color: #000000;
+    -fx-border-width: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(46,125,50,0.5), 25, 0, 0, 6);
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.main-user-button-patrick:pressed {
+    -fx-background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
+    -fx-border-color: #000000;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 2);
+}
+
+/* Action Buttons (Create, Login Other, Delete) - Dark Grey with Style */
+.action-button {
+    -fx-min-width: 250px;
+    -fx-pref-width: 250px;
+    -fx-min-height: 42px;
+    -fx-background-color: linear-gradient(to bottom, #616161, #424242);
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 21;
+    -fx-border-color: #212121;
+    -fx-border-width: 2px;
+    -fx-border-radius: 21;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 3);
+    -fx-cursor: hand;
+}
+
+.action-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #757575, #616161);
+    -fx-border-color: #000000;
+    -fx-border-width: 3px;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.3), 15, 0, 0, 0), 
+                dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 4);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.action-button:pressed {
+    -fx-background-color: linear-gradient(to bottom, #424242, #212121);
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 2);
+}
+
+.action-button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-border-color: #999999;
+    -fx-effect: none;
+}
+
 
 .button {
     -fx-background-color: #2d6cdf;
     -fx-text-fill: white;
-    -fx-font-size: 20px;
+    -fx-font-size: 16px;
     -fx-font-weight: 600;
-    -fx-padding: 12 30;
-    -fx-background-radius: 999;
+    -fx-padding: 10 24;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+    -fx-cursor: hand;
 }
 
 .button:hover {
     -fx-background-color: #1e4fa8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 12, 0, 0, 3);
+}
+
+.button:pressed {
+    -fx-background-color: #163a7a;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0, 0, 1);
+}
+
+.button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-effect: none;
+    -fx-cursor: default;
 }
 .login-root, .mainmenu-root {
     -fx-font-family: "Segoe UI", "Arial";
@@ -165,17 +393,28 @@
     -fx-font-size: 14px;
     -fx-text-fill: #888888;
 }
+/* Danger/Cancel Button */
 .danger-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
     -fx-background-color: #e53935;
     -fx-text-fill: white;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: 600;
-    -fx-padding: 10 18;
-    -fx-background-radius: 999;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
 }
 
 .danger-button:hover {
     -fx-background-color: #c62828;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+
+.danger-button:pressed {
+    -fx-background-color: #b71c1c;
 }
 
 /* TaskStatus styling with colors */
@@ -243,3 +482,121 @@
 .sidebar-button:pressed {
     -fx-background-color: #d0d0d0;
 }
+
+/* Fix double scrollbar issue - hide ListView's internal horizontal scrollbar */
+/* The outer ScrollPane will handle all horizontal scrolling */
+.list-view .virtual-flow .scroll-bar:horizontal {
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+    -fx-min-height: 0;
+    -fx-opacity: 0;
+    visibility: hidden;
+}
+
+/* --- Match ServerConfigDialog styling for connection dialogs --- */
+
+/* Radio Buttons */
+.radio-button {
+    -fx-font-size: 15px;
+    -fx-text-fill: #333333;
+}
+
+.radio-button .radio {
+    -fx-background-radius: 12px;
+    -fx-padding: 4px;
+}
+
+.radio-button:selected .radio .dot {
+    -fx-background-color: #2d6cdf;
+}
+
+/* Text Fields and ComboBoxes */
+.text-field, .combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-padding: 6 10;
+    -fx-pref-height: 34px;
+}
+
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: #2d6cdf;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(45,108,223,0.2), 8, 0, 0, 0);
+}
+
+/* Labels */
+Label {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333;
+}
+
+/* --- Force dialog buttons to match server (override generic .button) --- */
+.button.success-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
+}
+.button.success-button:hover {
+    -fx-background-color: #229954;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+.button.success-button:pressed { -fx-background-color: #1e8449; }
+.button.success-button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-effect: none;
+}
+
+.button.secondary-button {
+    -fx-min-width: 110px;
+    -fx-min-height: 36px;
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #333333;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1.5px;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0, 0, 1);
+    -fx-cursor: hand;
+}
+.button.secondary-button:hover {
+    -fx-background-color: #e8e8e8;
+    -fx-border-color: #2d6cdf;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+.button.secondary-button:pressed { -fx-background-color: #d0d0d0; }
+
+.button.danger-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
+    -fx-background-color: #e53935;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
+}
+.button.danger-button:hover {
+    -fx-background-color: #c62828;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+.button.danger-button:pressed { -fx-background-color: #b71c1c; }

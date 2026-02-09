@@ -1,9 +1,13 @@
 package dk.dtu.shared;
 
 import java.io.File;
+import java.util.function.Consumer;
 
 // Shared configuration class for server and client
 public final class Config {
+
+    // Connection error handler (for client only)
+    private static volatile Consumer<Exception> connectionErrorHandler = null;
 
     // SERVER CONFIGURATION
     // Intentionally runtime-configurable so packaged apps can run on any PC.
@@ -71,6 +75,34 @@ public final class Config {
     // Base URI for client connections
     public static String getClientBaseUri() {
         return "tcp://" + getServerIp() + ":" + getPort() + "/";
+    }
+    
+    // Connection error handling (client-side)
+    public static void setConnectionErrorHandler(Consumer<Exception> handler) {
+        connectionErrorHandler = handler;
+    }
+    
+    public static void handleConnectionError(Exception e) {
+        if (connectionErrorHandler != null) {
+            connectionErrorHandler.accept(e);
+        } else {
+            System.err.println("Connection error (no handler registered): " + e.getMessage());
+        }
+    }
+    
+    public static boolean isConnectionError(Exception e) {
+        if (e == null) return false;
+        String msg = e.getMessage();
+        if (msg == null) msg = "";
+        String lowerMsg = msg.toLowerCase();
+        return lowerMsg.contains("connection") || 
+               lowerMsg.contains("refused") || 
+               lowerMsg.contains("timeout") ||
+               lowerMsg.contains("unreachable") ||
+               lowerMsg.contains("network") ||
+               e instanceof java.net.ConnectException ||
+               e instanceof java.net.SocketException ||
+               e instanceof java.io.IOException;
     }
     
     // Client URI for todoLists space

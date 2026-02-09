@@ -39,9 +39,9 @@ public class ListNameColumn implements Column<Helpers.ListEntry> {
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
         Label label = new Label();
-        label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());
-        label.setMaxWidth(prefWidth());
+        label.setPrefWidth(prefWidth());
+        label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
         label.setTextAlignment(TextAlignment.CENTER);
         label.getStyleClass().add("list-col-name");

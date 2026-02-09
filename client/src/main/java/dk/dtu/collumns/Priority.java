@@ -46,7 +46,7 @@ public final class Priority {
 
         @Override
         public double prefWidth() {
-            return 95;
+            return 120;
         }
 
         @Override
@@ -75,9 +75,9 @@ public final class Priority {
             HBox box = new HBox(6, value, arrows);
             box.setAlignment(Pos.CENTER);
 
-            box.setPrefWidth(prefWidth());
-            box.setMinWidth(prefWidth());
-            box.setMaxWidth(prefWidth());
+            box.setPrefWidth(prefWidth() - 10);
+            box.setMinWidth(prefWidth() - 10);
+            box.setMaxWidth(prefWidth() - 10);
 
             Runnable updateButtons = () -> {
                 Helpers.ListEntry item = cell.getItem();
@@ -124,9 +124,10 @@ public final class Priority {
                 try {
                     Lists.setListPriority(Config.getRequestsUri(), Config.getResponsesUri(), item.id, next);
                     Platform.runLater(() -> {
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                         updateButtons.run();
                     });
                 } catch (Exception ex) {
@@ -151,7 +152,7 @@ public final class Priority {
 
         @Override
         public double prefWidth() {
-            return 95;
+            return 120;
         }
 
         @Override
@@ -180,9 +181,9 @@ public final class Priority {
             HBox box = new HBox(6, value, arrows);
             box.setAlignment(Pos.CENTER);
 
-            box.setPrefWidth(prefWidth());
-            box.setMinWidth(prefWidth());
-            box.setMaxWidth(prefWidth());
+            box.setPrefWidth(prefWidth() - 10);
+            box.setMinWidth(prefWidth() - 10);
+            box.setMaxWidth(prefWidth() - 10);
 
             Runnable updateButtons = () -> {
                 Helpers.TaskEntry item = cell.getItem();
@@ -229,9 +230,10 @@ public final class Priority {
                 try {
                     Tasks.setTaskPriority(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, next);
                     Platform.runLater(() -> {
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                         updateButtons.run();
                     });
                 } catch (Exception ex) {

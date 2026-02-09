@@ -131,6 +131,9 @@ public class Lists {
                 });
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
             }
         }, "load-todo-lists").start();
     }

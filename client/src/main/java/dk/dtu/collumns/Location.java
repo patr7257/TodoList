@@ -44,7 +44,7 @@ public final class Location {
 
         @Override
         public double prefWidth() {
-            return 170;
+            return 200;
         }
 
         @Override
@@ -64,9 +64,9 @@ public final class Location {
             TextField field = new TextField();
             field.setPromptText("Location");
             field.setAlignment(Pos.CENTER);
-            field.setPrefWidth(prefWidth());
-            field.setMinWidth(prefWidth());
-            field.setMaxWidth(prefWidth());
+            field.setPrefWidth(prefWidth() - 10);
+            field.setMinWidth(prefWidth() - 10);
+            field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
                 Helpers.ListEntry item = cell.getItem();
@@ -115,9 +115,10 @@ public final class Location {
                     Lists.setListLocation(Config.getRequestsUri(), Config.getResponsesUri(), item.id, desired);
                     Platform.runLater(() -> {
                         field.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -144,7 +145,7 @@ public final class Location {
 
         @Override
         public double prefWidth() {
-            return 170;
+            return 200;
         }
 
         @Override
@@ -164,9 +165,9 @@ public final class Location {
             TextField field = new TextField();
             field.setPromptText("Location");
             field.setAlignment(Pos.CENTER);
-            field.setPrefWidth(prefWidth());
-            field.setMinWidth(prefWidth());
-            field.setMaxWidth(prefWidth());
+            field.setPrefWidth(prefWidth() - 10);
+            field.setMinWidth(prefWidth() - 10);
+            field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
                 Helpers.TaskEntry item = cell.getItem();
@@ -215,9 +216,10 @@ public final class Location {
                     Tasks.setTaskLocation(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, desired);
                     Platform.runLater(() -> {
                         field.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();

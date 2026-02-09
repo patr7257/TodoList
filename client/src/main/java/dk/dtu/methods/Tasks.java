@@ -1,6 +1,7 @@
 package dk.dtu.methods;
 
 import com.google.gson.Gson;
+import dk.dtu.shared.Config;
 import dk.dtu.shared.Defaults;
 import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
@@ -82,6 +83,9 @@ public class Tasks {
                         
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
             }
         }, "load-tasks-for-list").start();
     }

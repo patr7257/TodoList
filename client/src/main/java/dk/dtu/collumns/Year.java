@@ -44,7 +44,7 @@ public final class Year {
 
         @Override
         public double prefWidth() {
-            return 90;
+            return 110;
         }
 
         @Override
@@ -67,9 +67,9 @@ public final class Year {
             TextField field = new TextField();
             field.setPromptText("Year");
             field.setAlignment(Pos.CENTER);
-            field.setPrefWidth(prefWidth());
-            field.setMinWidth(prefWidth());
-            field.setMaxWidth(prefWidth());
+            field.setPrefWidth(prefWidth() - 10);
+            field.setMinWidth(prefWidth() - 10);
+            field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
                 Helpers.ListEntry item = cell.getItem();
@@ -135,9 +135,10 @@ public final class Year {
                     Lists.setListYear(Config.getRequestsUri(), Config.getResponsesUri(), item.id, next);
                     Platform.runLater(() -> {
                         field.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -164,7 +165,7 @@ public final class Year {
 
         @Override
         public double prefWidth() {
-            return 90;
+            return 110;
         }
 
         @Override
@@ -187,9 +188,9 @@ public final class Year {
             TextField field = new TextField();
             field.setPromptText("Year");
             field.setAlignment(Pos.CENTER);
-            field.setPrefWidth(prefWidth());
-            field.setMinWidth(prefWidth());
-            field.setMaxWidth(prefWidth());
+            field.setPrefWidth(prefWidth() - 10);
+            field.setMinWidth(prefWidth() - 10);
+            field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
                 Helpers.TaskEntry item = cell.getItem();
@@ -255,9 +256,10 @@ public final class Year {
                     Tasks.setTaskYear(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, next);
                     Platform.runLater(() -> {
                         field.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();

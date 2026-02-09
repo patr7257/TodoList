@@ -41,6 +41,7 @@ public class TaskReorderColumn implements Column<Helpers.TaskEntry> {
         label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());
         label.setMaxWidth(prefWidth());
+        label.setAlignment(javafx.geometry.Pos.CENTER);
         return label;
     }
 

@@ -28,7 +28,7 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public double prefWidth() {
-        return 145;
+        return 180;
     }
 
     @Override
@@ -46,9 +46,9 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
         ListCell<Helpers.TaskEntry> cell = ctx.cell();
 
         ComboBox<String> ownerCombo = new ComboBox<>();
-        ownerCombo.setPrefWidth(prefWidth());
-        ownerCombo.setMinWidth(prefWidth());
-        ownerCombo.setMaxWidth(prefWidth());
+        ownerCombo.setPrefWidth(prefWidth() - 10);
+        ownerCombo.setMinWidth(prefWidth() - 10);
+        ownerCombo.setMaxWidth(prefWidth() - 10);
         ownerCombo.setPromptText("Owner");
         ownerCombo.getStyleClass().add("task-col-owner");
 
@@ -77,12 +77,15 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
 
             String newOwner = ownerCombo.getValue();
             if (newOwner == null) return;
+            
+            // Strip star from main users before using the value
+            String cleanOwner = newOwner.replace(" *", "");
 
-            boolean wantsAll = ALL.equals(newOwner);
+            boolean wantsAll = ALL.equals(cleanOwner);
             boolean currentlyAll = (item.owner == null || item.owner.isBlank());
             if (wantsAll && currentlyAll) return;
-            if (!wantsAll && newOwner.isBlank()) return;
-            if (!wantsAll && newOwner.equals(item.owner)) return;
+            if (!wantsAll && cleanOwner.isBlank()) return;
+            if (!wantsAll && cleanOwner.equals(item.owner)) return;
 
             ownerCombo.setDisable(true);
             new Thread(() -> {
@@ -100,14 +103,15 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
                                 Config.getResponsesUri(),
                                 item.listId,
                                 item.id,
-                                newOwner
+                                cleanOwner
                         );
                     }
                     Platform.runLater(() -> {
                         ownerCombo.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -130,7 +134,12 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
                 }
 
                 if (item.owner != null && !item.owner.isBlank()) {
-                    ownerCombo.setValue(item.owner);
+                    // Add star to main users for display
+                    String displayOwner = item.owner;
+                    if (dk.dtu.MainUserConfig.isMainUser(item.owner)) {
+                        displayOwner = item.owner + " *";
+                    }
+                    ownerCombo.setValue(displayOwner);
                 } else {
                     ownerCombo.setValue(ALL);
                 }

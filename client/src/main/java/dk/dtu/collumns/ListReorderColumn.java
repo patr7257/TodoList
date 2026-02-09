@@ -41,6 +41,7 @@ public class ListReorderColumn implements Column<Helpers.ListEntry> {
         label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());
         label.setMaxWidth(prefWidth());
+        label.setAlignment(javafx.geometry.Pos.CENTER);
         return label;
     }
 

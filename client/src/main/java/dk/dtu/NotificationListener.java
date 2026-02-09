@@ -33,47 +33,45 @@ public class NotificationListener implements Runnable {
     public void run() {
         RemoteSpace notifications = null;
         
-        // Keep trying to connect to server with exponential backoff
-        while (running && notifications == null) {
+        // Try to connect once - no retry loop (connection is already validated before this is called)
+        try {
+            notifications = new RemoteSpace(notificationsUri);
+            System.out.println();
+            System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
+            
+            // Notify server that a new client connected
             try {
-                notifications = new RemoteSpace(notificationsUri);
-                System.out.println();
-                System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
-                
-                // Notify server that a new client connected
-                try {
-                    RemoteSpace requests = new RemoteSpace(Config.getRequestsUri());
-                    RemoteSpace responses = new RemoteSpace(Config.getResponsesUri());
-                    String requestId = java.util.UUID.randomUUID().toString();
-                    requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
-                            requestId,
-                            "", "", "", "");
+                RemoteSpace requests = new RemoteSpace(Config.getRequestsUri());
+                RemoteSpace responses = new RemoteSpace(Config.getResponsesUri());
+                String requestId = java.util.UUID.randomUUID().toString();
+                requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
+                        requestId,
+                        "", "", "", "");
 
-                    // Best-effort: consume response if the server sends one.
-                    Object[] ack = responses.getp(
-                            new FormalField(Object.class),
-                            new ActualField(requestId),
-                            new FormalField(Object.class),
-                            new FormalField(Object.class),
-                            new FormalField(Object.class),
-                            new FormalField(Object.class)
-                    );
-                    if (ack != null) {
-                        System.out.println("Server acknowledged client connection.");
-                    }
-                } catch (Exception e) {
-                    System.err.println("[NotificationListener] Could not notify server about client connection: " + e.getMessage());
+                // Best-effort: consume response if the server sends one.
+                Object[] ack = responses.getp(
+                        new FormalField(Object.class),
+                        new ActualField(requestId),
+                        new FormalField(Object.class),
+                        new FormalField(Object.class),
+                        new FormalField(Object.class),
+                        new FormalField(Object.class)
+                );
+                if (ack != null) {
+                    System.out.println("Server acknowledged client connection.");
                 }
-                
             } catch (Exception e) {
-                System.err.println("[NotificationListener] Cannot connect to server, retrying in 3 seconds... (" + e.getMessage() + ")");
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
+                System.err.println("[NotificationListener] Could not notify server about client connection: " + e.getMessage());
             }
+            
+        } catch (Exception e) {
+            System.err.println("[NotificationListener] Cannot connect to notifications space: " + e.getMessage());
+            return; // Exit immediately if cannot connect
+        }
+        
+        if (notifications == null) {
+            System.err.println("[NotificationListener] Failed to establish connection, exiting.");
+            return;
         }
         
         try {
@@ -151,5 +149,10 @@ public class NotificationListener implements Runnable {
 
     public void stop() {
         running = false;
+        System.out.println("[NotificationListener] Stopping notification listener...");
+    }
+    
+    public boolean isRunning() {
+        return running;
     }
 }

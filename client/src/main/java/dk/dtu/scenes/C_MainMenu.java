@@ -8,6 +8,7 @@ import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
 import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -17,17 +18,11 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
+import javafx.util.Duration;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.prefs.Preferences;
 
 public class C_MainMenu {
@@ -36,12 +31,20 @@ public class C_MainMenu {
 
     private enum EmptyFilter { ALL, EMPTY, NOT_EMPTY }
     private enum YesNoFilter { ALL, YES, NO }
+    private enum CompletionFilter { ALL, COMPLETED, NOT_COMPLETED }
+
+    private static final Gson GSON = new Gson();
+    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
+    private static final String PREF_LIST_COLUMNS_JSON = "mainMenu.listColumnsJson";
+
+    private static final String PINNED_REORDER_ID = "reorder";
+    private static final String PINNED_NAME_ID = "name";
+    private static final String PINNED_DELETE_ID = "delete";
 
     private final SceneNavigator navigator;
     private final String loginMessage;
 
     private final ListView<Helpers.ListEntry> listsView = new ListView<>();
-
     private List<Helpers.ListEntry> allLists = List.of();
 
     private String ownerFilter = "All";
@@ -55,26 +58,6 @@ public class C_MainMenu {
     private YesNoFilter hasTasksFilter = YesNoFilter.ALL;
     private YesNoFilter overdueFilter = YesNoFilter.ALL;
 
-    private enum CompletionFilter { ALL, COMPLETED, NOT_COMPLETED }
-
-    private static boolean matchesEmptyFilter(String value, EmptyFilter filter) {
-        if (filter == null || filter == EmptyFilter.ALL) return true;
-        boolean empty = value == null || value.isBlank();
-        return switch (filter) {
-            case EMPTY -> empty;
-            case NOT_EMPTY -> !empty;
-            default -> true;
-        };
-    }
-
-    private static final Gson GSON = new Gson();
-    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
-    private static final String PREF_LIST_COLUMNS_JSON = "mainMenu.listColumnsJson";
-
-    private static final String PINNED_REORDER_ID = "reorder";
-    private static final String PINNED_NAME_ID = "name";
-    private static final String PINNED_DELETE_ID = "delete";
-
     public C_MainMenu(SceneNavigator navigator) {
         this(navigator, null);
     }
@@ -85,53 +68,118 @@ public class C_MainMenu {
     }
 
     public Scene createScene() {
+        // Title + user info
         Label title = new Label("Available todo lists");
         title.getStyleClass().add("mainmenu-title");
 
         Label userLabel = new Label("Logged in as: " + navigator.getCurrentUser());
 
         Label tempMessageLabel = new Label();
-        if (loginMessage != null && !loginMessage.isBlank()) {
-            tempMessageLabel.setText(loginMessage);
-            tempMessageLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+        setupLoginMessage(tempMessageLabel);
 
-            new Thread(() -> {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException ignored) {
-                }
-                Platform.runLater(() -> tempMessageLabel.setText(""));
-            }, "login-message-timer").start();
-        }
+        VBox titleSection = new VBox(5, title, userLabel, tempMessageLabel);
+        titleSection.setAlignment(Pos.TOP_CENTER);
 
+        // Columns + sorting
         List<Column<Helpers.ListEntry>> visibleColumns = getVisibleListColumns();
         SortState<Helpers.ListEntry> sortState = new SortState<>();
 
-        double tableWidth = 0;
-        for (Column<Helpers.ListEntry> col : visibleColumns) {
-            tableWidth += col.prefWidth();
-        }
-        tableWidth += COLUMN_GAP * Math.max(0, visibleColumns.size() - 1);
+        double tableWidth = computeTableWidth(visibleColumns);
 
-        List<javafx.scene.Node> headerNodes = new ArrayList<>();
+        // Header row (scrolls horizontally together with the list)
         List<Label> headerLabels = new ArrayList<>();
+        HBox header = buildHeaderRow(visibleColumns, headerLabels, sortState, tableWidth);
+
+        // ListView setup
+        configureListView(tableWidth);
+
+        // Load lists once initially
+        Runnable refreshLists = this::reloadLists;
+        refreshLists.run();
+
+        // Double-click to open list
+        listsView.setOnMouseClicked(e -> {
+            if (e.getButton() != MouseButton.PRIMARY || e.getClickCount() != 2) return;
+            Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
+            if (selected == null) return;
+            navigator.showTodoList(selected.id, selected.name);
+        });
+
+        // Cells built from visible columns
+        listsView.setCellFactory(lv -> buildRowCell(visibleColumns, refreshLists));
+
+        // Create list link
+        Hyperlink createLink = new Hyperlink("+  Create new list");
+        createLink.getStyleClass().add("create-link");
+        createLink.setOnAction(e -> showCreateListDialog());
+
+        // Scrollable table container (header + list)
+        ScrollPane tableScroll = createScrollableTable(header, listsView);
+
+        // Spacer between title and table (instead of dummy Label(""))
+        Region spacer = new Region();
+        spacer.setMinHeight(8);
+
+        VBox root = new VBox(titleSection, spacer, tableScroll, createLink);
+        root.setSpacing(10);
+        root.setPadding(new Insets(24));
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setFillWidth(true);
+        root.getStyleClass().add("mainmenu-root");
+
+        Scene scene = new Scene(root, 900, 600);
+
+        // Fix: prevent horizontal "jump" when focusing controls inside the scrollable table
+        lockHorizontalScrollOnFocus(scene, tableScroll);
+
+        return scene;
+    }
+
+    // -----------------------------
+    // UI helpers
+    // -----------------------------
+
+    private void setupLoginMessage(Label tempMessageLabel) {
+        if (loginMessage == null || loginMessage.isBlank()) return;
+
+        tempMessageLabel.setText(loginMessage);
+        tempMessageLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+
+        PauseTransition pt = new PauseTransition(Duration.seconds(2));
+        pt.setOnFinished(e -> tempMessageLabel.setText(""));
+        pt.play();
+    }
+
+    private static double computeTableWidth(List<Column<Helpers.ListEntry>> visibleColumns) {
+        double w = 0;
+        for (Column<Helpers.ListEntry> col : visibleColumns) {
+            w += col.prefWidth();
+        }
+        w += COLUMN_GAP * Math.max(0, visibleColumns.size() - 1);
+        return w;
+    }
+
+    private HBox buildHeaderRow(
+            List<Column<Helpers.ListEntry>> visibleColumns,
+            List<Label> headerLabels,
+            SortState<Helpers.ListEntry> sortState,
+            double tableWidth
+    ) {
+        List<javafx.scene.Node> headerNodes = new ArrayList<>();
+
         for (Column<Helpers.ListEntry> col : visibleColumns) {
             javafx.scene.Node headerNode = col.createHeader(new ColumnHeaderContext<>(
                     listsView,
                     requested -> sortState.requestSort(requested, listsView, headerLabels)
             ));
 
-            if (PINNED_NAME_ID.equals(col.id())) {
-                HBox.setHgrow(headerNode, javafx.scene.layout.Priority.ALWAYS);
-                if (headerNode instanceof Region r) {
-                    r.setMaxWidth(Double.MAX_VALUE);
-                }
-            }
             if (headerNode instanceof Label l) {
                 l.setUserData(col);
                 headerLabels.add(l);
             }
-            headerNodes.add(headerNode);
+
+            StackPane wrapper = wrapCellNode(headerNode, col.prefWidth(), PINNED_NAME_ID.equals(col.id()));
+            headerNodes.add(wrapper);
         }
 
         HBox header = new HBox(COLUMN_GAP, headerNodes.toArray(javafx.scene.Node[]::new));
@@ -140,32 +188,18 @@ public class C_MainMenu {
         header.setMinWidth(tableWidth);
         header.setPrefWidth(tableWidth);
         header.setMaxWidth(Double.MAX_VALUE);
+        return header;
+    }
 
-        // When a list item is clicked, open that list
-        listsView.setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY|| e.getClickCount() != 2) {
-                return;
-            }
-            Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
-            if (selected == null) {
-                return;
-            }
-            navigator.showTodoList(selected.id, selected.name);
-        });
-
-        // Let the table be as wide as needed; horizontal scrolling is handled by a ScrollPane.
-        listsView.setPrefWidth(tableWidth);
+    private void configureListView(double tableWidth) {
         listsView.setMinWidth(tableWidth);
+        listsView.setPrefWidth(tableWidth);
         listsView.setMaxWidth(Double.MAX_VALUE);
         listsView.setPrefHeight(400);
+    }
 
-        // Load lists initially (previously only refreshed via notifications/user actions)
-        reloadLists();
-
-        Runnable refreshLists = this::reloadLists;
-        
-        // Custom cells: built from visible columns
-        listsView.setCellFactory(lv -> new ListCell<>() {
+    private ListCell<Helpers.ListEntry> buildRowCell(List<Column<Helpers.ListEntry>> visibleColumns, Runnable refreshLists) {
+        return new ListCell<>() {
 
             private final HBox row;
             private final List<ColumnCell<Helpers.ListEntry>> cells;
@@ -175,34 +209,31 @@ public class C_MainMenu {
             {
                 cells = new ArrayList<>();
                 List<javafx.scene.Node> cellNodes = new ArrayList<>();
+
                 for (Column<Helpers.ListEntry> col : visibleColumns) {
                     ColumnCell<Helpers.ListEntry> cellPart = col.createCell(new ColumnCellContext<>(this, refreshLists));
                     cells.add(cellPart);
-                    javafx.scene.Node n = cellPart.node();
 
-                    StackPane wrapper = new StackPane(n);
-                    wrapper.setAlignment(Pos.CENTER);
-                    wrapper.setMinWidth(col.prefWidth());
-                    wrapper.setPrefWidth(col.prefWidth());
-                    wrapper.setMaxWidth(col.prefWidth());
-
-                    cellNodes.add(wrapper);
+                    javafx.scene.Node node = cellPart.node();
                     if (PINNED_REORDER_ID.equals(col.id())) {
-                        reorderHandle = n;
+                        reorderHandle = node;
                     }
 
-                    if (PINNED_NAME_ID.equals(col.id())) {
-                        HBox.setHgrow(wrapper, javafx.scene.layout.Priority.ALWAYS);
-                        wrapper.setMaxWidth(Double.MAX_VALUE);
-                        if (n instanceof Region r) {
-                            r.setMaxWidth(Double.MAX_VALUE);
-                        }
-                    }
+                    StackPane wrapper = wrapCellNode(node, col.prefWidth(), PINNED_NAME_ID.equals(col.id()));
+                    cellNodes.add(wrapper);
                 }
+
                 row = new HBox(COLUMN_GAP, cellNodes.toArray(javafx.scene.Node[]::new));
                 row.setAlignment(Pos.CENTER_LEFT);
 
-                // Drag start only from the reorder handle icon
+                setupDragAndDrop();
+
+                MenuItem renameItem = new MenuItem("Rename list");
+                renameItem.setOnAction(evt -> renameSelectedList(refreshLists));
+                contextMenu.getItems().add(renameItem);
+            }
+
+            private void setupDragAndDrop() {
                 if (reorderHandle != null) {
                     reorderHandle.setOnDragDetected(evt -> {
                         Helpers.ListEntry item = getItem();
@@ -213,10 +244,7 @@ public class C_MainMenu {
                         content.putString(item.id);
                         db.setContent(content);
 
-                        try {
-                            db.setDragView(row.snapshot(null, null));
-                        } catch (Exception ignored) {
-                        }
+                        try { db.setDragView(row.snapshot(null, null)); } catch (Exception ignored) {}
 
                         setOpacity(0.4);
                         evt.consume();
@@ -225,12 +253,9 @@ public class C_MainMenu {
 
                 setOnDragDone(evt -> setOpacity(1.0));
 
-                // Accept drop anywhere on the row
                 setOnDragOver(evt -> {
                     Dragboard db = evt.getDragboard();
-                    if (db.hasString()) {
-                        evt.acceptTransferModes(TransferMode.MOVE);
-                    }
+                    if (db.hasString()) evt.acceptTransferModes(TransferMode.MOVE);
                     evt.consume();
                 });
 
@@ -259,14 +284,7 @@ public class C_MainMenu {
                         return;
                     }
 
-                    int draggedIdx = -1;
-                    for (int i = 0; i < view.getItems().size(); i++) {
-                        Helpers.ListEntry e = view.getItems().get(i);
-                        if (e != null && draggedId.equals(e.id)) {
-                            draggedIdx = i;
-                            break;
-                        }
-                    }
+                    int draggedIdx = indexOfId(view.getItems(), draggedId);
                     if (draggedIdx < 0) {
                         evt.setDropCompleted(false);
                         evt.consume();
@@ -275,55 +293,44 @@ public class C_MainMenu {
 
                     int targetIdx = isEmpty() ? view.getItems().size() : Math.max(0, getIndex());
                     Helpers.ListEntry dragged = view.getItems().remove(draggedIdx);
+
                     if (targetIdx > view.getItems().size()) targetIdx = view.getItems().size();
                     if (targetIdx > draggedIdx) targetIdx--; // account for removal
-                    view.getItems().add(targetIdx, dragged);
 
-                    // keep selection on moved item
+                    view.getItems().add(targetIdx, dragged);
                     view.getSelectionModel().select(dragged);
 
                     evt.setDropCompleted(true);
                     evt.consume();
-
                     row.setStyle("");
 
-                    // Persist order
-                    List<String> orderedIds = view.getItems().stream().map(e -> e.id).toList();
+                    persistListOrder(view.getItems());
+                });
+            }
+
+            private void renameSelectedList(Runnable refreshLists) {
+                Helpers.ListEntry item = getItem();
+                if (item == null) return;
+
+                TextInputDialog dialog = new TextInputDialog(item.name);
+                dialog.setTitle("Rename List");
+                dialog.setHeaderText("Rename list");
+                dialog.setContentText("New name:");
+
+                dialog.showAndWait().ifPresent(newName -> {
+                    if (newName == null) return;
+                    String trimmed = newName.trim();
+                    if (trimmed.isBlank() || trimmed.equals(item.name)) return;
+
                     new Thread(() -> {
                         try {
-                            Lists.setListOrderBulk(Config.getRequestsUri(), Config.getResponsesUri(), orderedIds);
+                            Lists.renameTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id, trimmed);
+                            Platform.runLater(refreshLists);
                         } catch (Exception ex) {
                             ex.printStackTrace();
                         }
-                    }, "persist-list-order").start();
+                    }, "rename-list").start();
                 });
-
-                MenuItem renameItem = new MenuItem("Rename list");
-                renameItem.setOnAction(evt -> {
-                    Helpers.ListEntry item = getItem();
-                    if (item == null) return;
-
-                    TextInputDialog dialog = new TextInputDialog(item.name);
-                    dialog.setTitle("Rename List");
-                    dialog.setHeaderText("Rename list");
-                    dialog.setContentText("New name:");
-
-                    dialog.showAndWait().ifPresent(newName -> {
-                        if (newName == null) return;
-                        String trimmed = newName.trim();
-                        if (trimmed.isBlank() || trimmed.equals(item.name)) return;
-
-                        new Thread(() -> {
-                            try {
-                                Lists.renameTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id, trimmed);
-                                Platform.runLater(refreshLists);
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                            }
-                        }, "rename-list").start();
-                    });
-                });
-                contextMenu.getItems().add(renameItem);
             }
 
             @Override
@@ -343,48 +350,104 @@ public class C_MainMenu {
                 setGraphic(row);
                 setContextMenu(contextMenu);
             }
-        });
+        };
+    }
 
-        // "+ Create new list" link under the list
-        Hyperlink createLink = new Hyperlink("+  Create new list");
-        createLink.getStyleClass().add("create-link");
-        createLink.setOnAction(e -> showCreateListDialog());
+    private static StackPane wrapCellNode(javafx.scene.Node node, double prefWidth, boolean grow) {
+        StackPane wrapper = new StackPane(node);
+        wrapper.setAlignment(Pos.CENTER);
 
-        VBox titleSection = new VBox(5, title, userLabel, tempMessageLabel);
-        titleSection.setAlignment(Pos.TOP_CENTER);
-        
-        VBox root = new VBox(
-                titleSection,
-                new Label(""), // gap spacer
-            createScrollableTable(header, listsView),
-                createLink);
-        root.setSpacing(10);
-        root.setPadding(new Insets(24));
-        root.setAlignment(Pos.TOP_CENTER);
-        root.setFillWidth(true);           // <- important: let children stretch horizontally
-        root.getStyleClass().add("mainmenu-root");
+        wrapper.setMinWidth(prefWidth);
+        wrapper.setPrefWidth(prefWidth);
 
-        // Initial load of lists
-        refreshLists.run();
-
-        return new Scene(root, 900, 600);
+        if (grow) {
+            wrapper.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(wrapper, javafx.scene.layout.Priority.ALWAYS);
+            if (node instanceof Region r) r.setMaxWidth(Double.MAX_VALUE);
+        } else {
+            wrapper.setMaxWidth(prefWidth);
+        }
+        return wrapper;
     }
 
     private ScrollPane createScrollableTable(HBox header, ListView<Helpers.ListEntry> listsView) {
-        VBox table = new VBox(0, header, listsView);
+        VBox content = new VBox(0, header, listsView);
         VBox.setVgrow(listsView, javafx.scene.layout.Priority.ALWAYS);
-        table.minWidthProperty().bind(header.minWidthProperty());
 
-        ScrollPane scroll = new ScrollPane(table);
+        double minTableWidth = header.getMinWidth();
+        content.setMinWidth(minTableWidth);
+
+        ScrollPane scroll = new ScrollPane(content);
         scroll.setPannable(true);
-        // Fill remaining space when table is narrow; still allows scrolling when wider than the viewport.
-        scroll.setFitToWidth(true);
-        scroll.setFitToHeight(false);
+
+        scroll.setFitToWidth(false);
+        scroll.setFitToHeight(true);
+        
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        // Vertical scrolling is handled by the ListView itself.
         scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        scroll.setStyle("-fx-background-color: transparent;");
+
+        // Keep content at least as wide as viewport (so table centers nicely when narrower)
+        scroll.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) return;
+            double viewportWidth = newVal.getWidth();
+            content.setPrefWidth(Math.max(minTableWidth, viewportWidth));
+        });
+
         return scroll;
     }
+
+    /**
+     * Prevent JavaFX from auto-scrolling horizontally inside the ScrollPane when focus changes.
+     * This is what causes the "screen moved to the next one" feeling when you click into fields.
+     */
+    private void lockHorizontalScrollOnFocus(Scene scene, ScrollPane tableScroll) {
+        // Only lock focus-induced scrolling for focus owners inside the scroll content.
+        scene.focusOwnerProperty().addListener((obs, oldNode, newNode) -> {
+            if (newNode == null) return;
+            if (tableScroll.getContent() == null) return;
+
+            // Only care about nodes inside the table scroll content
+            if (!isDescendantOf(newNode, tableScroll.getContent())) return;
+
+            // Snapshot current horizontal position and restore next pulse (after JavaFX tries to "help")
+            double keepH = tableScroll.getHvalue();
+            Platform.runLater(() -> tableScroll.setHvalue(keepH));
+        });
+    }
+
+    private static boolean isDescendantOf(javafx.scene.Node node, javafx.scene.Node ancestor) {
+        javafx.scene.Node cur = node;
+        while (cur != null) {
+            if (cur == ancestor) return true;
+            cur = cur.getParent();
+        }
+        return false;
+    }
+
+    private static int indexOfId(List<Helpers.ListEntry> items, String id) {
+        for (int i = 0; i < items.size(); i++) {
+            Helpers.ListEntry e = items.get(i);
+            if (e != null && Objects.equals(e.id, id)) return i;
+        }
+        return -1;
+    }
+
+    private void persistListOrder(List<Helpers.ListEntry> ordered) {
+        List<String> orderedIds = ordered.stream().map(e -> e.id).toList();
+        new Thread(() -> {
+            try {
+                Lists.setListOrderBulk(Config.getRequestsUri(), Config.getResponsesUri(), orderedIds);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }, "persist-list-order").start();
+    }
+
+    // -----------------------------
+    // Data actions
+    // -----------------------------
 
     private void showCreateListDialog() {
         TextInputDialog dialog = new TextInputDialog();
@@ -393,8 +456,7 @@ public class C_MainMenu {
         dialog.setContentText("Name:");
 
         dialog.showAndWait().ifPresent(name -> {
-            if (name == null || name.isBlank())
-                return;
+            if (name == null || name.isBlank()) return;
 
             new Thread(() -> {
                 try {
@@ -402,7 +464,8 @@ public class C_MainMenu {
                             Config.getRequestsUri(),
                             Config.getResponsesUri(),
                             name,
-                            navigator.getCurrentUser());
+                            navigator.getCurrentUser()
+                    );
                     Platform.runLater(this::reloadLists);
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -443,59 +506,47 @@ public class C_MainMenu {
         for (Helpers.ListEntry e : allLists) {
             if (e == null) continue;
 
-            if (!matchesEmptyFilter(e.name, nameFilter)) {
-                continue;
-            }
+            if (!matchesEmptyFilter(e.name, nameFilter)) continue;
 
             if (ownerFilter != null && !"All".equals(ownerFilter)) {
-                if (e.owner == null || !ownerFilter.equals(e.owner)) {
-                    continue;
-                }
+                if (e.owner == null || !ownerFilter.equals(e.owner)) continue;
             }
 
-            if (yearFilter != null && e.year != yearFilter) {
-                continue;
-            }
+            if (yearFilter != null && e.year != yearFilter) continue;
+            if (priorityFilter != null && e.priority != priorityFilter) continue;
 
-            if (priorityFilter != null && e.priority != priorityFilter) {
-                continue;
-            }
+            if (completionFilter == CompletionFilter.COMPLETED && e.completionPercentage < 100) continue;
+            if (completionFilter == CompletionFilter.NOT_COMPLETED && e.completionPercentage >= 100) continue;
 
-            if (completionFilter == CompletionFilter.COMPLETED && e.completionPercentage < 100) {
-                continue;
-            }
-            if (completionFilter == CompletionFilter.NOT_COMPLETED && e.completionPercentage >= 100) {
-                continue;
-            }
+            if (!matchesEmptyFilter(e.location, locationFilter)) continue;
+            if (!matchesEmptyFilter(e.description, descriptionFilter)) continue;
 
-            if (!matchesEmptyFilter(e.location, locationFilter)) {
-                continue;
-            }
-
-            if (!matchesEmptyFilter(e.description, descriptionFilter)) {
-                continue;
-            }
-
-            if (hasTasksFilter == YesNoFilter.YES && e.taskCount <= 0) {
-                continue;
-            }
-            if (hasTasksFilter == YesNoFilter.NO && e.taskCount > 0) {
-                continue;
-            }
+            if (hasTasksFilter == YesNoFilter.YES && e.taskCount <= 0) continue;
+            if (hasTasksFilter == YesNoFilter.NO && e.taskCount > 0) continue;
 
             boolean isOverdue = e.overdueTaskCount > 0;
-            if (overdueFilter == YesNoFilter.YES && !isOverdue) {
-                continue;
-            }
-            if (overdueFilter == YesNoFilter.NO && isOverdue) {
-                continue;
-            }
+            if (overdueFilter == YesNoFilter.YES && !isOverdue) continue;
+            if (overdueFilter == YesNoFilter.NO && isOverdue) continue;
 
             filtered.add(e);
         }
 
         listsView.getItems().setAll(filtered);
     }
+
+    private static boolean matchesEmptyFilter(String value, EmptyFilter filter) {
+        if (filter == null || filter == EmptyFilter.ALL) return true;
+        boolean empty = value == null || value.isBlank();
+        return switch (filter) {
+            case EMPTY -> empty;
+            case NOT_EMPTY -> !empty;
+            default -> true;
+        };
+    }
+
+    // -----------------------------
+    // Filters dialog (kept as-is, just lightly tidied)
+    // -----------------------------
 
     public void openFilterDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -519,9 +570,7 @@ public class C_MainMenu {
 
         ComboBox<String> priorityCombo = new ComboBox<>();
         priorityCombo.getItems().add("All");
-        for (int p = 1; p <= 10; p++) {
-            priorityCombo.getItems().add(Integer.toString(p));
-        }
+        for (int p = 1; p <= 10; p++) priorityCombo.getItems().add(Integer.toString(p));
         priorityCombo.setValue(priorityFilter != null ? Integer.toString(priorityFilter) : "All");
 
         ComboBox<String> completionCombo = new ComboBox<>();
@@ -564,21 +613,52 @@ public class C_MainMenu {
             default -> "All";
         });
 
+        double comboWidth = 200;
+        nameCombo.setPrefWidth(comboWidth);
+        ownerCombo.setPrefWidth(comboWidth);
+        yearField.setPrefWidth(comboWidth);
+        priorityCombo.setPrefWidth(comboWidth);
+        completionCombo.setPrefWidth(comboWidth);
+        locationCombo.setPrefWidth(comboWidth);
+        descriptionCombo.setPrefWidth(comboWidth);
+        hasTasksCombo.setPrefWidth(comboWidth);
+        overdueCombo.setPrefWidth(comboWidth);
+
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10));
-        grid.addRow(0, new Label("Name"), nameCombo);
-        grid.addRow(1, new Label("Owner"), ownerCombo);
-        grid.addRow(2, new Label("Year"), yearField);
-        grid.addRow(3, new Label("Priority"), priorityCombo);
-        grid.addRow(4, new Label("Completion"), completionCombo);
-        grid.addRow(5, new Label("Location"), locationCombo);
-        grid.addRow(6, new Label("Description"), descriptionCombo);
-        grid.addRow(7, new Label("Tasks"), hasTasksCombo);
-        grid.addRow(8, new Label("Overdue"), overdueCombo);
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(15));
+
+        double labelWidth = 90;
+        Label[] labels = {
+                new Label("Name"),
+                new Label("Owner"),
+                new Label("Year"),
+                new Label("Priority"),
+                new Label("Completion"),
+                new Label("Location"),
+                new Label("Description"),
+                new Label("Tasks"),
+                new Label("Overdue")
+        };
+        for (Label label : labels) {
+            label.setPrefWidth(labelWidth);
+            label.setAlignment(Pos.CENTER_RIGHT);
+        }
+
+        grid.addRow(0, labels[0], nameCombo);
+        grid.addRow(1, labels[1], ownerCombo);
+        grid.addRow(2, labels[2], yearField);
+        grid.addRow(3, labels[3], priorityCombo);
+        grid.addRow(4, labels[4], completionCombo);
+        grid.addRow(5, labels[5], locationCombo);
+        grid.addRow(6, labels[6], descriptionCombo);
+        grid.addRow(7, labels[7], hasTasksCombo);
+        grid.addRow(8, labels[8], overdueCombo);
 
         dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().setPrefWidth(380);
+
         ButtonType apply = new ButtonType("Apply", ButtonBar.ButtonData.OK_DONE);
         ButtonType clear = new ButtonType("Clear", ButtonBar.ButtonData.OTHER);
         dialog.getDialogPane().getButtonTypes().addAll(apply, clear, ButtonType.CANCEL);
@@ -606,28 +686,23 @@ public class C_MainMenu {
             };
 
             String ownerVal = ownerCombo.getValue();
+            if (ownerVal != null) ownerVal = ownerVal.replace(" *", "");
             ownerFilter = (ownerVal == null || ownerVal.isBlank()) ? "All" : ownerVal;
 
             String yearText = yearField.getText();
             if (yearText == null || yearText.isBlank()) {
                 yearFilter = null;
             } else {
-                try {
-                    yearFilter = Integer.parseInt(yearText.trim());
-                } catch (NumberFormatException ex) {
-                    yearFilter = null;
-                }
+                try { yearFilter = Integer.parseInt(yearText.trim()); }
+                catch (NumberFormatException ex) { yearFilter = null; }
             }
 
             String prioVal = priorityCombo.getValue();
             if (prioVal == null || prioVal.isBlank() || "All".equals(prioVal)) {
                 priorityFilter = null;
             } else {
-                try {
-                    priorityFilter = Integer.parseInt(prioVal);
-                } catch (NumberFormatException ex) {
-                    priorityFilter = null;
-                }
+                try { priorityFilter = Integer.parseInt(prioVal); }
+                catch (NumberFormatException ex) { priorityFilter = null; }
             }
 
             String compVal = completionCombo.getValue();
@@ -664,12 +739,16 @@ public class C_MainMenu {
             applyListFilters();
         });
     }
-    
+
+    // -----------------------------
+    // Columns selection (kept)
+    // -----------------------------
+
     private List<Column<Helpers.ListEntry>> getAllListColumns() {
         return List.of(
                 new ListReorderColumn(),
                 new ListNameColumn(),
-                Priority.forLists(),
+                dk.dtu.collumns.Priority.forLists(),
                 Year.forLists(),
                 Location.forLists(),
                 Description.forLists(),
@@ -685,33 +764,29 @@ public class C_MainMenu {
         List<Column<Helpers.ListEntry>> all = getAllListColumns();
         List<String> desired = loadListColumnIds();
 
-        java.util.Map<String, Column<Helpers.ListEntry>> byId = new java.util.HashMap<>();
-        for (Column<Helpers.ListEntry> col : all) {
-            byId.put(col.id(), col);
-        }
+        Map<String, Column<Helpers.ListEntry>> byId = new HashMap<>();
+        for (Column<Helpers.ListEntry> col : all) byId.put(col.id(), col);
 
         List<Column<Helpers.ListEntry>> visible = new ArrayList<>();
         for (String id : desired) {
             Column<Helpers.ListEntry> col = byId.get(id);
-            if (col != null) {
-                visible.add(col);
-            }
+            if (col != null) visible.add(col);
         }
+        if (visible.isEmpty()) visible.addAll(all);
 
-        if (visible.isEmpty()) {
-            visible.addAll(all);
-        }
-
-        // Enforce pinned ordering (reorder + name always first; delete always last)
+        // Enforce pinned ordering
         visible.removeIf(c -> PINNED_REORDER_ID.equals(c.id()) || PINNED_NAME_ID.equals(c.id()) || PINNED_DELETE_ID.equals(c.id()));
+
         Column<Helpers.ListEntry> reorder = byId.get(PINNED_REORDER_ID);
         Column<Helpers.ListEntry> name = byId.get(PINNED_NAME_ID);
         Column<Helpers.ListEntry> delete = byId.get(PINNED_DELETE_ID);
+
         List<Column<Helpers.ListEntry>> result = new ArrayList<>();
         if (reorder != null) result.add(reorder);
         if (name != null) result.add(name);
         result.addAll(visible);
         if (delete != null) result.add(delete);
+
         return result;
     }
 
@@ -720,9 +795,7 @@ public class C_MainMenu {
         String json = prefs.get(PREF_LIST_COLUMNS_JSON, "");
 
         List<String> defaultIds = getAllListColumns().stream().map(Column::id).toList();
-        if (json == null || json.isBlank()) {
-            return ensurePinnedColumnOrder(defaultIds);
-        }
+        if (json == null || json.isBlank()) return ensurePinnedColumnOrder(defaultIds);
 
         try {
             List<String> parsed = GSON.fromJson(json, STRING_LIST_TYPE);
@@ -755,11 +828,11 @@ public class C_MainMenu {
         cleaned.remove(PINNED_REORDER_ID);
         cleaned.remove(PINNED_NAME_ID);
         cleaned.remove(PINNED_DELETE_ID);
+
         cleaned.add(0, PINNED_NAME_ID);
         cleaned.add(0, PINNED_REORDER_ID);
-
-        // Delete is always the last column.
         cleaned.add(PINNED_DELETE_ID);
+
         return cleaned;
     }
 
@@ -772,10 +845,8 @@ public class C_MainMenu {
         List<String> currentOrder = loadListColumnIds();
         Set<String> currentVisible = new LinkedHashSet<>(currentOrder);
 
-        java.util.Map<String, Column<Helpers.ListEntry>> byId = new java.util.HashMap<>();
-        for (Column<Helpers.ListEntry> col : all) {
-            byId.put(col.id(), col);
-        }
+        Map<String, Column<Helpers.ListEntry>> byId = new HashMap<>();
+        for (Column<Helpers.ListEntry> col : all) byId.put(col.id(), col);
 
         class Choice {
             final Column<Helpers.ListEntry> col;
@@ -790,7 +861,6 @@ public class C_MainMenu {
         ListView<Choice> choicesView = new ListView<>();
         choicesView.setPrefHeight(260);
 
-        // Optional columns: everything except pinned reorder + name
         List<String> optionalIds = new ArrayList<>();
         for (String id : currentOrder) {
             if (PINNED_REORDER_ID.equals(id) || PINNED_NAME_ID.equals(id) || PINNED_DELETE_ID.equals(id)) continue;
@@ -827,18 +897,13 @@ public class C_MainMenu {
                     cc.putString(Integer.toString(getIndex()));
                     db.setContent(cc);
 
-                    try {
-                        db.setDragView(snapshot(null, null));
-                    } catch (Exception ignored) {
-                    }
+                    try { db.setDragView(snapshot(null, null)); } catch (Exception ignored) {}
                     evt.consume();
                 });
 
                 setOnDragOver(evt -> {
                     Dragboard db = evt.getDragboard();
-                    if (db.hasString()) {
-                        evt.acceptTransferModes(TransferMode.MOVE);
-                    }
+                    if (db.hasString()) evt.acceptTransferModes(TransferMode.MOVE);
                     evt.consume();
                 });
 
@@ -860,13 +925,13 @@ public class C_MainMenu {
                     }
 
                     int from;
-                    try {
-                        from = Integer.parseInt(db.getString());
-                    } catch (Exception e) {
+                    try { from = Integer.parseInt(db.getString()); }
+                    catch (Exception e) {
                         evt.setDropCompleted(false);
                         evt.consume();
                         return;
                     }
+
                     int to = getIndex();
                     if (from == to || from < 0 || from >= choicesView.getItems().size()) {
                         evt.setDropCompleted(false);
@@ -913,13 +978,11 @@ public class C_MainMenu {
             List<String> selected = new ArrayList<>();
             selected.add(PINNED_REORDER_ID);
             selected.add(PINNED_NAME_ID);
+
             for (Choice c : choicesView.getItems()) {
-                if (c.selected) {
-                    selected.add(c.col.id());
-                }
+                if (c.selected) selected.add(c.col.id());
             }
 
-            // Always include delete as the last column.
             selected.add(PINNED_DELETE_ID);
 
             saveListColumnIds(selected);

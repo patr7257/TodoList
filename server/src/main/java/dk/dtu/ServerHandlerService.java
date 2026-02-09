@@ -102,6 +102,8 @@ public class ServerHandlerService implements Runnable {
                     case TupleSpaces.CMD_TASK_DESCRIPTION_SET -> handleTaskDescriptionSet(req);
                     case TupleSpaces.CMD_LIST_ORDER_BULK_SET -> handleListOrderBulkSet(req);
                     case TupleSpaces.CMD_TASK_ORDER_BULK_SET -> handleTaskOrderBulkSet(req);
+                    case TupleSpaces.CMD_EXPORT_SESSION -> handleExportSession(req);
+                    case TupleSpaces.CMD_IMPORT_SESSION -> handleImportSession(req);
                     default -> System.out.println("Unknown command: " + req.cmd());
                 }
             }
@@ -1472,6 +1474,61 @@ public class ServerHandlerService implements Runnable {
         if (value < 0) return 0;
         if (value > 9999) return 9999;
         return value;
+    }
+    
+    private void handleExportSession(Request req) throws InterruptedException {
+        String filePath = req.getString(0);
+        
+        if (filePath == null || filePath.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid file path for export", "", "", "");
+            return;
+        }
+        
+        try {
+            boolean success = persistenceService.exportSession(users, todoLists, tasks, filePath);
+            if (success) {
+                sendOkResponse(req.requestId(), "Session exported successfully", filePath, "", "");
+            } else {
+                sendErrorResponse(req.requestId(), "Failed to export session", filePath, "", "");
+            }
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Export error: " + e.getMessage(), filePath, "", "");
+        }
+    }
+    
+    private void handleImportSession(Request req) throws InterruptedException {
+        String filePath = req.getString(0);
+        String mode = req.getString(1); // "replace" or "merge"
+        
+        if (filePath == null || filePath.isBlank()) {
+            sendErrorResponse(req.requestId(), "Invalid file path for import", "", "", "");
+            return;
+        }
+        
+        // Default to replace if mode not specified
+        if (mode == null || mode.isBlank()) {
+            mode = "replace";
+        }
+        
+        try {
+            boolean success;
+            if ("merge".equalsIgnoreCase(mode)) {
+                success = persistenceService.mergeSession(users, todoLists, tasks, filePath);
+            } else {
+                success = persistenceService.importSession(users, todoLists, tasks, filePath);
+            }
+            
+            if (success) {
+                // Broadcast that all data changed (force all clients to refresh)
+                broadcastDataChange("IMPORT", "all", "", "");
+                String action = "merge".equalsIgnoreCase(mode) ? "merged" : "imported";
+                sendOkResponse(req.requestId(), "Session " + action + " successfully", filePath, "", "");
+            } else {
+                sendErrorResponse(req.requestId(), "Failed to " + mode + " session", filePath, "", "");
+            }
+        } catch (Exception e) {
+            sendErrorResponse(req.requestId(), "Import error: " + e.getMessage(), filePath, "", "");
+        }
     }
   
     private record Request(String cmd, String requestId, Object a1, Object a2, Object a3, Object a4) {

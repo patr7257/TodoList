@@ -13,22 +13,13 @@ public class ClientApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        // Ask which server to connect to before initializing background listeners.
-        ClientConnectDialog.ConnectionSettings settings = ClientConnectDialog.show(primaryStage);
-        if (settings == null) {
-            javafx.application.Platform.exit();
-            return;
-        }
-
-        System.setProperty("todolist.server.ip", settings.serverIp());
-        System.setProperty("todolist.port", Integer.toString(settings.port()));
-
         // Set initial window size
         primaryStage.setWidth(970);
         primaryStage.setHeight(600);
         primaryStage.setMinWidth(800);
         primaryStage.setMinHeight(500);
         
+        // Show welcome screen first (connection happens from there)
         SceneNavigator navigator = new SceneNavigator(primaryStage);
         navigator.showWelcome();
         

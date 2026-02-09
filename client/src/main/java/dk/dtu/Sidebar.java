@@ -1,12 +1,20 @@
 package dk.dtu;
 
+import dk.dtu.methods.DataManagement;
+import dk.dtu.shared.Config;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+
+import java.io.File;
 
 /**
  * Sidebar component that persists across all scenes
@@ -19,6 +27,9 @@ public class Sidebar extends VBox {
     private Button themeToggleButton;
     private Button columnFilterButton;
     private Button listFilterButton;
+    private Button settingsButton;
+    private Button saveButton;
+    private Button loadButton;
     private Button backButton;
     
     private boolean isDarkMode = false;
@@ -40,34 +51,40 @@ public class Sidebar extends VBox {
     }
     
     private void initializeButtons() {
-        // Home button (top button - always visible)
+        // Home button (top button - always visible, logout functionality)
         homeButton = createIconButton("/Icons/homeicon.png", "Home");
-        homeButton.setOnAction(e -> {
-            if (navigator.getCurrentUser() != null) {
-                navigator.showMainMenu();
-            } else {
-                navigator.showWelcome();
-            }
-        });
+        homeButton.setOnAction(e -> showHomeDialog());
 
         // Theme toggle button (sun/moon icon)
         themeToggleButton = createThemeToggleButton();
         themeToggleButton.setOnAction(e -> toggleTheme());
         
         // Column filter button (choose/rearrange visible columns)
-        columnFilterButton = createIconButton("/Icons/RearrangeColumn.png", "Choose columns");
-        columnFilterButton.setVisible(false);
+        columnFilterButton = createIconButton("/Icons/RearrangeColumn.png", "Columns");
+        columnFilterButton.setDisable(true); // Always visible but disabled by default
 
         // List/task filter button (filter visible items)
         listFilterButton = createIconButton("/Icons/filter.png", "Filter");
-        listFilterButton.setVisible(false);
+        listFilterButton.setDisable(true); // Always visible but disabled by default
+
+        // Settings button
+        settingsButton = createIconButton("/Icons/settings.png", "Settings");
+        settingsButton.setOnAction(e -> showSettingsDialog());
+
+        // Save button (export data)
+        saveButton = createIconButton("/Icons/save.png", "Save/Export");
+        saveButton.setOnAction(e -> showSaveDialog());
+
+        // Load button (import data)
+        loadButton = createIconButton("/Icons/load.png", "Load Files");
+        loadButton.setOnAction(e -> showLoadDialog());
 
         // Back button (always last)
         backButton = createIconButton("/Icons/gobackicon.png", "Go Back");
+        backButton.setVisible(false); // Hidden by default
 
-        // Add buttons in requested order:
-        // Home, Dark/Light mode, Column filter, List filter, Go Back
-        this.getChildren().addAll(homeButton, themeToggleButton, columnFilterButton, listFilterButton, backButton);
+        // Add buttons in order: Home, Theme, Column filter, List filter, Save, Load, Settings, Back
+        this.getChildren().addAll(homeButton, themeToggleButton, columnFilterButton, listFilterButton, saveButton, loadButton, settingsButton, backButton);
     }
     
     private Button createIconButton(String iconPath, String tooltipText) {
@@ -82,7 +99,9 @@ public class Sidebar extends VBox {
         }
         
         button.getStyleClass().add("sidebar-button");
-        button.setTooltip(new Tooltip(tooltipText));
+        Tooltip tooltip = new Tooltip(tooltipText);
+        tooltip.setStyle("-fx-font-size: 12px;");
+        button.setTooltip(tooltip);
         button.setPrefSize(50, 50);
         
         return button;
@@ -91,23 +110,185 @@ public class Sidebar extends VBox {
     private Button createThemeToggleButton() {
         Button button = new Button();
         updateThemeIcon(button);
-        button.getStyleClass().add("sidebar-button");
-        button.setTooltip(new Tooltip("Toggle Dark Mode"));
-        button.setPrefSize(50, 50);
         return button;
+    }
+    
+    private void showHomeDialog() {
+        if (navigator.getCurrentUser() != null) {
+            // User is logged in - show options dialog
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Home Options");
+            alert.setHeaderText("Choose an action");
+            alert.setContentText("What would you like to do?");
+            
+            ButtonType mainMenuButton = new ButtonType("Back to Main Menu");
+            ButtonType logoutButton = new ButtonType("Logout");
+            ButtonType cancelButton = ButtonType.CANCEL;
+            
+            alert.getButtonTypes().setAll(mainMenuButton, logoutButton, cancelButton);
+            
+            alert.showAndWait().ifPresent(response -> {
+                if (response == mainMenuButton) {
+                    navigator.showMainMenu();
+                } else if (response == logoutButton) {
+                    navigator.setCurrentUser(null);
+                    navigator.showLogin();
+                }
+                // Cancel does nothing
+            });
+        } else {
+            // Not logged in - go to welcome screen
+            navigator.showWelcome();
+        }
+    }
+    
+    private void showSaveDialog() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Session Data");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JSON Files", "*.json")
+        );
+        fileChooser.setInitialFileName("todolist-session.json");
+        
+        File file = fileChooser.showSaveDialog(this.getScene().getWindow());
+        if (file != null) {
+            String filePath = file.getAbsolutePath();
+            
+            // Show loading indicator
+            Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+            loadingAlert.setTitle("Exporting");
+            loadingAlert.setHeaderText("Exporting session data...");
+            loadingAlert.setContentText("Please wait...");
+            loadingAlert.show();
+            
+            // Export in background thread
+            new Thread(() -> {
+                DataManagement.exportSession(
+                    Config.getRequestsUri(),
+                    Config.getResponsesUri(),
+                    filePath,
+                    (message) -> Platform.runLater(() -> {
+                        loadingAlert.close();
+                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                        successAlert.setTitle("Export Successful");
+                        successAlert.setHeaderText("Session data exported");
+                        successAlert.setContentText("File saved to:\n" + filePath);
+                        successAlert.showAndWait();
+                    }),
+                    (error) -> Platform.runLater(() -> {
+                        loadingAlert.close();
+                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                        errorAlert.setTitle("Export Failed");
+                        errorAlert.setHeaderText("Could not export session");
+                        errorAlert.setContentText(error);
+                        errorAlert.showAndWait();
+                    })
+                );
+            }, "export-thread").start();
+        }
+    }
+    
+    private void showLoadDialog() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Load Session Data");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("JSON Files", "*.json")
+        );
+        
+        File file = fileChooser.showOpenDialog(this.getScene().getWindow());
+        if (file != null) {
+            String filePath = file.getAbsolutePath();
+            
+            // Ask user: Merge or Replace?
+            Alert modeAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            modeAlert.setTitle("Import Mode");
+            modeAlert.setHeaderText("Choose import mode");
+            modeAlert.setContentText("File: " + file.getName() + "\n\n" +
+                    "REPLACE: Remove all current data and load the file (no duplicates)\n\n" +
+                    "MERGE: Keep current data and add new items from the file (duplicates are skipped)\n\n" +
+                    "Which mode do you want to use?");
+            
+            ButtonType replaceButton = new ButtonType("Replace");
+            ButtonType mergeButton = new ButtonType("Merge");
+            ButtonType cancelButton = ButtonType.CANCEL;
+            
+            modeAlert.getButtonTypes().setAll(replaceButton, mergeButton, cancelButton);
+            
+            modeAlert.showAndWait().ifPresent(response -> {
+                if (response == cancelButton) {
+                    return;
+                }
+                
+                String mode = (response == mergeButton) ? "merge" : "replace";
+                String actionDesc = (response == mergeButton) ? "Merging" : "Replacing";
+                
+                // Show loading indicator
+                Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+                loadingAlert.setTitle(actionDesc);
+                loadingAlert.setHeaderText(actionDesc + " session data...");
+                loadingAlert.setContentText("Please wait...");
+                loadingAlert.show();
+                
+                // Import in background thread
+                new Thread(() -> {
+                    DataManagement.importSession(
+                        Config.getRequestsUri(),
+                        Config.getResponsesUri(),
+                        filePath,
+                        mode,
+                        (message) -> Platform.runLater(() -> {
+                            loadingAlert.close();
+                            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                            successAlert.setTitle("Import Successful");
+                            successAlert.setHeaderText("Session data " + (mode.equals("merge") ? "merged" : "imported"));
+                            successAlert.setContentText("Data loaded from:\n" + filePath + "\n\n" +
+                                    "Please refresh your views to see the new data.");
+                            successAlert.showAndWait();
+                            
+                            // Navigate to main menu to force refresh
+                            if (navigator.getCurrentUser() != null) {
+                                navigator.showMainMenu();
+                            }
+                        }),
+                        (error) -> Platform.runLater(() -> {
+                            loadingAlert.close();
+                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                            errorAlert.setTitle("Import Failed");
+                            errorAlert.setHeaderText("Could not import session");
+                            errorAlert.setContentText(error);
+                            errorAlert.showAndWait();
+                        })
+                    );
+                }, "import-thread").start();
+            });
+        }
+    }
+    
+    private void showSettingsDialog() {
+        SettingsDialog dialog = new SettingsDialog();
+        dialog.setOnSettingsChanged(() -> {
+            // Refresh current scene if needed - settings were changed
+            System.out.println("Settings changed - restart scenes to see changes");
+        });
+        dialog.showAndWait();
     }
     
     private void updateThemeIcon(Button button) {
         // Show moon when in light mode (to switch to dark), sun when in dark mode (to switch to light)
+        Tooltip tooltip;
         if (isDarkMode) {
             button.setText("☀");
-            button.setStyle("-fx-font-size: 24px; -fx-text-fill: #ffd700;");
-            button.setTooltip(new Tooltip("Switch to Light Mode"));
+            tooltip = new Tooltip("Light Mode");
         } else {
             button.setText("🌙");
-            button.setStyle("-fx-font-size: 24px; -fx-text-fill: #4a5568;");
-            button.setTooltip(new Tooltip("Switch to Dark Mode"));
+            tooltip = new Tooltip("Dark Mode");
         }
+        // Use standard button style but with yellow icon text
+        button.setStyle("-fx-font-size: 24px; -fx-text-fill: #FFD700;");
+        button.getStyleClass().add("sidebar-button");
+        tooltip.setStyle("-fx-font-size: 12px;");
+        button.setTooltip(tooltip);
+        button.setPrefSize(50, 50);
     }
     
     private void toggleTheme() {
@@ -138,18 +319,18 @@ public class Sidebar extends VBox {
     public void setColumnFilterButtonAction(Runnable action) {
         if (action != null) {
             columnFilterButton.setOnAction(e -> action.run());
-            columnFilterButton.setVisible(true);
+            columnFilterButton.setDisable(false);
         } else {
-            columnFilterButton.setVisible(false);
+            columnFilterButton.setDisable(true);
         }
     }
 
     public void setListFilterButtonAction(Runnable action) {
         if (action != null) {
             listFilterButton.setOnAction(e -> action.run());
-            listFilterButton.setVisible(true);
+            listFilterButton.setDisable(false);
         } else {
-            listFilterButton.setVisible(false);
+            listFilterButton.setDisable(true);
         }
     }
     
@@ -161,11 +342,11 @@ public class Sidebar extends VBox {
         return isDarkMode;
     }
     
-    public void hideBackButton() {
-        backButton.setVisible(false);
+    public void disableBackButton() {
+        backButton.setDisable(true);
     }
     
-    public void showBackButton() {
-        backButton.setVisible(true);
+    public void enableBackButton() {
+        backButton.setDisable(false);
     }
 }

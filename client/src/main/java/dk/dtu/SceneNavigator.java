@@ -50,6 +50,9 @@ public class SceneNavigator {
         this.sidebar = new Sidebar(this);
         this.darkModeManager = new DarkModeManager();
         
+        // Register connection error handler
+        Config.setConnectionErrorHandler(this::handleConnectionError);
+        
         // Connect sidebar theme toggle to dark mode manager
         sidebar.setOnThemeChange(() -> darkModeManager.toggleDarkMode());
 
@@ -57,7 +60,7 @@ public class SceneNavigator {
         sidebar.setBackButtonAction(this::goBack);
         updateBackButtonVisibility();
         
-        startNotificationListener();
+        // Don't start notification listener yet - wait for user to connect to server
     }
 
     public void goBack() {
@@ -91,10 +94,13 @@ public class SceneNavigator {
     }
 
     private void updateBackButtonVisibility() {
-        if (backStack.isEmpty()) {
-            sidebar.hideBackButton();
+        // Disable back button on login/welcome screens (can't go back without being logged in)
+        if (currentState != null && (currentState.type == ViewType.LOGIN || currentState.type == ViewType.WELCOME)) {
+            sidebar.disableBackButton();
+        } else if (backStack.isEmpty()) {
+            sidebar.disableBackButton();
         } else {
-            sidebar.showBackButton();
+            sidebar.enableBackButton();
         }
     }
 
@@ -118,8 +124,12 @@ public class SceneNavigator {
         }
     }
 
-    // Start the notification listener thread
-    private void startNotificationListener() {
+    // Start the notification listener thread (called after successful server connection)
+    public void connectToServer() {
+        // Stop any existing listener first
+        stopNotificationListener();
+        
+        System.out.println("[SceneNavigator] Starting notification listener for " + Config.getClientBaseUri());
         notificationListener = new NotificationListener(
                 Config.getNotificationsUri(),
                 this::refreshCurrentView
@@ -127,6 +137,50 @@ public class SceneNavigator {
         notificationThread = new Thread(notificationListener, "notification-listener");
         notificationThread.setDaemon(true);
         notificationThread.start();
+    }
+    
+    private void stopNotificationListener() {
+        if (notificationListener != null && notificationThread != null && notificationThread.isAlive()) {
+            System.out.println("[SceneNavigator] Stopping existing notification listener...");
+            notificationListener.stop();
+            try {
+                notificationThread.join(2000); // Wait up to 2 seconds
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("[SceneNavigator] Interrupted while stopping notification listener");
+            }
+        }
+    }
+    
+    private void handleConnectionError(Exception e) {
+        System.err.println("[SceneNavigator] Connection error detected: " + e.getMessage());
+        
+        // Stop notification listener since connection is lost
+        stopNotificationListener();
+        
+        // Show error dialog on JavaFX thread
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            alert.setTitle("Connection Lost");
+            alert.setHeaderText("Lost connection to server");
+            alert.setContentText("The connection to the server was lost. This could be due to:\n" +
+                    "• Server crashed or stopped\n" +
+                    "• Network connection lost\n" +
+                    "• Server IP changed\n\n" +
+                    "Click 'Reconnect' to connect to a server again.");
+            
+            javafx.scene.control.ButtonType reconnectButton = new javafx.scene.control.ButtonType("Reconnect");
+            javafx.scene.control.ButtonType cancelButton = javafx.scene.control.ButtonType.CANCEL;
+            
+            alert.getButtonTypes().setAll(reconnectButton, cancelButton);
+            
+            alert.showAndWait().ifPresent(response -> {
+                if (response == reconnectButton) {
+                    // Go back to welcome screen for reconnection
+                    showWelcome();
+                }
+            });
+        });
     }
 
     private void refreshCurrentView() {
@@ -140,6 +194,12 @@ public class SceneNavigator {
     }
 
     public void shutdown() {
+        System.out.println("[SceneNavigator] Shutting down client...");
+        
+        // Stop notification listener first
+        stopNotificationListener();
+        
+        // Then notify server of disconnect
         try {
             org.jspace.RemoteSpace requests = new org.jspace.RemoteSpace(Config.getRequestsUri());
             String requestId = java.util.UUID.randomUUID().toString();

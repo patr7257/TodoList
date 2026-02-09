@@ -26,7 +26,7 @@ public class TaskDueDateColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public double prefWidth() {
-        return 145;
+        return 180;
     }
 
     @Override
@@ -42,11 +42,11 @@ public class TaskDueDateColumn implements Column<Helpers.TaskEntry> {
     @Override
     public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
         ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
+        
         DatePicker duePicker = new DatePicker();
-        duePicker.setPrefWidth(prefWidth());
-        duePicker.setMinWidth(prefWidth());
-        duePicker.setMaxWidth(prefWidth());
+        duePicker.setPrefWidth(prefWidth() - 10);
+        duePicker.setMinWidth(prefWidth() - 10);
+        duePicker.setMaxWidth(prefWidth() - 10);
         duePicker.setPromptText("Due date");
         duePicker.getStyleClass().add("task-col-due");
         try {
@@ -76,9 +76,10 @@ public class TaskDueDateColumn implements Column<Helpers.TaskEntry> {
                     );
                     Platform.runLater(() -> {
                         duePicker.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();

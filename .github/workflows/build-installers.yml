@@ -1,0 +1,159 @@
+name: Build Installers
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Clone and build jSpace dependency
+      run: |
+        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
+        cd jSpace-java
+        mvn clean install -DskipTests -pl common -am
+        cd ..
+    
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+    
+    - name: Build Server MSI
+      run: |
+        jpackage `
+          --input server/target `
+          --name "TodoList Server" `
+          --main-jar todolist-server-1.0.0.jar `
+          --main-class dk.dtu.ServerApp `
+          --type msi `
+          --app-version 1.0.0 `
+          --vendor "TodoList Team" `
+          --description "TodoList Management System Server" `
+          --win-dir-chooser `
+          --win-menu `
+          --win-shortcut
+    
+    - name: Build Client MSI
+      run: |
+        jpackage `
+          --input client/target `
+          --name "TodoList Client" `
+          --main-jar todolist-client-1.0.0.jar `
+          --main-class dk.dtu.ClientApp `
+          --type msi `
+          --app-version 1.0.0 `
+          --vendor "TodoList Team" `
+          --description "TodoList Management System Client" `
+          --win-dir-chooser `
+          --win-menu `
+          --win-shortcut
+    
+    - name: Upload Windows Installers
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-installers
+        path: |
+          *.msi
+        retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Clone and build jSpace dependency
+      run: |
+        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
+        cd jSpace-java
+        mvn clean install -DskipTests -pl common -am
+        cd ..
+    
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+    
+    - name: Build Server DMG
+      run: |
+        jpackage \
+          --input server/target \
+          --name "TodoList Server" \
+          --main-jar todolist-server-1.0.0.jar \
+          --main-class dk.dtu.ServerApp \
+          --type dmg \
+          --app-version 1.0.0 \
+          --vendor "TodoList Team" \
+          --description "TodoList Management System Server"
+    
+    - name: Build Client DMG
+      run: |
+        jpackage \
+          --input client/target \
+          --name "TodoList Client" \
+          --main-jar todolist-client-1.0.0.jar \
+          --main-class dk.dtu.ClientApp \
+          --type dmg \
+          --app-version 1.0.0 \
+          --vendor "TodoList Team" \
+          --description "TodoList Management System Client"
+    
+    - name: Upload macOS Installers
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-installers
+        path: |
+          *.dmg
+        retention-days: 30
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Download Windows artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-installers
+        path: ./windows
+    
+    - name: Download macOS artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-installers
+        path: ./macos
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          windows/*.msi
+          macos/*.dmg
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

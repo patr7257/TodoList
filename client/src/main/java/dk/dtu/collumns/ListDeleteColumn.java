@@ -29,7 +29,8 @@ public class ListDeleteColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public Node createHeader(ColumnHeaderContext<Helpers.ListEntry> ctx) {
-        return ColumnUtils.createHeaderLabel("", prefWidth());
+        Label label = ColumnUtils.createHeaderLabel("", prefWidth());
+        return label;
     }
 
     @Override

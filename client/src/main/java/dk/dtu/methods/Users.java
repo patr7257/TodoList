@@ -1,5 +1,7 @@
 package dk.dtu.methods;
 
+import dk.dtu.MainUserConfig;
+import dk.dtu.shared.Config;
 import dk.dtu.shared.TupleSpaces;
 import javafx.application.Platform;
 import javafx.scene.control.ComboBox;
@@ -46,6 +48,9 @@ public class Users {
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
             }
         }, "login-user").start();
     }
@@ -73,13 +78,34 @@ public class Users {
                     if (includeAllOption) {
                         usersComboBox.getItems().add("All");
                     }
+                    
                     for (Object[] t : tuples) {
-                        usersComboBox.getItems().add((String) t[0]);
+                        String username = (String) t[0];
+                        // Add star to main users for easy identification
+                        if (MainUserConfig.isMainUser(username)) {
+                            usersComboBox.getItems().add(username + " *");
+                        } else {
+                            usersComboBox.getItems().add(username);
+                        }
                     }
 
-                    if (previousValue != null && usersComboBox.getItems().contains(previousValue)) {
-                        usersComboBox.setValue(previousValue);
-                        return;
+                    // Handle restoring previous value (need to account for star)
+                    if (previousValue != null) {
+                        if (usersComboBox.getItems().contains(previousValue)) {
+                            usersComboBox.setValue(previousValue);
+                            return;
+                        } else {
+                            // Check if the previous value was a main user (might need star now)
+                            String withStar = previousValue + " *";
+                            String withoutStar = previousValue.replace(" *", "");
+                            if (usersComboBox.getItems().contains(withStar)) {
+                                usersComboBox.setValue(withStar);
+                                return;
+                            } else if (usersComboBox.getItems().contains(withoutStar)) {
+                                usersComboBox.setValue(withoutStar);
+                                return;
+                            }
+                        }
                     }
 
                     if (includeAllOption) {
@@ -91,6 +117,9 @@ public class Users {
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
             }
         }, "load-users").start();
     }
@@ -124,6 +153,9 @@ public class Users {
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
             }
         }, "login-existing-user").start();
     }
@@ -152,15 +184,18 @@ public class Users {
 
                 // Create new user
                 users.put(username);
-                String msg = "New user '" + username + "' created and logged in";
+                String msg = "New user '" + username + "' created successfully";
                 System.out.println(msg);
-
-                notifyServerLogin(usersUri, username);
+                
+                // Note: Not logging in - just creating the user
                 
                 Platform.runLater(() -> onSuccessMessage.accept(msg));
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                if (Config.isConnectionError(ex)) {
+                    Config.handleConnectionError(ex);
+                }
                 Platform.runLater(() -> onError.accept("Error creating user: " + ex.getMessage()));
             }
         }, "create-new-user").start();
@@ -197,6 +232,9 @@ public class Users {
                     ""
             );
         } catch (Exception ignored) {
+            if (Config.isConnectionError(ignored)) {
+                Config.handleConnectionError(ignored);
+            }
         }
     }
 }

@@ -56,6 +56,68 @@ public class ServerApp extends Application {
     @Override
     public void start(Stage stage) {
         stage.setTitle("TodoList Server");
+        
+        // Set window size to match client
+        stage.setWidth(970);
+        stage.setHeight(600);
+        stage.setMinWidth(800);
+        stage.setMinHeight(500);
+
+        // Show simple welcome screen
+        showWelcomeScreen(stage);
+
+        stage.setOnCloseRequest(evt -> {
+            try {
+                onStop();
+            } finally {
+                if (consoleRedirect != null) {
+                    consoleRedirect.close();
+                    consoleRedirect = null;
+                }
+            }
+        });
+
+        stage.show();
+    }
+    
+    private void showWelcomeScreen(Stage stage) {
+        Label title = new Label("TodoList Server");
+        title.setStyle("-fx-font-size: 42px; -fx-font-weight: 700; -fx-text-fill: #333333;");
+
+        Label subtitle = new Label("Server Application for TodoList Management System");
+        subtitle.setStyle("-fx-font-size: 18px; -fx-text-fill: #4a4a4a; -fx-font-weight: 500;");
+        
+        Label description = new Label("This is the server component. Start the server to allow clients to connect.");
+        description.setStyle("-fx-font-size: 14px; -fx-text-fill: #666666;");
+        description.setWrapText(true);
+        description.setMaxWidth(500);
+
+        Button continueButton = new Button("Start Configuration");
+        continueButton.getStyleClass().add("primary-button");
+        continueButton.setDefaultButton(true);
+        continueButton.setOnAction(e -> {
+            ServerConfigDialog.ServerConfig defaultConfig = new ServerConfigDialog.ServerConfig("127.0.0.1", 9001, "localhost");
+            showServerControlPanel(stage, defaultConfig);
+        });
+
+        VBox root = new VBox(20, title, subtitle, description, continueButton);
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(40, 20, 40, 20));
+        root.setStyle("-fx-background-color: #e8ebf0;");
+
+        Scene scene = new Scene(root, 970, 600);
+        
+        // Apply stylesheet
+        try {
+            scene.getStylesheets().add(getClass().getResource("/server.css").toExternalForm());
+        } catch (Exception e) {
+            System.out.println("Warning: Could not load server.css");
+        }
+
+        stage.setScene(scene);
+    }
+    
+    private void showServerControlPanel(Stage stage, ServerConfigDialog.ServerConfig initialConfig) {
 
         logList.setFocusTraversable(false);
 
@@ -83,13 +145,18 @@ public class ServerApp extends Application {
         });
 
         scanButton.setOnAction(e -> rescanIps(true));
+        scanButton.getStyleClass().add("secondary-button");
 
         startButton.setOnAction(e -> onStart());
+        startButton.getStyleClass().add("success-button");
+        
         stopButton.setOnAction(e -> onStop());
         stopButton.setDisable(true);
+        stopButton.getStyleClass().add("danger-button");
 
         copyConnectInfoButton.setOnAction(e -> copyConnectInfo());
         copyConnectInfoButton.setDisable(true);
+        copyConnectInfoButton.getStyleClass().add("secondary-button");
 
         group.selectedToggleProperty().addListener((obs, oldT, newT) -> {
             updateModeUi();
@@ -117,22 +184,49 @@ public class ServerApp extends Application {
         );
         ipRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox buttonsRow = new HBox(10, startButton, stopButton, copyConnectInfoButton);
+        HBox buttonsRow = new HBox(12, startButton, stopButton, copyConnectInfoButton);
         buttonsRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox top = new VBox(10, modeRow, ipRow, buttonsRow, statusLabel, connectInfoLabel);
-        top.setPadding(new Insets(12));
+        statusLabel.getStyleClass().add("status-label");
+        connectInfoLabel.getStyleClass().add("connect-info-label");
+
+        VBox top = new VBox(12, modeRow, ipRow, buttonsRow, statusLabel, connectInfoLabel);
+        top.setPadding(new Insets(15));
+        top.setStyle("-fx-background-color: white; -fx-border-color: #d0d0d0; -fx-border-width: 0 0 1.5 0;");
 
         VBox.setVgrow(logList, Priority.ALWAYS);
         BorderPane root = new BorderPane();
         root.setTop(top);
         root.setCenter(logList);
-        BorderPane.setMargin(logList, new Insets(0, 12, 12, 12));
+        root.setStyle("-fx-background-color: #e8ebf0;");
+        BorderPane.setMargin(logList, new Insets(12, 12, 12, 12));
+
+        // Set initial config values
+        if ("localhost".equals(initialConfig.mode())) {
+            localhostMode.setSelected(true);
+            ipCombo.getSelectionModel().select("127.0.0.1");
+        } else if ("scan".equals(initialConfig.mode())) {
+            scanMode.setSelected(true);
+            rescanIps(false);
+            ipCombo.getSelectionModel().select(initialConfig.ip());
+        } else {
+            manualMode.setSelected(true);
+            manualIpField.setText(initialConfig.ip());
+        }
+        portField.setText(String.valueOf(initialConfig.port()));
 
         updateModeUi();
         updateConnectInfoPreview();
 
-        Scene scene = new Scene(root, 900, 600);
+        Scene scene = new Scene(root, 970, 600);
+        
+        // Apply stylesheet
+        try {
+            scene.getStylesheets().add(getClass().getResource("/server.css").toExternalForm());
+        } catch (Exception e) {
+            System.out.println("Warning: Could not load server.css");
+        }
+        
         stage.setScene(scene);
 
         stage.setOnCloseRequest(evt -> {
