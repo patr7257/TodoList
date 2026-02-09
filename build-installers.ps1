@@ -259,7 +259,6 @@ $serverArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
-  "--java-options", "-Dtodolist.data.dir=%APPDATA%\TodoList",
   "--java-options", "-Dtodolist.port=9001"
 )
 
