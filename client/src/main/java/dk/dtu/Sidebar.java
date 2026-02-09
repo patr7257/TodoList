@@ -199,54 +199,67 @@ public class Sidebar extends VBox {
         if (file != null) {
             String filePath = file.getAbsolutePath();
             
-            // Confirm import
-            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-            confirmAlert.setTitle("Confirm Import");
-            confirmAlert.setHeaderText("Import session data?");
-            confirmAlert.setContentText("This will replace all current data with the imported data.\n\n" +
-                    "File: " + file.getName() + "\n\n" +
-                    "Are you sure you want to continue?");
+            // Ask user: Merge or Replace?
+            Alert modeAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            modeAlert.setTitle("Import Mode");
+            modeAlert.setHeaderText("Choose import mode");
+            modeAlert.setContentText("File: " + file.getName() + "\n\n" +
+                    "REPLACE: Remove all current data and load the file (no duplicates)\n\n" +
+                    "MERGE: Keep current data and add new items from the file (duplicates are skipped)\n\n" +
+                    "Which mode do you want to use?");
             
-            confirmAlert.showAndWait().ifPresent(response -> {
-                if (response == javafx.scene.control.ButtonType.OK) {
-                    // Show loading indicator
-                    Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
-                    loadingAlert.setTitle("Importing");
-                    loadingAlert.setHeaderText("Importing session data...");
-                    loadingAlert.setContentText("Please wait...");
-                    loadingAlert.show();
-                    
-                    // Import in background thread
-                    new Thread(() -> {
-                        DataManagement.importSession(
-                            Config.getRequestsUri(),
-                            Config.getResponsesUri(),
-                            filePath,
-                            (message) -> Platform.runLater(() -> {
-                                loadingAlert.close();
-                                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                                successAlert.setTitle("Import Successful");
-                                successAlert.setHeaderText("Session data imported");
-                                successAlert.setContentText("Data loaded from:\n" + filePath + "\n\n" +
-                                        "Please refresh your views to see the new data.");
-                                successAlert.showAndWait();
-                                
-                                // Navigate to main menu to force refresh
-                                if (navigator.getCurrentUser() != null) {
-                                    navigator.showMainMenu();
-                                }
-                            }),
-                            (error) -> Platform.runLater(() -> {
-                                loadingAlert.close();
-                                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                                errorAlert.setTitle("Import Failed");
-                                errorAlert.setHeaderText("Could not import session");
-                                errorAlert.setContentText(error);
-                                errorAlert.showAndWait();
-                            })
-                        );
-                    }, "import-thread").start();
+            ButtonType replaceButton = new ButtonType("Replace");
+            ButtonType mergeButton = new ButtonType("Merge");
+            ButtonType cancelButton = ButtonType.CANCEL;
+            
+            modeAlert.getButtonTypes().setAll(replaceButton, mergeButton, cancelButton);
+            
+            modeAlert.showAndWait().ifPresent(response -> {
+                if (response == cancelButton) {
+                    return;
                 }
+                
+                String mode = (response == mergeButton) ? "merge" : "replace";
+                String actionDesc = (response == mergeButton) ? "Merging" : "Replacing";
+                
+                // Show loading indicator
+                Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+                loadingAlert.setTitle(actionDesc);
+                loadingAlert.setHeaderText(actionDesc + " session data...");
+                loadingAlert.setContentText("Please wait...");
+                loadingAlert.show();
+                
+                // Import in background thread
+                new Thread(() -> {
+                    DataManagement.importSession(
+                        Config.getRequestsUri(),
+                        Config.getResponsesUri(),
+                        filePath,
+                        mode,
+                        (message) -> Platform.runLater(() -> {
+                            loadingAlert.close();
+                            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                            successAlert.setTitle("Import Successful");
+                            successAlert.setHeaderText("Session data " + (mode.equals("merge") ? "merged" : "imported"));
+                            successAlert.setContentText("Data loaded from:\n" + filePath + "\n\n" +
+                                    "Please refresh your views to see the new data.");
+                            successAlert.showAndWait();
+                            
+                            // Navigate to main menu to force refresh
+                            if (navigator.getCurrentUser() != null) {
+                                navigator.showMainMenu();
+                            }
+                        }),
+                        (error) -> Platform.runLater(() -> {
+                            loadingAlert.close();
+                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                            errorAlert.setTitle("Import Failed");
+                            errorAlert.setHeaderText("Could not import session");
+                            errorAlert.setContentText(error);
+                            errorAlert.showAndWait();
+                        })
+                    );
+                }, "import-thread").start();
             });
         }
     }

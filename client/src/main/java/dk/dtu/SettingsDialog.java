@@ -429,6 +429,14 @@ public class SettingsDialog extends Dialog<ButtonType> {
         // Strip star if present
         String username = displayUsername.replace(" *", "");
         
+        // Prevent deleting main users
+        if (MainUserConfig.isMainUser(username)) {
+            showAlert("Cannot Delete Main User", 
+                "User '" + username + "' is currently configured as a main user. " +
+                "Please change the main user settings first before attempting to delete this user.");
+            return;
+        }
+        
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Confirm Delete");
         confirm.setHeaderText("Delete user '" + username + "'?");

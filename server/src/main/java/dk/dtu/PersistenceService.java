@@ -356,7 +356,7 @@ public class PersistenceService {
     }
     
     /**
-     * Import session data from a custom JSON file and merge with existing data
+     * Import session data from a custom JSON file and replace existing data
      * @param users Space to populate with users
      * @param todoLists Space to populate with todo lists
      * @param tasks Space to populate with tasks
@@ -433,12 +433,184 @@ public class PersistenceService {
     }
     
     /**
+     * Merge session data from a custom JSON file with existing data (no duplicates)
+     * @param users Space containing existing users
+     * @param todoLists Space containing existing todo lists
+     * @param tasks Space containing existing tasks
+     * @param importFilePath Path to import file
+     * @return true if merge was successful
+     */
+    public boolean mergeSession(Space users, Space todoLists, Space tasks, String importFilePath) {
+        Path importPath = Paths.get(importFilePath);
+        
+        if (!Files.exists(importPath)) {
+            System.out.println("Import file not found: " + importFilePath);
+            return false;
+        }
+
+        try (FileReader reader = new FileReader(importPath.toFile())) {
+            SessionData session = gson.fromJson(reader, SessionData.class);
+            
+            if (session == null) {
+                System.out.println("Import file is empty or invalid.");
+                return false;
+            }
+            
+            // Get existing users to check for duplicates
+            java.util.Set<String> existingUsers = new java.util.HashSet<>();
+            List<Object[]> existingUserTuples = users.queryAll(new FormalField(String.class));
+            if (existingUserTuples != null) {
+                for (Object[] tuple : existingUserTuples) {
+                    existingUsers.add((String) tuple[0]);
+                }
+            }
+            
+            // Get existing list IDs to check for duplicates
+            java.util.Set<String> existingListIds = new java.util.HashSet<>();
+            List<Object[]> existingListTuples = todoLists.queryAll(
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+            if (existingListTuples != null) {
+                for (Object[] tuple : existingListTuples) {
+                    existingListIds.add((String) tuple[0]);
+                }
+            }
+            
+            // Get existing task IDs (listId + taskId combination) to check for duplicates
+            java.util.Set<String> existingTaskKeys = new java.util.HashSet<>();
+            List<Object[]> existingTaskTuples = tasks.queryAll(
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(String.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(String.class),
+                new FormalField(String.class));
+            if (existingTaskTuples != null) {
+                for (Object[] tuple : existingTaskTuples) {
+                    String listId = (String) tuple[0];
+                    String taskId = (String) tuple[1];
+                    existingTaskKeys.add(listId + ":" + taskId);
+                }
+            }
+            
+            int addedUsers = 0;
+            int addedLists = 0;
+            int addedTasks = 0;
+            int listIdx = existingListIds.size();
+            int taskIdx = existingTaskKeys.size();
+            
+            // Merge users (skip duplicates)
+            for (UserData user : session.getUsers()) {
+                if (!existingUsers.contains(user.getUsername())) {
+                    users.put(user.getUsername());
+                    addedUsers++;
+                }
+            }
+            
+            // Merge todo lists (skip duplicates)
+            for (TodoListData list : session.getTodoLists()) {
+                if (!existingListIds.contains(list.getListId())) {
+                    String owner = list.getOwner() != null ? list.getOwner() : "";
+                    String taskColumnsJson = list.getTaskColumnsJson() != null ? list.getTaskColumnsJson() : "";
+                    int priority = list.getPriority() != null ? list.getPriority() : Defaults.PRIORITY;
+                    int year = list.getYear() != null ? list.getYear() : Defaults.YEAR;
+                    int orderIndex = list.getOrderIndex() != null ? list.getOrderIndex() : listIdx;
+                    String location = list.getLocation() != null ? list.getLocation() : "";
+                    String description = list.getDescription() != null ? list.getDescription() : "";
+                    todoLists.put(list.getListId(), list.getListName(), list.getCompletionPercentage(), owner, taskColumnsJson, priority, year, orderIndex, location, description);
+                    addedLists++;
+                    listIdx++;
+                }
+            }
+            
+            // Merge tasks (skip duplicates)
+            for (TaskData task : session.getTasks()) {
+                String taskKey = task.getListId() + ":" + task.getTaskId();
+                if (!existingTaskKeys.contains(taskKey)) {
+                    int priority = task.getPriority() != null ? task.getPriority() : Defaults.PRIORITY;
+                    int year = task.getYear() != null ? task.getYear() : Defaults.YEAR;
+                    int orderIndex = task.getOrderIndex() != null ? task.getOrderIndex() : taskIdx;
+                    String location = task.getLocation() != null ? task.getLocation() : "";
+                    String description = task.getDescription() != null ? task.getDescription() : "";
+                    tasks.put(task.getListId(), task.getTaskId(), task.getTitle(),
+                        task.getAssignee(), task.getStatus(), task.getDueDate(), priority, year, orderIndex, location, description);
+                    addedTasks++;
+                    taskIdx++;
+                }
+            }
+            
+            System.out.println("Session merged from: " + importFilePath);
+            System.out.println("  Added: " + addedUsers + " users, " + addedLists + " lists, " + addedTasks + " tasks");
+            System.out.println("  Skipped: " + (session.getUsers().size() - addedUsers) + " users, " 
+                    + (session.getTodoLists().size() - addedLists) + " lists, " 
+                    + (session.getTasks().size() - addedTasks) + " tasks (duplicates)");
+            
+            // Auto-save after merge
+            saveSession(users, todoLists, tasks);
+            
+            return true;
+            
+        } catch (InterruptedException | IOException e) {
+            System.err.println("Failed to merge session: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
      * Clear all tuples from a space
      */
     private void clearSpace(Space space) throws InterruptedException {
-        Object[] tuple;
-        while ((tuple = space.queryp(new FormalField(Object.class))) != null) {
-            space.get(new FormalField(Object.class));
+        // Keep removing tuples until there are none left
+        // We need to handle different tuple structures, so we try multiple field counts
+        boolean foundAny = true;
+        while (foundAny) {
+            foundAny = false;
+            
+            // Try single field (users)
+            Object[] tuple1 = space.getp(new FormalField(Object.class));
+            if (tuple1 != null) {
+                foundAny = true;
+                continue;
+            }
+            
+            // Try 10 fields (todoLists)
+            Object[] tuple10 = space.getp(
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class));
+            if (tuple10 != null) {
+                foundAny = true;
+                continue;
+            }
+            
+            // Try 11 fields (tasks)
+            Object[] tuple11 = space.getp(
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class), new FormalField(Object.class),
+                new FormalField(Object.class));
+            if (tuple11 != null) {
+                foundAny = true;
+                continue;
+            }
         }
     }
 }

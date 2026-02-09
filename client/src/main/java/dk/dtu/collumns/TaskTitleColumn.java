@@ -39,9 +39,9 @@ public class TaskTitleColumn implements Column<Helpers.TaskEntry> {
     @Override
     public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
         Label label = new Label();
-        label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());
-        label.setMaxWidth(prefWidth());
+        label.setPrefWidth(prefWidth());
+        label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
         label.setTextAlignment(TextAlignment.CENTER);
         label.getStyleClass().add("task-col-name");

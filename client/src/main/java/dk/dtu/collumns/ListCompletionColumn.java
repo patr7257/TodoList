@@ -20,7 +20,7 @@ public class ListCompletionColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public double prefWidth() {
-        return 180;
+        return 200;
     }
 
     @Override
@@ -36,8 +36,8 @@ public class ListCompletionColumn implements Column<Helpers.ListEntry> {
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
         ProgressBar progressBar = new ProgressBar();
-        progressBar.setPrefWidth(prefWidth());
-        progressBar.setMaxWidth(prefWidth());
+        progressBar.setPrefWidth(prefWidth() - 10);
+        progressBar.setMaxWidth(prefWidth() - 10);
         progressBar.setPrefHeight(20);
 
         return new ColumnCell<>() {

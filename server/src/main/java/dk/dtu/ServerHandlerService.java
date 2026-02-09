@@ -1498,20 +1498,33 @@ public class ServerHandlerService implements Runnable {
     
     private void handleImportSession(Request req) throws InterruptedException {
         String filePath = req.getString(0);
+        String mode = req.getString(1); // "replace" or "merge"
         
         if (filePath == null || filePath.isBlank()) {
             sendErrorResponse(req.requestId(), "Invalid file path for import", "", "", "");
             return;
         }
         
+        // Default to replace if mode not specified
+        if (mode == null || mode.isBlank()) {
+            mode = "replace";
+        }
+        
         try {
-            boolean success = persistenceService.importSession(users, todoLists, tasks, filePath);
+            boolean success;
+            if ("merge".equalsIgnoreCase(mode)) {
+                success = persistenceService.mergeSession(users, todoLists, tasks, filePath);
+            } else {
+                success = persistenceService.importSession(users, todoLists, tasks, filePath);
+            }
+            
             if (success) {
                 // Broadcast that all data changed (force all clients to refresh)
                 broadcastDataChange("IMPORT", "all", "", "");
-                sendOkResponse(req.requestId(), "Session imported successfully", filePath, "", "");
+                String action = "merge".equalsIgnoreCase(mode) ? "merged" : "imported";
+                sendOkResponse(req.requestId(), "Session " + action + " successfully", filePath, "", "");
             } else {
-                sendErrorResponse(req.requestId(), "Failed to import session", filePath, "", "");
+                sendErrorResponse(req.requestId(), "Failed to " + mode + " session", filePath, "", "");
             }
         } catch (Exception e) {
             sendErrorResponse(req.requestId(), "Import error: " + e.getMessage(), filePath, "", "");

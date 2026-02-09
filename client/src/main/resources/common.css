@@ -321,12 +321,6 @@
     -fx-font-weight: 600;
 }
 
-/* Vertical column borders */
-.column-wrapper {
-    -fx-border-color: transparent #cccccc transparent transparent;
-    -fx-border-width: 0 1px 0 0;
-}
-
 .list-col-name {
     -fx-font-size: 20px;
 }
@@ -399,17 +393,28 @@
     -fx-font-size: 14px;
     -fx-text-fill: #888888;
 }
+/* Danger/Cancel Button */
 .danger-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
     -fx-background-color: #e53935;
     -fx-text-fill: white;
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: 600;
-    -fx-padding: 10 18;
-    -fx-background-radius: 999;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
 }
 
 .danger-button:hover {
     -fx-background-color: #c62828;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+
+.danger-button:pressed {
+    -fx-background-color: #b71c1c;
 }
 
 /* TaskStatus styling with colors */
@@ -487,3 +492,111 @@
     -fx-opacity: 0;
     visibility: hidden;
 }
+
+/* --- Match ServerConfigDialog styling for connection dialogs --- */
+
+/* Radio Buttons */
+.radio-button {
+    -fx-font-size: 15px;
+    -fx-text-fill: #333333;
+}
+
+.radio-button .radio {
+    -fx-background-radius: 12px;
+    -fx-padding: 4px;
+}
+
+.radio-button:selected .radio .dot {
+    -fx-background-color: #2d6cdf;
+}
+
+/* Text Fields and ComboBoxes */
+.text-field, .combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 14px;
+    -fx-padding: 6 10;
+    -fx-pref-height: 34px;
+}
+
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: #2d6cdf;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(45,108,223,0.2), 8, 0, 0, 0);
+}
+
+/* Labels */
+Label {
+    -fx-font-family: "Segoe UI", "Arial";
+    -fx-font-size: 14px;
+    -fx-text-fill: #333333;
+}
+
+/* --- Force dialog buttons to match server (override generic .button) --- */
+.button.success-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
+}
+.button.success-button:hover {
+    -fx-background-color: #229954;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+.button.success-button:pressed { -fx-background-color: #1e8449; }
+.button.success-button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #888888;
+    -fx-effect: none;
+}
+
+.button.secondary-button {
+    -fx-min-width: 110px;
+    -fx-min-height: 36px;
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #333333;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-border-color: #cccccc;
+    -fx-border-width: 1.5px;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 5, 0, 0, 1);
+    -fx-cursor: hand;
+}
+.button.secondary-button:hover {
+    -fx-background-color: #e8e8e8;
+    -fx-border-color: #2d6cdf;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+.button.secondary-button:pressed { -fx-background-color: #d0d0d0; }
+
+.button.danger-button {
+    -fx-min-width: 120px;
+    -fx-min-height: 36px;
+    -fx-background-color: #e53935;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 20;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+    -fx-cursor: hand;
+}
+.button.danger-button:hover {
+    -fx-background-color: #c62828;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.22), 12, 0, 0, 3);
+}
+.button.danger-button:pressed { -fx-background-color: #b71c1c; }

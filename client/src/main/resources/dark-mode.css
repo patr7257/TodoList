@@ -303,9 +303,14 @@ Label {
     -fx-text-fill: white;
 }
 
-/* Make ComboBox selection highlight neutral (not bright blue) */
-.combo-box-base,
-.combo-box {
+/* Make ComboBox selection highlight neutral (not bright blue) but preserve status colors */
+.combo-box-base {
+    border-color: #404040;
+    -fx-border-color: #404040;
+}
+
+/* Only apply black background to non-status comboboxes */
+.combo-box:not(.status-combo) {
     background-color: #000000;
     -fx-background-color: #000000;
     border-color: #404040;
@@ -372,12 +377,6 @@ Label {
 /* Headers */
 .list-header {
     -fx-text-fill: #a0a0a0;
-}
-
-/* Vertical column borders in dark mode */
-.column-wrapper {
-    -fx-border-color: transparent #555555 transparent transparent;
-    -fx-border-width: 0 1px 0 0;
 }
 
 /* Links */

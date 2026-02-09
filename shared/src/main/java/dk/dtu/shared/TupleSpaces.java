@@ -62,8 +62,12 @@ public final class TupleSpaces {
     
     /** Export session data to a custom file path. a1 = filePath */
     public static final String CMD_EXPORT_SESSION = "export_session";
-    /** Import session data from a custom file path. a1 = filePath */
+    /** Import session data from a custom file path. a1 = filePath, a2 = mode ("replace" or "merge") */
     public static final String CMD_IMPORT_SESSION = "import_session";
+    
+    // Import modes
+    public static final String IMPORT_MODE_REPLACE = "replace";
+    public static final String IMPORT_MODE_MERGE = "merge";
 
     // Response status (first field in response tuples).
     public static final String RESP_OK = "ok";

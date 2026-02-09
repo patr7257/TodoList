@@ -68,10 +68,11 @@ public class DataManagement {
      * @param requestsUri URI for requests space
      * @param responsesUri URI for responses space
      * @param filePath Path to import file
+     * @param mode Import mode ("replace" or "merge")
      * @param onSuccess Callback on success
      * @param onError Callback on error
      */
-    public static void importSession(String requestsUri, String responsesUri, String filePath,
+    public static void importSession(String requestsUri, String responsesUri, String filePath, String mode,
                                      Callback onSuccess, Callback onError) {
         try {
             RemoteSpace requests = new RemoteSpace(requestsUri);
@@ -79,8 +80,8 @@ public class DataManagement {
             
             String requestId = UUID.randomUUID().toString();
             
-            // Send import request
-            requests.put(TupleSpaces.CMD_IMPORT_SESSION, requestId, filePath, "", "", "");
+            // Send import request with mode parameter
+            requests.put(TupleSpaces.CMD_IMPORT_SESSION, requestId, filePath, mode, "", "");
             
             // Wait for response
             Object[] responseData = responses.get(

@@ -28,7 +28,7 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public double prefWidth() {
-        return 145;
+        return 180;
     }
 
     @Override
@@ -46,9 +46,9 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
         ListCell<Helpers.TaskEntry> cell = ctx.cell();
 
         ComboBox<String> ownerCombo = new ComboBox<>();
-        ownerCombo.setPrefWidth(prefWidth());
-        ownerCombo.setMinWidth(prefWidth());
-        ownerCombo.setMaxWidth(prefWidth());
+        ownerCombo.setPrefWidth(prefWidth() - 10);
+        ownerCombo.setMinWidth(prefWidth() - 10);
+        ownerCombo.setMaxWidth(prefWidth() - 10);
         ownerCombo.setPromptText("Owner");
         ownerCombo.getStyleClass().add("task-col-owner");
 
@@ -108,9 +108,10 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
                     }
                     Platform.runLater(() -> {
                         ownerCombo.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();

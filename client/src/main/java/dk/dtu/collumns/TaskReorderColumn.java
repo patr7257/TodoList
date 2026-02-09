@@ -27,7 +27,7 @@ public class TaskReorderColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public String title() {
-        return "Reorder";
+        return "";
     }
 
     @Override
@@ -37,12 +37,11 @@ public class TaskReorderColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public Node createHeader(ColumnHeaderContext<Helpers.TaskEntry> ctx) {
-        Label label = new Label(title());
+        Label label = new Label("");
         label.setPrefWidth(prefWidth());
         label.setMinWidth(prefWidth());
         label.setMaxWidth(prefWidth());
         label.setAlignment(javafx.geometry.Pos.CENTER);
-        label.setStyle("-fx-font-weight: bold; -fx-text-fill: transparent;");
         return label;
     }
 

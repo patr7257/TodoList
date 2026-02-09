@@ -19,7 +19,7 @@ public class ListDeleteColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public String title() {
-        return "Delete";
+        return "";
     }
 
     @Override
@@ -29,8 +29,7 @@ public class ListDeleteColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public Node createHeader(ColumnHeaderContext<Helpers.ListEntry> ctx) {
-        Label label = ColumnUtils.createHeaderLabel(title(), prefWidth());
-        label.setStyle("-fx-font-weight: bold; -fx-text-fill: transparent;");
+        Label label = ColumnUtils.createHeaderLabel("", prefWidth());
         return label;
     }
 

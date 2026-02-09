@@ -45,9 +45,46 @@ Example (client connects to a server on another PC):
 mvn -pl client -am javafx:run -Djavafx.run.jvmArgs="-Dtodolist.server.ip=192.168.0.168"
 ```
 
-## Building Installers
+## Download Installers
 
-### Windows
+**Pre-built installers are automatically created for every release:**
+
+1. Go to the [Releases page](../../releases)
+2. Download the installer for your platform:
+   - **Windows**: `TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
+   - **macOS**: `TodoList Client-1.0.0.dmg` and `TodoList Server-1.0.0.dmg`
+
+### Installation
+
+**Windows:**
+1. Right-click the `.msi` file → Run as Administrator
+2. Follow the installation wizard
+3. Launch from Start Menu shortcuts
+
+**macOS:**
+1. Double-click the `.dmg` file
+2. Drag the app to Applications folder
+3. Launch from Applications or Spotlight
+
+> **No Java required!** The installers bundle everything needed to run the application.
+
+---
+
+## Building Installers Locally
+
+### Automated Builds (GitHub Actions)
+
+The project uses GitHub Actions to automatically build installers for both Windows and macOS. Every push to `main` creates artifacts that can be downloaded from the Actions tab. Tagged releases (e.g., `v1.0.0`) automatically create a GitHub Release with installers attached.
+
+**To trigger a build:**
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+### Manual Local Builds
+
+#### Windows
 
 **Prerequisites:**
 - JDK 21 (download from https://adoptium.net/temurin/releases/?version=21)
@@ -61,17 +98,12 @@ mvn -pl client -am javafx:run -Djavafx.run.jvmArgs="-Dtodolist.server.ip=192.168
 
 Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
 
-**Install:**
-1. Right-click the `.msi` file → Run as Administrator
-2. Follow the installation wizard
-3. Launch from Start Menu shortcuts
-
 **Troubleshooting:** If apps don't launch, rebuild with debug mode:
 ```powershell
 .\build-installers.ps1 -WinConsole -Debug
 ```
 
-### macOS
+#### macOS
 
 **Prerequisites:**
 - JDK 21
@@ -86,17 +118,14 @@ jpackage \
   --name "TodoList Server" \
   --main-jar todolist-server-1.0.0.jar \
   --main-class dk.dtu.ServerApp \
-  --type dmg
+  --type dmg \
+  --app-version 1.0.0
 
 jpackage \
   --input client/target \
   --name "TodoList Client" \
   --main-jar todolist-client-1.0.0.jar \
   --main-class dk.dtu.ClientApp \
-  --type dmg
+  --type dmg \
+  --app-version 1.0.0
 ```
-
-**Install:**
-1. Double-click the `.dmg` file
-2. Drag the app to Applications folder
-3. Launch from Applications or Spotlight

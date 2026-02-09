@@ -26,7 +26,7 @@ public class TaskStatusColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public double prefWidth() {
-        return 145;
+        return 180;
     }
 
     @Override
@@ -44,12 +44,12 @@ public class TaskStatusColumn implements Column<Helpers.TaskEntry> {
         ListCell<Helpers.TaskEntry> cell = ctx.cell();
 
         ComboBox<TaskStatus> statusCombo = new ComboBox<>();
-        statusCombo.setPrefWidth(prefWidth());
-        statusCombo.setMinWidth(prefWidth());
-        statusCombo.setMaxWidth(prefWidth());
+        statusCombo.setPrefWidth(prefWidth() - 10);
+        statusCombo.setMinWidth(prefWidth() - 10);
+        statusCombo.setMaxWidth(prefWidth() - 10);
         statusCombo.getItems().addAll(TaskStatus.values());
         statusCombo.setPromptText("Status");
-        statusCombo.getStyleClass().add("task-col-status");
+        statusCombo.getStyleClass().addAll("task-col-status", "status-combo");
 
         statusCombo.setCellFactory(lv -> createStatusCell());
         statusCombo.setButtonCell(createStatusCell());
@@ -75,9 +75,10 @@ public class TaskStatusColumn implements Column<Helpers.TaskEntry> {
                     );
                     Platform.runLater(() -> {
                         statusCombo.setDisable(false);
-                        if (ctx.refresh() != null) {
-                            ctx.refresh().run();
-                        }
+                        // Refresh removed to prevent row shuffling during editing
+                        // if (ctx.refresh() != null) {
+                        //     ctx.refresh().run();
+                        // }
                     });
                 } catch (Exception ex) {
                     ex.printStackTrace();
