@@ -26,9 +26,9 @@ jobs:
     
     - name: Clone and build jSpace dependency
       run: |
-        git clone https://github.com/pSpaces/jSpace-java.git
+        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
         cd jSpace-java
-        mvn clean install -DskipTests
+        mvn clean install -DskipTests -pl common -am
         cd ..
     
     - name: Build with Maven
@@ -88,9 +88,9 @@ jobs:
     
     - name: Clone and build jSpace dependency
       run: |
-        git clone https://github.com/pSpaces/jSpace-java.git
+        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
         cd jSpace-java
-        mvn clean install -DskipTests
+        mvn clean install -DskipTests -pl common -am
         cd ..
     
     - name: Build with Maven
