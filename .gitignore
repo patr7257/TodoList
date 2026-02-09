@@ -2,6 +2,14 @@
 /target/
 **/target/
 
+# Build artifacts
+/dist/
+**/dist/
+
+# Logs
+*.log
+build-log.txt
+
 # IDEs
 /.idea/
 *.iml

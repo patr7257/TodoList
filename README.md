@@ -98,9 +98,22 @@ git push origin v1.0.1
 
 Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
 
-**Troubleshooting:** If apps don't launch, rebuild with debug mode:
+**Build with debug mode** (for troubleshooting):
 ```powershell
 .\build-installers.ps1 -WinConsole -Debug
+```
+This enables console windows and detailed logging to `%LOCALAPPDATA%\TodoList\logs\`.
+
+**Test installed applications:**
+```powershell
+# Run as Administrator
+.\install-and-test.ps1 -App server
+.\install-and-test.ps1 -App client
+```
+
+**Diagnose MSI structure** (without installing):
+```powershell
+.\diagnose-installers.ps1
 ```
 
 #### macOS
