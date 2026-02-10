@@ -52,27 +52,43 @@ jobs:
         mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\server"
         mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\client"
         
-        # Create custom runtime with JavaFX modules
+        # List staged files for debugging
+        Write-Host "`nStaged server JARs:" -ForegroundColor Cyan
+        Get-ChildItem dist\_jpackage\server\*.jar | ForEach-Object { Write-Host "  - $($_.Name)" }
+        Write-Host "`nStaged client JARs:" -ForegroundColor Cyan
+        Get-ChildItem dist\_jpackage\client\*.jar | ForEach-Object { Write-Host "  - $($_.Name)" }
+        
+        # Create custom runtime (WITHOUT JavaFX - keep it on classpath)
+        Write-Host "`nCreating custom JRE runtime..." -ForegroundColor Cyan
         $javaHome = $env:JAVA_HOME
         $modulePath = "$javaHome\jmods"
-        $javafxPath = "dist\_jpackage\client"
         
+        Write-Host "JAVA_HOME: $javaHome" -ForegroundColor Gray
+        Write-Host "Module path: $modulePath" -ForegroundColor Gray
+        
+        # Create runtime with essential Java modules (JavaFX stays on classpath)
         jlink `
-          --module-path "$modulePath;$javafxPath" `
-          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec,javafx.controls,javafx.fxml,javafx.graphics,javafx.base `
+          --module-path $modulePath `
+          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec `
           --output dist\custom-runtime `
           --strip-debug `
           --no-header-files `
           --no-man-pages `
-          --compress=zip-6
+          --compress=2
         
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "jlink with JavaFX failed, creating runtime without JavaFX modules..."
-          jlink `
-            --module-path $modulePath `
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec `
-            --output dist\custom-runtime `
-            --strip-debug `
+          throw "jlink failed to create custom runtime"
+        }
+        
+        # Verify the runtime was created correctly
+        Write-Host "`nVerifying runtime..." -ForegroundColor Cyan
+        $javaExe = "dist\custom-runtime\bin\java.exe"
+        if (Test-Path $javaExe) {
+          Write-Host "[OK] java.exe found in runtime" -ForegroundColor Green
+          & $javaExe -version
+        } else {
+          throw "Runtime verification FAILED: java.exe not found at $javaExe"
+        }
             --no-header-files `
             --no-man-pages `
             --compress=zip-6
@@ -165,30 +181,43 @@ jobs:
         mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/server"
         mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/client"
         
-        # Create custom runtime with JavaFX modules
+        # List staged files for debugging
+        echo ""
+        echo "Staged server JARs:"
+        ls -1 dist/_jpackage/server/*.jar | head -10
+        echo ""
+        echo "Staged client JARs:"
+        ls -1 dist/_jpackage/client/*.jar | head -10
+        
+        # Create custom runtime (WITHOUT JavaFX - keep it on classpath)
+        echo ""
+        echo "Creating custom JRE runtime..."
         JAVA_HOME_PATH=$JAVA_HOME
         MODULE_PATH="$JAVA_HOME_PATH/jmods"
-        JAVAFX_PATH="dist/_jpackage/client"
         
+        echo "JAVA_HOME: $JAVA_HOME_PATH"
+        echo "Module path: $MODULE_PATH"
+        
+        # Create runtime with essential Java modules (JavaFX stays on classpath)
         jlink \
-          --module-path "$MODULE_PATH:$JAVAFX_PATH" \
-          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec,javafx.controls,javafx.fxml,javafx.graphics,javafx.base \
+          --module-path "$MODULE_PATH" \
+          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec \
           --output dist/custom-runtime \
           --strip-debug \
           --no-header-files \
           --no-man-pages \
-          --compress=zip-6 || \
-        {
-          echo "jlink with JavaFX failed, creating runtime without JavaFX modules..."
-          jlink \
-            --module-path "$MODULE_PATH" \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec \
-            --output dist/custom-runtime \
-            --strip-debug \
-            --no-header-files \
-            --no-man-pages \
-            --compress=zip-6
-        }
+          --compress=2
+        
+        # Verify the runtime was created correctly
+        echo ""
+        echo "Verifying runtime..."
+        if [ -f "dist/custom-runtime/bin/java" ]; then
+          echo "[OK] java found in runtime"
+          dist/custom-runtime/bin/java -version
+        else
+          echo "[ERROR] Runtime verification FAILED: java not found"
+          exit 1
+        fi
     
     - name: Build Server DMG
       run: |
