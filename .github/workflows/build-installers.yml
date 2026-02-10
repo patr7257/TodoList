@@ -2,240 +2,116 @@ name: Build Installers
 
 on:
   push:
-    branches: [ main, master ]
     tags:
-      - 'v*'
-  pull_request:
-    branches: [ main, master ]
+      - "v*"
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: 'maven'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
-    - name: Clone and build jSpace dependency
-      run: |
-        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
-        cd jSpace-java
-        mvn clean install -DskipTests -pl common -am
-        cd ..
+      # 🔥 INSTALL JSPACE FIRST
+      - name: Clone and install jSpace
+        run: |
+          git clone https://github.com/pSpaces/jSpace.git
+          cd jSpace
+          mvn -B install -DskipTests
 
-    - name: Build with Maven
-      run: mvn clean package -DskipTests
+      - name: Build all modules
+        run: mvn -B clean package
 
-    - name: Stage dependencies
-      run: |
-        New-Item -ItemType Directory -Force -Path dist\_jpackage\server | Out-Null
-        New-Item -ItemType Directory -Force -Path dist\_jpackage\client | Out-Null
+      - name: Create Windows Client Installer
+        run: |
+          jpackage ^
+            --type msi ^
+            --name "TodoList Client" ^
+            --input client/target ^
+            --main-jar todolist-client-1.0.0.jar ^
+            --main-class dk.dtu.ClientApp ^
+            --dest installers
 
-        Copy-Item server\target\todolist-server-1.0.0.jar dist\_jpackage\server\
-        Copy-Item client\target\todolist-client-1.0.0.jar dist\_jpackage\client\
-        Copy-Item shared\target\todolist-shared-1.0.0.jar dist\_jpackage\server\
-        Copy-Item shared\target\todolist-shared-1.0.0.jar dist\_jpackage\client\
+      - name: Create Windows Server Installer
+        run: |
+          jpackage ^
+            --type msi ^
+            --name "TodoList Server" ^
+            --input server/target ^
+            --main-jar todolist-server-1.0.0.jar ^
+            --main-class dk.dtu.ServerApp ^
+            --dest installers
 
-        mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\server"
-        mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\client"
-
-    - name: Create custom runtime (with JavaFX fallback)
-      run: |
-        $javaHome = $env:JAVA_HOME
-        $modulePath = "$javaHome\jmods"
-        $runtimeOutput = "$PWD\dist\custom-runtime"
-        $javafxModulePath = "$PWD\dist\_jpackage\client"
-        $combinedModulePath = "$modulePath;$javafxModulePath"
-
-        $javaModules = "java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec"
-        $javafxModules = "javafx.controls,javafx.fxml,javafx.graphics,javafx.base"
-
-        Write-Host "Attempting jlink WITH JavaFX modules..."
-        jlink `
-          --module-path $combinedModulePath `
-          --add-modules "$javaModules,$javafxModules" `
-          --output $runtimeOutput `
-          --strip-debug `
-          --no-header-files `
-          --no-man-pages `
-          --compress=2
-
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "JavaFX modular runtime failed. Falling back to Java-only runtime..."
-          jlink `
-            --module-path $modulePath `
-            --add-modules $javaModules `
-            --output $runtimeOutput `
-            --strip-debug `
-            --no-header-files `
-            --no-man-pages `
-            --compress=2
-        }
-
-    - name: Build Server MSI
-      run: |
-        jpackage `
-          --input dist\_jpackage\server `
-          --name "TodoList Server" `
-          --main-jar todolist-server-1.0.0.jar `
-          --main-class dk.dtu.ServerApp `
-          --type msi `
-          --app-version 1.0.0 `
-          --vendor "Patrick" `
-          --description "TodoList Management Server" `
-          --runtime-image dist\custom-runtime `
-          --win-menu `
-          --win-shortcut `
-          --java-options "-Dtodolist.port=9001"
-
-    - name: Build Client MSI
-      run: |
-        jpackage `
-          --input dist\_jpackage\client `
-          --name "TodoList Client" `
-          --main-jar todolist-client-1.0.0.jar `
-          --main-class dk.dtu.ClientApp `
-          --type msi `
-          --app-version 1.0.0 `
-          --vendor "Patrick" `
-          --description "TodoList Management Client" `
-          --runtime-image dist\custom-runtime `
-          --win-menu `
-          --win-shortcut `
-          --java-options "-Dtodolist.server.ip=127.0.0.1" `
-          --java-options "-Dtodolist.port=9001"
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: windows-installers
-        path: "*.msi"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: installers/*.msi
 
   build-macos:
     runs-on: macos-latest
-    
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: 'maven'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
-    - name: Clone and build jSpace dependency
-      run: |
-        git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
-        cd jSpace-java
-        mvn clean install -DskipTests -pl common -am
-        cd ..
+      - name: Clone and install jSpace
+        run: |
+          git clone https://github.com/pSpaces/jSpace.git
+          cd jSpace
+          mvn -B install -DskipTests
 
-    - name: Build with Maven
-      run: mvn clean package -DskipTests
+      - name: Build all modules
+        run: mvn -B clean package
 
-    - name: Stage dependencies
-      run: |
-        mkdir -p dist/_jpackage/server dist/_jpackage/client
-        cp server/target/todolist-server-1.0.0.jar dist/_jpackage/server/
-        cp client/target/todolist-client-1.0.0.jar dist/_jpackage/client/
-        cp shared/target/todolist-shared-1.0.0.jar dist/_jpackage/server/
-        cp shared/target/todolist-shared-1.0.0.jar dist/_jpackage/client/
+      - name: Create macOS Client DMG
+        run: |
+          jpackage \
+            --type dmg \
+            --name "TodoList Client" \
+            --input client/target \
+            --main-jar todolist-client-1.0.0.jar \
+            --main-class dk.dtu.ClientApp \
+            --dest installers
 
-        mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/server"
-        mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/client"
+      - name: Create macOS Server DMG
+        run: |
+          jpackage \
+            --type dmg \
+            --name "TodoList Server" \
+            --input server/target \
+            --main-jar todolist-server-1.0.0.jar \
+            --main-class dk.dtu.ServerApp \
+            --dest installers
 
-    - name: Create custom runtime (with JavaFX fallback)
-      run: |
-        JAVA_HOME_PATH=$JAVA_HOME
-        MODULE_PATH="$JAVA_HOME_PATH/jmods"
-        JAVAFX_MODULE_PATH="$(pwd)/dist/_jpackage/client"
-        COMBINED_MODULE_PATH="$MODULE_PATH:$JAVAFX_MODULE_PATH"
-
-        JAVA_MODULES="java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec"
-        JAVAFX_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base"
-
-        echo "Attempting jlink WITH JavaFX modules..."
-        jlink \
-          --module-path "$COMBINED_MODULE_PATH" \
-          --add-modules "$JAVA_MODULES,$JAVAFX_MODULES" \
-          --output dist/custom-runtime \
-          --strip-debug \
-          --no-header-files \
-          --no-man-pages \
-          --compress=2
-
-        if [ $? -ne 0 ]; then
-          echo "JavaFX modular runtime failed. Falling back to Java-only runtime..."
-          jlink \
-            --module-path "$MODULE_PATH" \
-            --add-modules "$JAVA_MODULES" \
-            --output dist/custom-runtime \
-            --strip-debug \
-            --no-header-files \
-            --no-man-pages \
-            --compress=2
-        fi
-
-    - name: Build Server DMG
-      run: |
-        jpackage \
-          --input dist/_jpackage/server \
-          --name "TodoList Server" \
-          --main-jar todolist-server-1.0.0.jar \
-          --main-class dk.dtu.ServerApp \
-          --type dmg \
-          --app-version 1.0.0 \
-          --vendor "Patrick" \
-          --description "TodoList Management Server" \
-          --runtime-image dist/custom-runtime \
-          --java-options "-Dtodolist.port=9001"
-
-    - name: Build Client DMG
-      run: |
-        jpackage \
-          --input dist/_jpackage/client \
-          --name "TodoList Client" \
-          --main-jar todolist-client-1.0.0.jar \
-          --main-class dk.dtu.ClientApp \
-          --type dmg \
-          --app-version 1.0.0 \
-          --vendor "Patrick" \
-          --description "TodoList Management Client" \
-          --runtime-image dist/custom-runtime \
-          --java-options "-Dtodolist.server.ip=127.0.0.1" \
-          --java-options "-Dtodolist.port=9001"
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: macos-installers
-        path: "*.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers
+          path: installers/*.dmg
 
   create-release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-    - uses: actions/download-artifact@v4
-      with:
-        name: windows-installers
-        path: ./windows
+      - uses: actions/download-artifact@v4
 
-    - uses: actions/download-artifact@v4
-      with:
-        name: macos-installers
-        path: ./macos
-
-    - uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          windows/*.msi
-          macos/*.dmg
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            windows-installers/*.msi
+            macos-installers/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
