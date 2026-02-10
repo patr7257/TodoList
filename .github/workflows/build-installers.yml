@@ -62,36 +62,72 @@ jobs:
         Write-Host "`nCreating custom JRE runtime..." -ForegroundColor Cyan
         $javaHome = $env:JAVA_HOME
         $modulePath = "$javaHome\jmods"
+        $runtimeOutput = "$PWD\dist\custom-runtime"
         
         Write-Host "JAVA_HOME: $javaHome" -ForegroundColor Gray
         Write-Host "Module path: $modulePath" -ForegroundColor Gray
+        Write-Host "Runtime output: $runtimeOutput" -ForegroundColor Gray
+        
+        # Verify jmods directory exists
+        if (-not (Test-Path $modulePath)) {
+          throw "ERROR: jmods directory not found at $modulePath - JDK may be incomplete"
+        }
+        Write-Host "[OK] jmods directory found" -ForegroundColor Green
         
         # Create runtime with essential Java modules (JavaFX stays on classpath)
         jlink `
           --module-path $modulePath `
           --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.prefs,jdk.unsupported,jdk.crypto.ec `
-          --output dist\custom-runtime `
+          --output $runtimeOutput `
           --strip-debug `
           --no-header-files `
           --no-man-pages `
-          --compress=2
+          --compress=2 `
+          --verbose
         
         if ($LASTEXITCODE -ne 0) {
+          Write-Host "ERROR: jlink exit code: $LASTEXITCODE" -ForegroundColor Red
           throw "jlink failed to create custom runtime"
         }
         
+        Write-Host "[OK] jlink completed successfully" -ForegroundColor Green
+        
         # Verify the runtime was created correctly
         Write-Host "`nVerifying runtime..." -ForegroundColor Cyan
-        $javaExe = "dist\custom-runtime\bin\java.exe"
-        if (Test-Path $javaExe) {
-          Write-Host "[OK] java.exe found in runtime" -ForegroundColor Green
-          & $javaExe -version
-        } else {
-          throw "Runtime verification FAILED: java.exe not found at $javaExe"
+        $javaExe = "$runtimeOutput\bin\java.exe"
+        $javawExe = "$runtimeOutput\bin\javaw.exe"
+        
+        Write-Host "Checking for: $javaExe" -ForegroundColor Gray
+        
+        if (-not (Test-Path $javaExe)) {
+          Write-Host "ERROR: java.exe not found at $javaExe" -ForegroundColor Red
+          Write-Host "Runtime directory contents:" -ForegroundColor Red
+          Get-ChildItem $runtimeOutput -Recurse | Select-Object -First 20 FullName
+          throw "Runtime verification FAILED: java.exe not found"
         }
+        
+        if (-not (Test-Path $javawExe)) {
+          Write-Host "ERROR: javaw.exe not found at $javawExe" -ForegroundColor Red
+          throw "Runtime verification FAILED: javaw.exe not found"
+        }
+        
+        Write-Host "[OK] java.exe found in runtime" -ForegroundColor Green
+        Write-Host "[OK] javaw.exe found in runtime" -ForegroundColor Green
+        
+        Write-Host "`nTesting runtime..." -ForegroundColor Cyan
+        & $javaExe -version
+        
+        if ($LASTEXITCODE -ne 0) {
+          throw "Runtime java.exe test failed with exit code: $LASTEXITCODE"
+        }
+        
+        Write-Host "[OK] Runtime verification PASSED" -ForegroundColor Green
     
     - name: Build Server MSI
       run: |
+        $runtimePath = "$PWD\dist\custom-runtime"
+        Write-Host "Using runtime: $runtimePath" -ForegroundColor Cyan
+        
         jpackage `
           --input dist\_jpackage\server `
           --name "TodoList Server" `
@@ -101,15 +137,22 @@ jobs:
           --app-version 1.0.0 `
           --vendor "TodoList Team" `
           --description "TodoList Management System Server" `
-          --runtime-image dist\custom-runtime `
+          --runtime-image $runtimePath `
           --win-dir-chooser `
           --win-menu `
           --win-shortcut `
           --win-console `
           --java-options "-Dtodolist.port=9001"
+        
+        if ($LASTEXITCODE -ne 0) {
+          throw "jpackage failed for Server with exit code: $LASTEXITCODE"
+        }
     
     - name: Build Client MSI
       run: |
+        $runtimePath = "$PWD\dist\custom-runtime"
+        Write-Host "Using runtime: $runtimePath" -ForegroundColor Cyan
+        
         jpackage `
           --input dist\_jpackage\client `
           --name "TodoList Client" `
@@ -119,13 +162,17 @@ jobs:
           --app-version 1.0.0 `
           --vendor "TodoList Team" `
           --description "TodoList Management System Client" `
-          --runtime-image dist\custom-runtime `
+          --runtime-image $runtimePath `
           --win-dir-chooser `
           --win-menu `
           --win-shortcut `
           --win-console `
           --java-options "-Dtodolist.server.ip=127.0.0.1" `
           --java-options "-Dtodolist.port=9001"
+        
+        if ($LASTEXITCODE -ne 0) {
+          throw "jpackage failed for Client with exit code: $LASTEXITCODE"
+        }
     
     - name: Upload Windows Installers
       uses: actions/upload-artifact@v4
