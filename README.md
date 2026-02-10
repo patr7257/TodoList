@@ -116,6 +116,25 @@ This enables console windows and detailed logging to `%LOCALAPPDATA%\TodoList\lo
 .\diagnose-installers.ps1
 ```
 
+**Diagnose installed applications** (after installation):
+```powershell
+.\diagnose-installed-apps.ps1
+```
+
+**If apps don't launch, check error logs:**
+1. Run from PowerShell to see console output:
+   ```powershell
+   cd "C:\Program Files\TodoList Server"
+   ."TodoList Server.exe"
+   ```
+
+2. Check Windows Event Viewer:
+   - Press `Win+X` → **Event Viewer**
+   - Navigate to **Windows Logs** → **Application**
+   - Look for errors from TodoList applications
+
+> **Note**: Release installers now include `--win-console` flag so you'll see a console window with error messages if something goes wrong.
+
 #### macOS
 
 **Prerequisites:**
