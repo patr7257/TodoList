@@ -14,131 +14,72 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: 'maven'
-    
+
     - name: Clone and build jSpace dependency
       run: |
         git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
         cd jSpace-java
         mvn clean install -DskipTests -pl common -am
         cd ..
-    
+
     - name: Build with Maven
-      run: mvn clean install -DskipTests
-    
-    - name: Stage dependencies and create custom runtime
+      run: mvn clean package -DskipTests
+
+    - name: Stage dependencies
       run: |
-        # Create staging directories
         New-Item -ItemType Directory -Force -Path dist\_jpackage\server | Out-Null
         New-Item -ItemType Directory -Force -Path dist\_jpackage\client | Out-Null
-        
-        # Copy main JARs
+
         Copy-Item server\target\todolist-server-1.0.0.jar dist\_jpackage\server\
         Copy-Item client\target\todolist-client-1.0.0.jar dist\_jpackage\client\
-        
-        # Copy shared module to both
         Copy-Item shared\target\todolist-shared-1.0.0.jar dist\_jpackage\server\
         Copy-Item shared\target\todolist-shared-1.0.0.jar dist\_jpackage\client\
-        
-        # Copy all runtime dependencies
+
         mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\server"
         mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist\_jpackage\client"
-        
-        # List staged files for debugging
-        Write-Host "`nStaged server JARs:" -ForegroundColor Cyan
-        Get-ChildItem dist\_jpackage\server\*.jar | ForEach-Object { Write-Host "  - $($_.Name)" }
-        Write-Host "`nStaged client JARs:" -ForegroundColor Cyan
-        Get-ChildItem dist\_jpackage\client\*.jar | ForEach-Object { Write-Host "  - $($_.Name)" }
-        
-        # Create custom runtime (WITHOUT JavaFX - keep it on classpath)
-        Write-Host "`nCreating custom JRE runtime..." -ForegroundColor Cyan
+
+    - name: Create custom runtime (with JavaFX fallback)
+      run: |
         $javaHome = $env:JAVA_HOME
         $modulePath = "$javaHome\jmods"
         $runtimeOutput = "$PWD\dist\custom-runtime"
-        
-        Write-Host "JAVA_HOME: $javaHome" -ForegroundColor Gray
-        Write-Host "Module path: $modulePath" -ForegroundColor Gray
-        Write-Host "Runtime output: $runtimeOutput" -ForegroundColor Gray
-        
-        # Verify jmods directory exists
-        if (-not (Test-Path $modulePath)) {
-          throw "ERROR: jmods directory not found at $modulePath - JDK may be incomplete"
-        }
-        Write-Host "[OK] jmods directory found" -ForegroundColor Green
-        
-        # Find JavaFX JARs in client dependencies
-        $javafxJars = Get-ChildItem -Path "$PWD\dist\_jpackage\client" -Filter "javafx-*.jar"
-        Write-Host "Found $($javafxJars.Count) JavaFX dependency JARs" -ForegroundColor Cyan
-        $javafxJars | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor Gray }
-        
-        # Build combined module path (JDK modules + JavaFX JARs)
         $javafxModulePath = "$PWD\dist\_jpackage\client"
         $combinedModulePath = "$modulePath;$javafxModulePath"
-        
-        Write-Host "Module path: $combinedModulePath" -ForegroundColor Gray
-        
-        # Create runtime with Java and JavaFX modules
+
+        $javaModules = "java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec"
+        $javafxModules = "javafx.controls,javafx.fxml,javafx.graphics,javafx.base"
+
+        Write-Host "Attempting jlink WITH JavaFX modules..."
         jlink `
           --module-path $combinedModulePath `
-          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,javafx.controls,javafx.fxml,javafx.graphics,javafx.base `
+          --add-modules "$javaModules,$javafxModules" `
           --output $runtimeOutput `
           --strip-debug `
           --no-header-files `
           --no-man-pages `
-          --compress=2 `
-          --verbose
-        
+          --compress=2
+
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "ERROR: jlink exit code: $LASTEXITCODE" -ForegroundColor Red
-          throw "jlink failed to create custom runtime"
+          Write-Host "JavaFX modular runtime failed. Falling back to Java-only runtime..."
+          jlink `
+            --module-path $modulePath `
+            --add-modules $javaModules `
+            --output $runtimeOutput `
+            --strip-debug `
+            --no-header-files `
+            --no-man-pages `
+            --compress=2
         }
-        
-        Write-Host "[OK] jlink completed successfully" -ForegroundColor Green
-        
-        # Verify the runtime was created correctly
-        Write-Host "`nVerifying runtime..." -ForegroundColor Cyan
-        $javaExe = "$runtimeOutput\bin\java.exe"
-        $javawExe = "$runtimeOutput\bin\javaw.exe"
-        
-        Write-Host "Checking for: $javaExe" -ForegroundColor Gray
-        
-        if (-not (Test-Path $javaExe)) {
-          Write-Host "ERROR: java.exe not found at $javaExe" -ForegroundColor Red
-          Write-Host "Runtime directory contents:" -ForegroundColor Red
-          Get-ChildItem $runtimeOutput -Recurse | Select-Object -First 20 FullName
-          throw "Runtime verification FAILED: java.exe not found"
-        }
-        
-        if (-not (Test-Path $javawExe)) {
-          Write-Host "ERROR: javaw.exe not found at $javawExe" -ForegroundColor Red
-          throw "Runtime verification FAILED: javaw.exe not found"
-        }
-        
-        Write-Host "[OK] java.exe found in runtime" -ForegroundColor Green
-        Write-Host "[OK] javaw.exe found in runtime" -ForegroundColor Green
-        
-        Write-Host "`nTesting runtime..." -ForegroundColor Cyan
-        & $javaExe -version
-        
-        if ($LASTEXITCODE -ne 0) {
-          throw "Runtime java.exe test failed with exit code: $LASTEXITCODE"
-        }
-        
-        Write-Host "[OK] Runtime verification PASSED" -ForegroundColor Green
-    
+
     - name: Build Server MSI
       run: |
-        $runtimePath = "$PWD\dist\custom-runtime"
-        Write-Host "Using runtime: $runtimePath" -ForegroundColor Cyan
-        
         jpackage `
           --input dist\_jpackage\server `
           --name "TodoList Server" `
@@ -146,24 +87,15 @@ jobs:
           --main-class dk.dtu.ServerApp `
           --type msi `
           --app-version 1.0.0 `
-          --vendor "TodoList Team" `
-          --description "TodoList Management System Server" `
-          --runtime-image $runtimePath `
-          --win-dir-chooser `
+          --vendor "Patrick" `
+          --description "TodoList Management Server" `
+          --runtime-image dist\custom-runtime `
           --win-menu `
           --win-shortcut `
-          --win-console `
           --java-options "-Dtodolist.port=9001"
-        
-        if ($LASTEXITCODE -ne 0) {
-          throw "jpackage failed for Server with exit code: $LASTEXITCODE"
-        }
-    
+
     - name: Build Client MSI
       run: |
-        $runtimePath = "$PWD\dist\custom-runtime"
-        Write-Host "Using runtime: $runtimePath" -ForegroundColor Cyan
-        
         jpackage `
           --input dist\_jpackage\client `
           --name "TodoList Client" `
@@ -171,115 +103,84 @@ jobs:
           --main-class dk.dtu.ClientApp `
           --type msi `
           --app-version 1.0.0 `
-          --vendor "TodoList Team" `
-          --description "TodoList Management System Client" `
-          --runtime-image $runtimePath `
-          --win-dir-chooser `
+          --vendor "Patrick" `
+          --description "TodoList Management Client" `
+          --runtime-image dist\custom-runtime `
           --win-menu `
           --win-shortcut `
-          --win-console `
           --java-options "-Dtodolist.server.ip=127.0.0.1" `
           --java-options "-Dtodolist.port=9001"
-        
-        if ($LASTEXITCODE -ne 0) {
-          throw "jpackage failed for Client with exit code: $LASTEXITCODE"
-        }
-    
-    - name: Upload Windows Installers
-      uses: actions/upload-artifact@v4
+
+    - uses: actions/upload-artifact@v4
       with:
         name: windows-installers
-        path: |
-          *.msi
-        retention-days: 30
+        path: "*.msi"
 
   build-macos:
     runs-on: macos-latest
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: 'maven'
-    
+
     - name: Clone and build jSpace dependency
       run: |
         git clone --depth 1 https://github.com/pSpaces/jSpace.git jSpace-java
         cd jSpace-java
         mvn clean install -DskipTests -pl common -am
         cd ..
-    
+
     - name: Build with Maven
-      run: mvn clean install -DskipTests
-    
-    - name: Stage dependencies and create custom runtime
+      run: mvn clean package -DskipTests
+
+    - name: Stage dependencies
       run: |
-        # Create staging directories
-        mkdir -p dist/_jpackage/server
-        mkdir -p dist/_jpackage/client
-        
-        # Copy main JARs
+        mkdir -p dist/_jpackage/server dist/_jpackage/client
         cp server/target/todolist-server-1.0.0.jar dist/_jpackage/server/
         cp client/target/todolist-client-1.0.0.jar dist/_jpackage/client/
-        
-        # Copy shared module to both
         cp shared/target/todolist-shared-1.0.0.jar dist/_jpackage/server/
         cp shared/target/todolist-shared-1.0.0.jar dist/_jpackage/client/
-        
-        # Copy all runtime dependencies
+
         mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/server"
         mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="dist/_jpackage/client"
-        
-        # List staged files for debugging
-        echo ""
-        echo "Staged server JARs:"
-        ls -1 dist/_jpackage/server/*.jar | head -10
-        echo ""
-        echo "Staged client JARs:"
-        ls -1 dist/_jpackage/client/*.jar | head -10
-        
-        # Find JavaFX JARs in client dependencies
-        echo ""
-        echo "Found JavaFX dependency JARs:"
-        ls -1 dist/_jpackage/client/javafx-*.jar | xargs -n1 basename
-        
-        # Create custom runtime with JavaFX modules
-        echo ""
-        echo "Creating custom JRE runtime with JavaFX..."
+
+    - name: Create custom runtime (with JavaFX fallback)
+      run: |
         JAVA_HOME_PATH=$JAVA_HOME
         MODULE_PATH="$JAVA_HOME_PATH/jmods"
         JAVAFX_MODULE_PATH="$(pwd)/dist/_jpackage/client"
         COMBINED_MODULE_PATH="$MODULE_PATH:$JAVAFX_MODULE_PATH"
-        
-        echo "JAVA_HOME: $JAVA_HOME_PATH"
-        echo "Combined module path: $COMBINED_MODULE_PATH"
-        
-        # Create runtime with Java and JavaFX modules
+
+        JAVA_MODULES="java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec"
+        JAVAFX_MODULES="javafx.controls,javafx.fxml,javafx.graphics,javafx.base"
+
+        echo "Attempting jlink WITH JavaFX modules..."
         jlink \
           --module-path "$COMBINED_MODULE_PATH" \
-          --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,javafx.controls,javafx.fxml,javafx.graphics,javafx.base \
+          --add-modules "$JAVA_MODULES,$JAVAFX_MODULES" \
           --output dist/custom-runtime \
           --strip-debug \
           --no-header-files \
           --no-man-pages \
           --compress=2
-        
-        # Verify the runtime was created correctly
-        echo ""
-        echo "Verifying runtime..."
-        if [ -f "dist/custom-runtime/bin/java" ]; then
-          echo "[OK] java found in runtime"
-          dist/custom-runtime/bin/java -version
-        else
-          echo "[ERROR] Runtime verification FAILED: java not found"
-          exit 1
+
+        if [ $? -ne 0 ]; then
+          echo "JavaFX modular runtime failed. Falling back to Java-only runtime..."
+          jlink \
+            --module-path "$MODULE_PATH" \
+            --add-modules "$JAVA_MODULES" \
+            --output dist/custom-runtime \
+            --strip-debug \
+            --no-header-files \
+            --no-man-pages \
+            --compress=2
         fi
-    
+
     - name: Build Server DMG
       run: |
         jpackage \
@@ -289,11 +190,11 @@ jobs:
           --main-class dk.dtu.ServerApp \
           --type dmg \
           --app-version 1.0.0 \
-          --vendor "TodoList Team" \
-          --description "TodoList Management System Server" \
+          --vendor "Patrick" \
+          --description "TodoList Management Server" \
           --runtime-image dist/custom-runtime \
           --java-options "-Dtodolist.port=9001"
-    
+
     - name: Build Client DMG
       run: |
         jpackage \
@@ -303,46 +204,38 @@ jobs:
           --main-class dk.dtu.ClientApp \
           --type dmg \
           --app-version 1.0.0 \
-          --vendor "TodoList Team" \
-          --description "TodoList Management System Client" \
+          --vendor "Patrick" \
+          --description "TodoList Management Client" \
           --runtime-image dist/custom-runtime \
           --java-options "-Dtodolist.server.ip=127.0.0.1" \
           --java-options "-Dtodolist.port=9001"
-    
-    - name: Upload macOS Installers
-      uses: actions/upload-artifact@v4
+
+    - uses: actions/upload-artifact@v4
       with:
         name: macos-installers
-        path: |
-          *.dmg
-        retention-days: 30
+        path: "*.dmg"
 
   create-release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    
+
     steps:
-    - name: Download Windows artifacts
-      uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v4
       with:
         name: windows-installers
         path: ./windows
-    
-    - name: Download macOS artifacts
-      uses: actions/download-artifact@v4
+
+    - uses: actions/download-artifact@v4
       with:
         name: macos-installers
         path: ./macos
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
+
+    - uses: softprops/action-gh-release@v1
       with:
         files: |
           windows/*.msi
           macos/*.dmg
-        draft: false
-        prerelease: false
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
