@@ -89,10 +89,6 @@ jobs:
         } else {
           throw "Runtime verification FAILED: java.exe not found at $javaExe"
         }
-            --no-header-files `
-            --no-man-pages `
-            --compress=zip-6
-        }
     
     - name: Build Server MSI
       run: |
