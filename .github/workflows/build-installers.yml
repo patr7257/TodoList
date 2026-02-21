@@ -61,10 +61,12 @@ jobs:
             --main-class dk.dtu.ServerApp ^
             --dest installers
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Windows Installers to Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-installers
-          path: installers/*.msi
+          files: installers/*.msi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-macos:
     runs-on: macos-latest
@@ -119,23 +121,9 @@ jobs:
             --main-class dk.dtu.ServerApp \
             --dest installers
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-installers
-          path: installers/*.dmg
-
-  create-release:
-    needs: [build-windows, build-macos]
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/download-artifact@v4
-
-      - name: Create GitHub Release
+      - name: Upload macOS Installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            windows-installers/*.msi
-            macos-installers/*.dmg
+          files: installers/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
