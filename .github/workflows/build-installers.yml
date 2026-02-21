@@ -29,12 +29,24 @@ jobs:
       - name: Build all modules
         run: mvn -B clean package
 
+      - name: Prepare Client jpackage input
+        run: |
+          New-Item -ItemType Directory -Force -Path client-jpackage-input
+          Copy-Item client/target/todolist-client-1.0.0.jar client-jpackage-input/
+          Copy-Item client/target/libs/*.jar client-jpackage-input/
+
+      - name: Prepare Server jpackage input
+        run: |
+          New-Item -ItemType Directory -Force -Path server-jpackage-input
+          Copy-Item server/target/todolist-server-1.0.0.jar server-jpackage-input/
+          Copy-Item server/target/libs/*.jar server-jpackage-input/
+
       - name: Create Windows Client Installer
         run: |
           jpackage ^
             --type msi ^
             --name "TodoList Client" ^
-            --input client/target ^
+            --input client-jpackage-input ^
             --main-jar todolist-client-1.0.0.jar ^
             --main-class dk.dtu.ClientApp ^
             --dest installers
@@ -44,7 +56,7 @@ jobs:
           jpackage ^
             --type msi ^
             --name "TodoList Server" ^
-            --input server/target ^
+            --input server-jpackage-input ^
             --main-jar todolist-server-1.0.0.jar ^
             --main-class dk.dtu.ServerApp ^
             --dest installers
@@ -75,12 +87,24 @@ jobs:
       - name: Build all modules
         run: mvn -B clean package
 
+      - name: Prepare Client jpackage input
+        run: |
+          mkdir -p client-jpackage-input
+          cp client/target/todolist-client-1.0.0.jar client-jpackage-input/
+          cp client/target/libs/*.jar client-jpackage-input/
+
+      - name: Prepare Server jpackage input
+        run: |
+          mkdir -p server-jpackage-input
+          cp server/target/todolist-server-1.0.0.jar server-jpackage-input/
+          cp server/target/libs/*.jar server-jpackage-input/
+
       - name: Create macOS Client DMG
         run: |
           jpackage \
             --type dmg \
             --name "TodoList Client" \
-            --input client/target \
+            --input client-jpackage-input \
             --main-jar todolist-client-1.0.0.jar \
             --main-class dk.dtu.ClientApp \
             --dest installers
@@ -90,7 +114,7 @@ jobs:
           jpackage \
             --type dmg \
             --name "TodoList Server" \
-            --input server/target \
+            --input server-jpackage-input \
             --main-jar todolist-server-1.0.0.jar \
             --main-class dk.dtu.ServerApp \
             --dest installers
