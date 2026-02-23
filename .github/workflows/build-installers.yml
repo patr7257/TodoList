@@ -60,7 +60,6 @@ jobs:
             --win-shortcut ^
             --java-options "-Dtodolist.server.ip=127.0.0.1" ^
             --java-options "-Dtodolist.port=9001" ^
-            --java-options "-Xlog:all=info:file=%LOCALAPPDATA%\\TodoList\\logs\\client-%p.log:time,level,tags" ^
             --dest installers
 
       - name: Create Windows Server Installer
@@ -81,7 +80,6 @@ jobs:
             --win-menu ^
             --win-shortcut ^
             --java-options "-Dtodolist.port=9001" ^
-            --java-options "-Xlog:all=info:file=%LOCALAPPDATA%\\TodoList\\logs\\server-%p.log:time,level,tags" ^
             --dest installers
 
       - name: Upload Windows Installers to Release
