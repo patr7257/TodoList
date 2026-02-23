@@ -53,11 +53,14 @@ jobs:
             --app-version 1.0.0 ^
             --vendor "Patrick" ^
             --description "TodoList Management Client" ^
+            --module-path client-jpackage-input ^
+            --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
             --win-console ^
             --win-menu ^
             --win-shortcut ^
             --java-options "-Dtodolist.server.ip=127.0.0.1" ^
             --java-options "-Dtodolist.port=9001" ^
+            --java-options "-Xlog:all=info:file=%LOCALAPPDATA%\\TodoList\\logs\\client-%p.log:time,level,tags" ^
             --dest installers
 
       - name: Create Windows Server Installer
@@ -72,10 +75,13 @@ jobs:
             --app-version 1.0.0 ^
             --vendor "Patrick" ^
             --description "TodoList Management Server" ^
+            --module-path server-jpackage-input ^
+            --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
             --win-console ^
             --win-menu ^
             --win-shortcut ^
             --java-options "-Dtodolist.port=9001" ^
+            --java-options "-Xlog:all=info:file=%LOCALAPPDATA%\\TodoList\\logs\\server-%p.log:time,level,tags" ^
             --dest installers
 
       - name: Upload Windows Installers to Release
@@ -129,6 +135,8 @@ jobs:
             --app-version 1.0.0 \
             --vendor "Patrick" \
             --description "TodoList Management Client" \
+            --module-path client-jpackage-input \
+            --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
             --java-options "-Dtodolist.server.ip=127.0.0.1" \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
@@ -144,6 +152,8 @@ jobs:
             --app-version 1.0.0 \
             --vendor "Patrick" \
             --description "TodoList Management Server" \
+            --module-path server-jpackage-input \
+            --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
 
