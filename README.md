@@ -98,43 +98,6 @@ git push origin v1.0.1
 
 Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
 
-**Build with debug mode** (for troubleshooting):
-```powershell
-.\build-installers.ps1 -WinConsole -Debug
-```
-This enables console windows and detailed logging to `%LOCALAPPDATA%\TodoList\logs\`.
-
-**Test installed applications:**
-```powershell
-# Run as Administrator
-.\install-and-test.ps1 -App server
-.\install-and-test.ps1 -App client
-```
-
-**Diagnose MSI structure** (without installing):
-```powershell
-.\diagnose-installers.ps1
-```
-
-**Diagnose installed applications** (after installation):
-```powershell
-.\diagnose-installed-apps.ps1
-```
-
-**If apps don't launch, check error logs:**
-1. Run from PowerShell to see console output:
-   ```powershell
-   cd "C:\Program Files\TodoList Server"
-   ."TodoList Server.exe"
-   ```
-
-2. Check Windows Event Viewer:
-   - Press `Win+X` → **Event Viewer**
-   - Navigate to **Windows Logs** → **Application**
-   - Look for errors from TodoList applications
-
-> **Note**: Release installers now include `--win-console` flag so you'll see a console window with error messages if something goes wrong.
-
 #### macOS
 
 **Prerequisites:**

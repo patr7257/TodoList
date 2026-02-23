@@ -17,8 +17,8 @@ public class MainUserConfig {
     private static final String MAIN_USER_2_COLOR_KEY = "mainUser2Color";
     
     // Default main users if not configured
-    private static final String DEFAULT_USER_1 = "Eline";
-    private static final String DEFAULT_USER_2 = "Patrick";
+    private static final String DEFAULT_USER_1 = "Alice";
+    private static final String DEFAULT_USER_2 = "Bob";
     private static final String DEFAULT_COLOR_1 = "#29b6f6"; // Light blue
     private static final String DEFAULT_COLOR_2 = "#4caf50"; // Green
     
@@ -132,10 +132,10 @@ public class MainUserConfig {
      */
     public static String getStyleClassForUser(String username) {
         if (username.equals(getMainUser1())) {
-            return "main-user-button-eline"; // First user gets light blue
+            return "main-user-button-alice"; // First user gets light blue
         } else if (username.equals(getMainUser2())) {
-            return "main-user-button-patrick"; // Second user gets green
+            return "main-user-button-bob"; // Second user gets green
         }
-        return "main-user-button-eline"; // Default to light blue
+        return "main-user-button-alice"; // Default to light blue
     }
 }

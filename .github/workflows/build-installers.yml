@@ -51,11 +51,10 @@ jobs:
             --main-jar todolist-client-1.0.0.jar ^
             --main-class dk.dtu.ClientApp ^
             --app-version 1.0.0 ^
-            --vendor "Patrick" ^
+            --vendor "TodoList" ^
             --description "TodoList Management Client" ^
             --module-path client-jpackage-input ^
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
-            --win-console ^
             --win-menu ^
             --win-shortcut ^
             --java-options "-Dtodolist.server.ip=127.0.0.1" ^
@@ -72,11 +71,10 @@ jobs:
             --main-jar todolist-server-1.0.0.jar ^
             --main-class dk.dtu.ServerApp ^
             --app-version 1.0.0 ^
-            --vendor "Patrick" ^
+            --vendor "TodoList" ^
             --description "TodoList Management Server" ^
             --module-path server-jpackage-input ^
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
-            --win-console ^
             --win-menu ^
             --win-shortcut ^
             --java-options "-Dtodolist.port=9001" ^
@@ -131,7 +129,7 @@ jobs:
             --main-jar todolist-client-1.0.0.jar \
             --main-class dk.dtu.ClientApp \
             --app-version 1.0.0 \
-            --vendor "Patrick" \
+            --vendor "TodoList" \
             --description "TodoList Management Client" \
             --module-path client-jpackage-input \
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
@@ -148,7 +146,7 @@ jobs:
             --main-jar todolist-server-1.0.0.jar \
             --main-class dk.dtu.ServerApp \
             --app-version 1.0.0 \
-            --vendor "Patrick" \
+            --vendor "TodoList" \
             --description "TodoList Management Server" \
             --module-path server-jpackage-input \
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \

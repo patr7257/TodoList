@@ -34,7 +34,7 @@ public class A_WelcomeScreen {
     logo.setFitWidth(70);
     logo.setPreserveRatio(true);
 
-    Label title = new Label("Patrick & Elines Amazing Huske-System");
+	Label title = new Label("TodoList Management System");
     title.getStyleClass().add("welcome-title");
 
     Label tagline = new Label("Lets remember all of our ideas, yay!");

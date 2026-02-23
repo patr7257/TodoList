@@ -138,8 +138,8 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);
 }
 
-/* Main User Login Buttons - Eline (Light Blue) */
-.main-user-button-eline {
+/* Main User Login Buttons - Alice (Light Blue) */
+.main-user-button-alice {
     -fx-min-width: 220px;
     -fx-min-height: 80px;
     -fx-background-color: linear-gradient(to bottom, #4fc3f7, #29b6f6);
@@ -154,7 +154,7 @@
     -fx-cursor: hand;
 }
 
-.main-user-button-eline:hover {
+.main-user-button-alice:hover {
     -fx-background-color: linear-gradient(to bottom, #29b6f6, #039be5);
     -fx-border-color: #000000;
     -fx-border-width: 4px;
@@ -163,15 +163,15 @@
     -fx-scale-y: 1.03;
 }
 
-.main-user-button-eline:pressed {
+.main-user-button-alice:pressed {
     -fx-background-color: linear-gradient(to bottom, #0288d1, #0277bd);
     -fx-border-color: #000000;
     -fx-border-width: 2px;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 2);
 }
 
-/* Main User Login Buttons - Patrick (Green) */
-.main-user-button-patrick {
+/* Main User Login Buttons - Bob (Green) */
+.main-user-button-bob {
     -fx-min-width: 220px;
     -fx-min-height: 80px;
     -fx-background-color: linear-gradient(to bottom, #66bb6a, #4caf50);
@@ -186,7 +186,7 @@
     -fx-cursor: hand;
 }
 
-.main-user-button-patrick:hover {
+.main-user-button-bob:hover {
     -fx-background-color: linear-gradient(to bottom, #4caf50, #43a047);
     -fx-border-color: #000000;
     -fx-border-width: 4px;
@@ -195,7 +195,7 @@
     -fx-scale-y: 1.03;
 }
 
-.main-user-button-patrick:pressed {
+.main-user-button-bob:pressed {
     -fx-background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
     -fx-border-color: #000000;
     -fx-border-width: 2px;

@@ -147,40 +147,40 @@ Label {
     -fx-border-color: #505050;
 }
 
-/* Main User Buttons - Eline (Light Blue) */
-.main-user-button-eline {
+/* Main User Buttons - Alice (Light Blue) */
+.main-user-button-alice {
     background-color: linear-gradient(to bottom, #0288d1, #0277bd);
     -fx-background-color: linear-gradient(to bottom, #0288d1, #0277bd);
     border-color: #01579b;
     -fx-border-color: #01579b;
 }
 
-.main-user-button-eline:hover {
+.main-user-button-alice:hover {
     background-color: linear-gradient(to bottom, #039be5, #0288d1);
     -fx-background-color: linear-gradient(to bottom, #039be5, #0288d1);
     -fx-effect: dropshadow(gaussian, rgba(3,155,229,0.5), 25, 0, 0, 6);
 }
 
-.main-user-button-eline:pressed {
+.main-user-button-alice:pressed {
     background-color: linear-gradient(to bottom, #01579b, #014a7d);
     -fx-background-color: linear-gradient(to bottom, #01579b, #014a7d);
 }
 
-/* Main User Buttons - Patrick (Green) */
-.main-user-button-patrick {
+/* Main User Buttons - Bob (Green) */
+.main-user-button-bob {
     background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
     -fx-background-color: linear-gradient(to bottom, #388e3c, #2e7d32);
     border-color: #1b5e20;
     -fx-border-color: #1b5e20;
 }
 
-.main-user-button-patrick:hover {
+.main-user-button-bob:hover {
     background-color: linear-gradient(to bottom, #43a047, #388e3c);
     -fx-background-color: linear-gradient(to bottom, #43a047, #388e3c);
     -fx-effect: dropshadow(gaussian, rgba(67,160,71,0.5), 25, 0, 0, 6);
 }
 
-.main-user-button-patrick:pressed {
+.main-user-button-bob:pressed {
     background-color: linear-gradient(to bottom, #1b5e20, #155d18);
     -fx-background-color: linear-gradient(to bottom, #1b5e20, #155d18);
 }

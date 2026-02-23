@@ -1,8 +1,6 @@
 Param(
   [string]$Version = "1.0.0",
-  [ValidateSet("msi","exe")][string]$Type = "msi",
-  [switch]$WinConsole,
-  [switch]$Debug
+  [ValidateSet("msi","exe")][string]$Type = "msi"
 )
 
 $ErrorActionPreference = "Stop"
@@ -219,29 +217,6 @@ Verify-RuntimeImage $runtimeDir
 Write-Host "`nCustom runtime created successfully at: $runtimeDir" -ForegroundColor Green
 
 # ============================================================================
-# CONFIGURE JPACKAGE ARGUMENTS
-# ============================================================================
-
-$winConsoleArgs = @()
-if ($WinConsole) {
-  $winConsoleArgs += "--win-console"
-}
-
-# Logging options for debugging
-$loggingDir = "%LOCALAPPDATA%\TodoList\logs"
-$debugJavaOpts = @()
-if ($Debug -or $WinConsole) {
-  $debugJavaOpts += "-Xlog:all=info:file=$loggingDir\jvm-%p.log:time,level,tags"
-  Write-Host "Debug mode enabled - JVM logs will be written to: $loggingDir" -ForegroundColor Yellow
-}
-
-# JavaFX module arguments for jpackage
-# Since JavaFX JARs are in the input directory, we need to tell jpackage to use them as modules
-$javafxModuleArgs = @(
-  "--add-modules", "javafx.controls,javafx.fxml"
-)
-
-# ============================================================================
 # PACKAGE SERVER
 # ============================================================================
 Write-Host "`nPackaging Server UI ($Type)..." -ForegroundColor Green
@@ -254,22 +229,13 @@ $serverArgs = @(
   "--main-class", "dk.dtu.ServerApp",
   "--type", $Type,
   "--app-version", $Version,
-  "--vendor", "Patrick",
+  "--vendor", "TodoList",
   "--description", "TodoList Management Server",
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
   "--java-options", "-Dtodolist.port=9001"
 )
-
-if ($WinConsole) {
-  $serverArgs += "--win-console"
-}
-
-if ($Debug -or $WinConsole) {
-  $serverArgs += "--java-options"
-  $serverArgs += "-Xlog:all=info:file=$loggingDir\server-%p.log:time,level,tags"
-}
 
 jpackage @serverArgs
 
@@ -290,7 +256,7 @@ $clientArgs = @(
   "--main-class", "dk.dtu.ClientApp",
   "--type", $Type,
   "--app-version", $Version,
-  "--vendor", "Patrick",
+  "--vendor", "TodoList",
   "--description", "TodoList Management Client",
   "--runtime-image", $runtimeDir,
   "--win-menu",
@@ -298,15 +264,6 @@ $clientArgs = @(
   "--java-options", "-Dtodolist.server.ip=127.0.0.1",
   "--java-options", "-Dtodolist.port=9001"
 )
-
-if ($WinConsole) {
-  $clientArgs += "--win-console"
-}
-
-if ($Debug -or $WinConsole) {
-  $clientArgs += "--java-options"
-  $clientArgs += "-Xlog:all=info:file=$loggingDir\client-%p.log:time,level,tags"
-}
 
 jpackage @clientArgs
 
@@ -326,11 +283,6 @@ Write-Host "BUILD SUCCESSFUL!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "Output directory: $destDir" -ForegroundColor Yellow
 Write-Host "Runtime image: $runtimeDir" -ForegroundColor Yellow
-
-if ($Debug -or $WinConsole) {
-  Write-Host "`nDebug mode active. After installation, check logs at:" -ForegroundColor Cyan
-  Write-Host "  %LOCALAPPDATA%\TodoList\logs\" -ForegroundColor Cyan
-}
 
 Write-Host "`nInstaller files:" -ForegroundColor Cyan
 Get-ChildItem -Path $destDir -Filter "*.$Type" | ForEach-Object {

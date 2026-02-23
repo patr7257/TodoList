@@ -267,7 +267,7 @@ public class SceneNavigator {
         sidebar.setColumnFilterButtonAction(null);
         sidebar.setListFilterButtonAction(null);
         Scene scene = new A_WelcomeScreen(this).createScene();
-        setScene(scene, "Patrick & Elines Amazing Huske-System");
+        setScene(scene, "TodoList Management System");
     }
 
     // B: Show login screen
@@ -285,7 +285,7 @@ public class SceneNavigator {
         sidebar.setColumnFilterButtonAction(null);
         sidebar.setListFilterButtonAction(null);
         Scene scene = new B_LoginScreen(this).createScene();
-        setScene(scene, "Login - Patrick & Elines Amazing Huske-System");
+        setScene(scene, "Login - TodoList Management System");
     }
 
     // C: Show main menu
@@ -307,7 +307,7 @@ public class SceneNavigator {
             }
         });
         Scene scene = currentMainMenu.createScene();
-        setScene(scene, "Main Menu - Patrick & Elines Amazing Huske-System");
+        setScene(scene, "Main Menu - TodoList Management System");
     }
 
     public void showMainMenuWithMessage(String loginMessage) {
