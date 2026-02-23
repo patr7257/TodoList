@@ -50,7 +50,12 @@ jobs:
             --input client-jpackage-input ^
             --main-jar todolist-client-1.0.0.jar ^
             --main-class dk.dtu.ClientApp ^
+            --app-version 1.0.0 ^
+            --vendor "Patrick" ^
+            --description "TodoList Management Client" ^
             --win-console ^
+            --win-menu ^
+            --win-shortcut ^
             --java-options "-Dtodolist.server.ip=127.0.0.1" ^
             --java-options "-Dtodolist.port=9001" ^
             --dest installers
@@ -64,7 +69,12 @@ jobs:
             --input server-jpackage-input ^
             --main-jar todolist-server-1.0.0.jar ^
             --main-class dk.dtu.ServerApp ^
+            --app-version 1.0.0 ^
+            --vendor "Patrick" ^
+            --description "TodoList Management Server" ^
             --win-console ^
+            --win-menu ^
+            --win-shortcut ^
             --java-options "-Dtodolist.port=9001" ^
             --dest installers
 
@@ -116,6 +126,9 @@ jobs:
             --input client-jpackage-input \
             --main-jar todolist-client-1.0.0.jar \
             --main-class dk.dtu.ClientApp \
+            --app-version 1.0.0 \
+            --vendor "Patrick" \
+            --description "TodoList Management Client" \
             --java-options "-Dtodolist.server.ip=127.0.0.1" \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
@@ -128,6 +141,9 @@ jobs:
             --input server-jpackage-input \
             --main-jar todolist-server-1.0.0.jar \
             --main-class dk.dtu.ServerApp \
+            --app-version 1.0.0 \
+            --vendor "Patrick" \
+            --description "TodoList Management Server" \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
 
