@@ -1,0 +1,9 @@
+# Files consumed by Docker / Linux must stay LF. With core.autocrlf=true they
+# would otherwise check out as CRLF on Windows, and a CR after a backslash line
+# continuation in the Dockerfile RUN steps breaks the build on Linux.
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
+docs/HOSTING.md text eol=lf
+*.yml text eol=lf
+*.sh text eol=lf

@@ -1,0 +1,37 @@
+# Dokploy / Docker Compose definition for the headless TodoList server.
+#
+# IMPORTANT SECURITY NOTE
+# The jSpace server has NO authentication and NO TLS. Anyone who can reach the
+# TCP port has full access to every to do list and task. It must therefore be
+# reachable ONLY over the private Tailscale tailnet, never on a public interface.
+#
+# TAILSCALE_IP must be set to THIS VPS's own tailnet IP (its 100.x.y.z address,
+# from `tailscale ip -4`). The port is published bound to that IP only, so the
+# gate is reachable from other tailnet devices but not from the public internet.
+# Binding to 0.0.0.0 here would expose the unauthenticated server publicly:
+# do NOT do that.
+#
+# Dokploy's built-in Traefik reverse proxy does NOT apply to this service:
+# jSpace speaks raw TCP, not HTTP, so there is no HTTP route for Traefik to
+# handle. The container is reached directly on the published TCP port.
+
+services:
+  server:
+    build: .
+    image: todolist-server:latest
+    restart: unless-stopped
+    environment:
+      # Bind on all interfaces inside the container; the host publish below is
+      # what actually limits exposure to the tailnet.
+      TODOLIST_BIND_HOST: "0.0.0.0"
+      TODOLIST_PORT: "9001"
+      TODOLIST_DATA_DIR: "/data"
+    volumes:
+      - todolist-data:/data
+    ports:
+      # Publish bound to the VPS's Tailscale IP only. Reachable over the tailnet,
+      # not the public internet. TAILSCALE_IP MUST be the VPS's tailnet address.
+      - "${TAILSCALE_IP}:9001:9001"
+
+volumes:
+  todolist-data:

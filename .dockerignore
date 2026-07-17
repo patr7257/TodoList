@@ -1,0 +1,10 @@
+# Keep the Docker build context small. The Dockerfile COPYs only poms and src,
+# and builds everything inside the image, so none of these are needed.
+.git
+target
+**/target
+dist
+**/dist
+*.log
+.idea
+.vscode

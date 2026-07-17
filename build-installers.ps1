@@ -1,7 +1,16 @@
 Param(
   [string]$Version = "1.0.0",
-  [ValidateSet("msi","exe")][string]$Type = "msi"
+  [ValidateSet("msi","exe")][string]$Type = "msi",
+  # Default server host baked into the client build. The runtime connect dialog
+  # still overrides this, so 127.0.0.1 stays safe as a default.
+  [string]$ServerHost = "127.0.0.1"
 )
+
+# Permanent Windows upgrade codes. These MUST never change: in-place upgrades
+# (installing a new version over an old one) are matched by upgrade code, so
+# changing either GUID would orphan every already-installed copy.
+$ClientUpgradeUuid = "c70294f3-9868-42a9-9ffc-7c3d80b71a4e"
+$ServerUpgradeUuid = "d4b1957b-8e7a-40f7-8a52-a6709d8aa830"
 
 $ErrorActionPreference = "Stop"
 
@@ -234,6 +243,7 @@ $serverArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
+  "--win-upgrade-uuid", $ServerUpgradeUuid,
   "--java-options", "-Dtodolist.port=9001"
 )
 
@@ -261,7 +271,8 @@ $clientArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
-  "--java-options", "-Dtodolist.server.ip=127.0.0.1",
+  "--win-upgrade-uuid", $ClientUpgradeUuid,
+  "--java-options", "-Dtodolist.server.ip=$ServerHost",
   "--java-options", "-Dtodolist.port=9001"
 )
 

@@ -19,7 +19,7 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # 🔥 INSTALL JSPACE FIRST
+      # INSTALL JSPACE FIRST (not on Maven Central)
       - name: Clone and install jSpace
         run: |
           git clone https://github.com/pSpaces/jSpace.git
@@ -41,6 +41,14 @@ jobs:
           Copy-Item server/target/todolist-server-1.0.0.jar server-jpackage-input/
           Copy-Item server/target/libs/*.jar server-jpackage-input/
 
+      # TODO icons: Windows icon generation needs ImageMagick (magick), which is
+      # not guaranteed on the runner, so the Windows installers ship without a
+      # custom --icon. Wire it here only if magick becomes available.
+
+      # --win-upgrade-uuid is a PERMANENT upgrade code and must never change:
+      # in-place upgrades are matched by it, so changing it orphans installed copies.
+      # -Dtodolist.server.ip default comes from the TODOLIST_SERVER_HOST repo
+      # variable (falls back to 127.0.0.1); the runtime connect dialog overrides it.
       - name: Create Windows Client Installer
         shell: cmd
         run: |
@@ -57,7 +65,8 @@ jobs:
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
             --win-menu ^
             --win-shortcut ^
-            --java-options "-Dtodolist.server.ip=127.0.0.1" ^
+            --win-upgrade-uuid c70294f3-9868-42a9-9ffc-7c3d80b71a4e ^
+            --java-options "-Dtodolist.server.ip=${{ vars.TODOLIST_SERVER_HOST || '127.0.0.1' }}" ^
             --java-options "-Dtodolist.port=9001" ^
             --dest installers
 
@@ -77,13 +86,23 @@ jobs:
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
             --win-menu ^
             --win-shortcut ^
+            --win-upgrade-uuid d4b1957b-8e7a-40f7-8a52-a6709d8aa830 ^
             --java-options "-Dtodolist.port=9001" ^
             --dest installers
+
+      # Stable, versionless copies so releases/latest/download/<name> never breaks.
+      - name: Create stable-named copies
+        run: |
+          Copy-Item "installers/TodoList Client-1.0.0.msi" "installers/TodoList-Client-Windows.msi"
+          Copy-Item "installers/TodoList Server-1.0.0.msi" "installers/TodoList-Server-Windows.msi"
 
       - name: Upload Windows Installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: installers/*.msi
+          files: |
+            installers/*.msi
+            installers/TodoList-Client-Windows.msi
+            installers/TodoList-Server-Windows.msi
           replace_existing_artifacts: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -121,6 +140,22 @@ jobs:
           cp server/target/todolist-server-1.0.0.jar server-jpackage-input/
           cp server/target/libs/*.jar server-jpackage-input/
 
+      # Build a macOS .icns from the client app icon (sips + iconutil are part of
+      # macOS, so this is reliable on the runner).
+      - name: Generate macOS app icon
+        run: |
+          SRC=client/src/main/resources/Icons/todo.png
+          mkdir -p icon.iconset
+          for size in 16 32 128 256 512; do
+            sips -z $size $size "$SRC" --out "icon.iconset/icon_${size}x${size}.png"
+            sips -z $((size * 2)) $((size * 2)) "$SRC" --out "icon.iconset/icon_${size}x${size}@2x.png"
+          done
+          iconutil -c icns icon.iconset -o TodoList.icns
+
+      # --mac-package-identifier is a PERMANENT bundle identifier and must never
+      # change: it is how macOS tracks in-place upgrades of the same app.
+      # -Dtodolist.server.ip default comes from the TODOLIST_SERVER_HOST repo
+      # variable (falls back to 127.0.0.1); the runtime connect dialog overrides it.
       - name: Create macOS Client DMG
         run: |
           jpackage \
@@ -134,7 +169,9 @@ jobs:
             --description "TodoList Management Client" \
             --module-path client-jpackage-input \
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
-            --java-options "-Dtodolist.server.ip=127.0.0.1" \
+            --icon TodoList.icns \
+            --mac-package-identifier com.patr7257.todolist.client \
+            --java-options "-Dtodolist.server.ip=${{ vars.TODOLIST_SERVER_HOST || '127.0.0.1' }}" \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
 
@@ -151,13 +188,23 @@ jobs:
             --description "TodoList Management Server" \
             --module-path server-jpackage-input \
             --add-modules javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
+            --mac-package-identifier com.patr7257.todolist.server \
             --java-options "-Dtodolist.port=9001" \
             --dest installers
+
+      # Stable, versionless copies so releases/latest/download/<name> never breaks.
+      - name: Create stable-named copies
+        run: |
+          cp "installers/TodoList Client-1.0.0.dmg" "installers/TodoList-Client-macOS.dmg"
+          cp "installers/TodoList Server-1.0.0.dmg" "installers/TodoList-Server-macOS.dmg"
 
       - name: Upload macOS Installers to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: installers/*.dmg
+          files: |
+            installers/*.dmg
+            installers/TodoList-Client-macOS.dmg
+            installers/TodoList-Server-macOS.dmg
           replace_existing_artifacts: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
