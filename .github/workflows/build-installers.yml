@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           V="${GITHUB_REF_NAME#v}"
-          case "$V" in [0-9]*.[0-9]*.[0-9]*) ;; *) V=0.0.1 ;; esac
+          case "$V" in [1-9]*.[0-9]*.[0-9]*) ;; *) V=1.0.0 ;; esac
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Prepare Client jpackage input
@@ -110,7 +110,7 @@ jobs:
             installers/*.msi
             installers/TodoList-Client-Windows.msi
             installers/TodoList-Server-Windows.msi
-          replace_existing_artifacts: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -140,7 +140,7 @@ jobs:
         shell: bash
         run: |
           V="${GITHUB_REF_NAME#v}"
-          case "$V" in [0-9]*.[0-9]*.[0-9]*) ;; *) V=0.0.1 ;; esac
+          case "$V" in [1-9]*.[0-9]*.[0-9]*) ;; *) V=1.0.0 ;; esac
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Prepare Client jpackage input
@@ -222,6 +222,6 @@ jobs:
             installers/*.dmg
             installers/TodoList-Client-macOS.dmg
             installers/TodoList-Server-macOS.dmg
-          replace_existing_artifacts: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
