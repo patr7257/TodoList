@@ -14,7 +14,7 @@ public final class ColumnUtils {
         label.setMinWidth(0);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
-        label.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
+        label.getStyleClass().add("sort-header");
         if (onClick != null) {
             label.setOnMouseClicked(e -> onClick.run());
         }
@@ -27,17 +27,14 @@ public final class ColumnUtils {
         label.setMinWidth(0);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER);
-        label.setStyle("-fx-font-weight: bold;");
+        label.getStyleClass().add("sort-header");
         return label;
     }
 
     public static void setActiveHeader(Label active, List<Label> allHeaders) {
         for (Label header : allHeaders) {
-            if (header == active) {
-                header.setStyle("-fx-font-weight: bold; -fx-cursor: hand; -fx-text-fill: #007bff;");
-            } else {
-                header.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-            }
+            header.getStyleClass().removeAll("sort-header", "sort-header-active");
+            header.getStyleClass().add(header == active ? "sort-header-active" : "sort-header");
         }
     }
 }

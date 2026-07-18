@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.shared.Config;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -44,7 +45,7 @@ public final class ClientConnectDialog {
         ipCombo.getSelectionModel().selectFirst();
 
         Button scanButton = new Button("Rescan");
-        scanButton.getStyleClass().add("secondary-button");
+        scanButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
         scanButton.setDisable(true);
 
         TextField manualIpField = new TextField();
@@ -69,10 +70,10 @@ public final class ClientConnectDialog {
         connectPreview.getStyleClass().add("connect-info-label");
 
         Button connectBtn = new Button("Connect");
-        connectBtn.getStyleClass().add("success-button");
+        connectBtn.getStyleClass().add(Styles.SUCCESS);
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.getStyleClass().add("secondary-button");
+        cancelBtn.getStyleClass().add(Styles.BUTTON_OUTLINED);
 
         // Layout (match server dialog structure)
         HBox modeRow = new HBox(15, new Label("Mode:"), localhostMode, scanMode, manualMode);
@@ -98,9 +99,9 @@ public final class ClientConnectDialog {
         root.getStyleClass().add("config-panel");
         root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
-        // Outer background layer (grey)
+        // Outer background layer (themed by AtlantaFX so it follows light/dark)
         StackPane container = new StackPane(root);
-        container.setStyle("-fx-background-color: #e8ebf0;");
+        container.setStyle("-fx-background-color: -color-bg-default;");
         container.setPadding(Insets.EMPTY); // remove outer whitespace
         StackPane.setAlignment(root, Pos.CENTER);
 

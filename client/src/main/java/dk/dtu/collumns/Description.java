@@ -76,19 +76,21 @@ public final class Description {
             preview.setAlignment(Pos.CENTER);
             preview.setTextAlignment(TextAlignment.CENTER);
             preview.setWrapText(false);
-            preview.setStyle("-fx-cursor: hand;");
+            preview.setCursor(javafx.scene.Cursor.HAND);
 
             Runnable updatePreview = () -> {
                 Helpers.ListEntry item = cell.getItem();
                 String text = item != null ? safe(item.description) : "";
                 if (text.isBlank()) {
                     preview.setText("Description");
-                    preview.setStyle("-fx-cursor: hand; -fx-text-fill: #666;");
+                    if (!preview.getStyleClass().contains("cell-placeholder")) {
+                        preview.getStyleClass().add("cell-placeholder");
+                    }
                     preview.setTooltip(null);
                 } else {
                     String firstLine = text.split("\\R", 2)[0];
                     preview.setText(firstLine);
-                    preview.setStyle("-fx-cursor: hand;");
+                    preview.getStyleClass().remove("cell-placeholder");
                     preview.setTooltip(new Tooltip(text));
                 }
             };
@@ -188,19 +190,21 @@ public final class Description {
             preview.setAlignment(Pos.CENTER);
             preview.setTextAlignment(TextAlignment.CENTER);
             preview.setWrapText(false);
-            preview.setStyle("-fx-cursor: hand;");
+            preview.setCursor(javafx.scene.Cursor.HAND);
 
             Runnable updatePreview = () -> {
                 Helpers.TaskEntry item = cell.getItem();
                 String text = item != null ? safe(item.description) : "";
                 if (text.isBlank()) {
                     preview.setText("Description");
-                    preview.setStyle("-fx-cursor: hand; -fx-text-fill: #666;");
+                    if (!preview.getStyleClass().contains("cell-placeholder")) {
+                        preview.getStyleClass().add("cell-placeholder");
+                    }
                     preview.setTooltip(null);
                 } else {
                     String firstLine = text.split("\\R", 2)[0];
                     preview.setText(firstLine);
-                    preview.setStyle("-fx-cursor: hand;");
+                    preview.getStyleClass().remove("cell-placeholder");
                     preview.setTooltip(new Tooltip(text));
                 }
             };

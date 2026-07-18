@@ -243,6 +243,7 @@ $serverArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
+  "--icon", "client\src\main\resources\Icons\appicon.ico",
   "--win-upgrade-uuid", $ServerUpgradeUuid,
   "--java-options", "-Dtodolist.port=9001"
 )
@@ -271,9 +272,11 @@ $clientArgs = @(
   "--runtime-image", $runtimeDir,
   "--win-menu",
   "--win-shortcut",
+  "--icon", "client\src\main\resources\Icons\appicon.ico",
   "--win-upgrade-uuid", $ClientUpgradeUuid,
   "--java-options", "-Dtodolist.server.ip=$ServerHost",
-  "--java-options", "-Dtodolist.port=9001"
+  "--java-options", "-Dtodolist.port=9001",
+  "--java-options", "-Dtodolist.version=$Version"
 )
 
 jpackage @clientArgs

@@ -1,18 +1,31 @@
 package dk.dtu;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.shared.Config;
 import dk.dtu.scenes.A_WelcomeScreen;
 import dk.dtu.scenes.B_LoginScreen;
 import dk.dtu.scenes.C_MainMenu;
 import dk.dtu.scenes.D_TodoListView;
+import dk.dtu.update.ReleaseInfo;
+import dk.dtu.update.UpdateChecker;
+import dk.dtu.update.UpdateFlow;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 
 // JavaFX navigation between scenes (Add more methods for new scenes)
 public class SceneNavigator {
@@ -31,6 +44,12 @@ public class SceneNavigator {
     // Sidebar and dark mode
     private Sidebar sidebar;
     private DarkModeManager darkModeManager;
+
+    // Pinned update banner, shown at the top of the window when a newer release
+    // is available. Null when no update is offered or it was dismissed. Kept as
+    // a field so it survives scene navigation (re-applied in setScene).
+    private HBox updateBanner;
+    private boolean updateCheckStarted;
 
     private enum ViewType { WELCOME, LOGIN, MAIN_MENU, TODO_LIST }
 
@@ -229,16 +248,24 @@ public class SceneNavigator {
         BorderPane root = new BorderPane();
         root.setCenter(contentScene.getRoot());
         root.setRight(sidebar);
-        
+
+        // Outer wrapper so the update banner can sit pinned above every scene.
+        // Re-applied on each navigation because scenes are rebuilt per view.
+        BorderPane outer = new BorderPane();
+        outer.setCenter(root);
+        if (updateBanner != null) {
+            outer.setTop(updateBanner);
+        }
+
         // Use content scene dimensions or fallback to reasonable defaults.
         // Important: add sidebar width so the center content doesn't overlap/cover it.
         double sidebarWidth = sidebar.getPrefWidth() > 0 ? sidebar.getPrefWidth() : 70;
         double contentWidth = contentScene.getWidth() > 0 ? contentScene.getWidth() : 900;
         double width = contentWidth + sidebarWidth;
         double height = contentScene.getHeight() > 0 ? contentScene.getHeight() : 600;
-        
-        // Create new scene with the BorderPane
-        Scene sceneWithSidebar = new Scene(root, width, height);
+
+        // Create new scene with the outer wrapper
+        Scene sceneWithSidebar = new Scene(outer, width, height);
 
         // Mouse extra buttons: back/forward navigation
         sceneWithSidebar.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
@@ -287,6 +314,84 @@ public class SceneNavigator {
         };
 
         stage.setTitle(buildWindowTitle(viewTitle));
+    }
+
+    // ------------------------------------------------------------------
+    // In-app updater
+    // ------------------------------------------------------------------
+
+    /**
+     * Kicks off a one-shot background check for a newer release. When one is
+     * found, a dismissible banner is shown at the top of the window. Safe to
+     * call more than once; only the first call does any work. Never blocks the
+     * UI and shows nothing on failure or when already current.
+     */
+    public void checkForUpdatesOnLaunch() {
+        if (updateCheckStarted) {
+            return;
+        }
+        updateCheckStarted = true;
+
+        Thread worker = new Thread(() -> {
+            Optional<ReleaseInfo> release = new UpdateChecker().findNewerRelease();
+            release.ifPresent(info -> Platform.runLater(() -> showUpdateBanner(info)));
+        }, "update-check");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void showUpdateBanner(ReleaseInfo info) {
+        Label message = new Label("Update available: v" + info.version());
+        message.getStyleClass().add(Styles.TITLE_4);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button updateNow = new Button("Update now");
+        updateNow.getStyleClass().add(Styles.ACCENT);
+        Button releaseNotes = new Button("Release notes");
+        releaseNotes.getStyleClass().add(Styles.BUTTON_OUTLINED);
+        Button dismiss = new Button("x");
+        dismiss.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.FLAT);
+
+        releaseNotes.setOnAction(e -> UpdateFlow.openReleasesPage(info.releasePageUrl()));
+        dismiss.setOnAction(e -> dismissUpdateBanner());
+
+        if (info.hasInstallableAsset()) {
+            updateNow.setOnAction(e -> {
+                updateNow.setDisable(true);
+                updateNow.setText("Downloading...");
+                UpdateFlow.downloadAndInstall(info, () -> {
+                    updateNow.setDisable(false);
+                    updateNow.setText("Update now");
+                });
+            });
+        } else {
+            // No auto-installable asset for this platform: offer the page instead.
+            updateNow.setText("Open releases page");
+            updateNow.setOnAction(e -> UpdateFlow.openReleasesPage(info.releasePageUrl()));
+        }
+
+        HBox banner = new HBox(12, message, spacer, updateNow, releaseNotes, dismiss);
+        banner.setAlignment(Pos.CENTER_LEFT);
+        banner.setPadding(new Insets(10, 14, 10, 14));
+        banner.getStyleClass().addAll("update-banner", Styles.BG_ACCENT_SUBTLE);
+
+        this.updateBanner = banner;
+
+        // Attach immediately to the live scene without a full re-render.
+        Scene scene = stage.getScene();
+        if (scene != null && scene.getRoot() instanceof BorderPane outer) {
+            outer.setTop(banner);
+        }
+    }
+
+    private void dismissUpdateBanner() {
+        this.updateBanner = null;
+        Scene scene = stage.getScene();
+        if (scene != null && scene.getRoot() instanceof BorderPane outer) {
+            outer.setTop(null);
+        }
     }
 
     // A: Show welcome scene (first thing when ClientApp starts)
