@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import atlantafx.base.theme.PrimerLight;
 import dk.dtu.shared.Config;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -13,6 +14,10 @@ public class ClientApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        // Global AtlantaFX theme (Primer base), light by default.
+        // Set before the stage is shown so every window, including dialogs, picks it up.
+        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+
         // Set initial window size
         primaryStage.setWidth(970);
         primaryStage.setHeight(600);

@@ -1,5 +1,6 @@
 package dk.dtu.scenes;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.shared.Config;
 import dk.dtu.MainUserConfig;
 import dk.dtu.methods.Users;
@@ -36,25 +37,14 @@ public class B_LoginScreen {
             String color = (i == 0) ? MainUserConfig.getMainUser1Color() : MainUserConfig.getMainUser2Color();
             
             Button userButton = new Button(username);
-            userButton.getStyleClass().add(MainUserConfig.getStyleClassForUser(username));
+            // AtlantaFX accent button as the base, colored per the user's chosen color.
+            // The color is user data, so it stays an inline background on just this button;
+            // the rest of the look (radius, text color, sizing) comes from CSS classes.
+            userButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE, "main-user-button");
             userButton.setMinWidth(220);
             userButton.setMinHeight(80);
-            
-            // Apply custom color with inline style (higher priority than CSS)
-            String buttonStyle = String.format(
-                "-fx-font-size: 24px; -fx-font-weight: bold; " +
-                "-fx-background-color: linear-gradient(to bottom, %s, derive(%s, -15%%)); " +
-                "-fx-text-fill: white; " +
-                "-fx-background-radius: 15; " +
-                "-fx-border-color: #000000; " +
-                "-fx-border-width: 3px; " +
-                "-fx-border-radius: 15; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 18, 0, 0, 4); " +
-                "-fx-cursor: hand;",
-                color, color
-            );
-            userButton.setStyle(buttonStyle);
-            
+            userButton.setStyle("-fx-background-color: " + color + ";");
+
             userButton.setOnAction(e -> loginAsUser(username, userButton));
             mainUserButtons.add(userButton);
         }
@@ -68,20 +58,17 @@ public class B_LoginScreen {
         VBox mainLoginBox = new VBox(20, title, mainUserButtonContainer);
         mainLoginBox.setAlignment(Pos.CENTER);
         mainLoginBox.getStyleClass().add("login-box");
-        mainLoginBox.setStyle("-fx-background-color: white; -fx-border-color: #d0d0d0; -fx-border-width: 2px; " +
-                              "-fx-border-radius: 15; -fx-background-radius: 15; -fx-padding: 30; " +
-                              "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 3);");
         mainLoginBox.setMaxWidth(600);
 
         // Action buttons section - only create and login as other
         Button createUserButton = new Button("Create new user...");
-        createUserButton.getStyleClass().add("action-button");
+        createUserButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
         createUserButton.setPrefWidth(250);
         createUserButton.setOnAction(evt -> showCreateUserDialog(createUserButton));
 
         // "Login as other user" button
         Button otherUserButton = new Button("Login as other user");
-        otherUserButton.getStyleClass().add("action-button");
+        otherUserButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
         otherUserButton.setPrefWidth(250);
         otherUserButton.setOnAction(e -> showOtherUserDialog(otherUserButton));
 
@@ -127,7 +114,7 @@ public class B_LoginScreen {
 
         // Tooltip explaining the star
         Label infoLabel = new Label("ℹ Users with a * are main users");
-        infoLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 12px; -fx-font-style: italic;");
+        infoLabel.getStyleClass().add("settings-note");
 
         ComboBox<String> userComboBox = new ComboBox<>();
         userComboBox.setPromptText("Select a user...");

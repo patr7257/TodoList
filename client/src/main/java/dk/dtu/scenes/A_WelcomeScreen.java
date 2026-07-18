@@ -1,5 +1,6 @@
 package dk.dtu.scenes;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.ClientConnectDialog;
 import dk.dtu.SceneNavigator;
 import dk.dtu.shared.Config;
@@ -42,21 +43,22 @@ public class A_WelcomeScreen {
 
     // Connection status label
     connectionStatus = new Label("Not connected to server");
-    connectionStatus.getStyleClass().add("connection-status");
-    connectionStatus.setStyle("-fx-text-fill: #e53935; -fx-font-size: 16px; -fx-font-weight: 500;");
-    
+    connectionStatus.getStyleClass().addAll("connection-status", "status-idle");
+
     Label connectionNote = new Label("You must connect to the server before signing in.");
-    connectionNote.setStyle("-fx-text-fill: #666666; -fx-font-size: 12px; -fx-font-style: italic;");
+    connectionNote.getStyleClass().add("welcome-note");
 
     // Connect to Server button
     connectButton = new Button("Connect to Server");
-    connectButton.getStyleClass().add("primary-button");
+    connectButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
+    connectButton.setMinWidth(200);
     connectButton.setOnAction(e -> handleConnect());
 
     // Sign in button (disabled until connected)
     loginButton = new Button("Sign in");
     loginButton.setDefaultButton(true);
-    loginButton.getStyleClass().add("primary-button");
+    loginButton.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
+    loginButton.setMinWidth(200);
     loginButton.setDisable(true);
     loginButton.setOnAction(e -> navigator.showLogin());
 
@@ -79,6 +81,12 @@ public class A_WelcomeScreen {
     return scene;
 }
 
+	// Swap the single active semantic status class on the connection label
+	private void setStatusClass(String statusClass) {
+		connectionStatus.getStyleClass().removeAll("status-idle", "status-connecting", "status-connected", "status-error");
+		connectionStatus.getStyleClass().add(statusClass);
+	}
+
 	private void handleConnect() {
 		// Get the stage from the scene
 		Stage ownerStage = (Stage) connectButton.getScene().getWindow();
@@ -91,7 +99,7 @@ public class A_WelcomeScreen {
 			
 			// Show connecting status
 			connectionStatus.setText("Connecting to " + settings.serverIp() + ":" + settings.port() + "...");
-			connectionStatus.setStyle("-fx-text-fill: #f39c12; -fx-font-size: 16px; -fx-font-weight: 500;");
+			setStatusClass("status-connecting");
 			connectButton.setDisable(true);
 			loginButton.setDisable(true);
 			
@@ -105,7 +113,7 @@ public class A_WelcomeScreen {
 					javafx.application.Platform.runLater(() -> {
 						isConnected = true;
 						connectionStatus.setText("Connected to " + settings.serverIp() + ":" + settings.port());
-						connectionStatus.setStyle("-fx-text-fill: #27ae60; -fx-font-size: 16px; -fx-font-weight: 500;");
+						setStatusClass("status-connected");
 						loginButton.setDisable(false);
 						connectButton.setDisable(false);
 						connectButton.setText("Change Server");
@@ -118,7 +126,7 @@ public class A_WelcomeScreen {
 					javafx.application.Platform.runLater(() -> {
 						isConnected = false;
 						connectionStatus.setText("Connection failed: " + e.getMessage());
-						connectionStatus.setStyle("-fx-text-fill: #e53935; -fx-font-size: 16px; -fx-font-weight: 500;");
+						setStatusClass("status-error");
 						loginButton.setDisable(true);
 						connectButton.setDisable(false);
 					});

@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
 import javafx.application.Platform;
@@ -61,6 +62,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
         getDialogPane().setContent(tabPane);
         getDialogPane().getButtonTypes().addAll(APPLY, ButtonType.CLOSE);
         getDialogPane().setPrefSize(700, 500);
+        attachBrandStylesheet(getDialogPane().getStylesheets());
         
         // Handle Apply button
         setResultConverter(buttonType -> {
@@ -108,6 +110,21 @@ public class SettingsDialog extends Dialog<ButtonType> {
     }
     
     /**
+     * Attach the brand overlay stylesheet so app-specific style classes resolve
+     * inside this dialog and any sub-windows it opens.
+     */
+    private void attachBrandStylesheet(java.util.List<String> stylesheets) {
+        try {
+            String css = getClass().getResource("/common.css").toExternalForm();
+            if (!stylesheets.contains(css)) {
+                stylesheets.add(css);
+            }
+        } catch (Exception ignored) {
+            // Brand overlay is optional; AtlantaFX still themes the dialog.
+        }
+    }
+
+    /**
      * Convert JavaFX Color to hex string
      */
     private String toHexString(Color color) {
@@ -144,7 +161,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
         
         // Main users configuration section
         Label mainUsersLabel = new Label("Main Users (shown as big buttons on login screen)");
-        mainUsersLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        mainUsersLabel.getStyleClass().add("settings-section-title");
         
         // Number of main users
         oneUserRadio = new RadioButton("One main user");
@@ -214,14 +231,13 @@ public class SettingsDialog extends Dialog<ButtonType> {
             new Label("Second main user (if enabled):"),
             user2Box
         );
-        mainUsersBox.setStyle("-fx-background-color: #f0f0f0; -fx-padding: 15; -fx-background-radius: 5;");
-        
+        mainUsersBox.getStyleClass().add("settings-panel");
+
         // User management button
         Button seeAllUsersButton = new Button("See All Users");
         seeAllUsersButton.setPrefWidth(200);
         seeAllUsersButton.setPrefHeight(50);
-        seeAllUsersButton.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-        seeAllUsersButton.getStyleClass().add("primary-button");
+        seeAllUsersButton.getStyleClass().add(Styles.ACCENT);
         seeAllUsersButton.setOnAction(e -> showAllUsersDialog(mainUser1Combo, mainUser2Combo));
         
         VBox buttonContainer = new VBox(seeAllUsersButton);
@@ -242,11 +258,11 @@ public class SettingsDialog extends Dialog<ButtonType> {
         container.setPadding(new Insets(20));
         
         Label title = new Label("Display Settings");
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        
+        title.getStyleClass().add("settings-section-title");
+
         // Info label
         Label infoLabel = new Label("⚠ Changes will be applied when you click the 'Apply' button below.");
-        infoLabel.setStyle("-fx-text-fill: #d97706; -fx-font-size: 12px; -fx-font-weight: bold;");
+        infoLabel.getStyleClass().add("settings-warning");
         infoLabel.setWrapText(true);
         
         // Tinted rows toggle
@@ -256,11 +272,11 @@ public class SettingsDialog extends Dialog<ButtonType> {
         Label tintedRowsDesc = new Label(
             "When enabled, task rows will have a stronger background tint matching their status color."
         );
-        tintedRowsDesc.setStyle("-fx-text-fill: #666666; -fx-font-size: 12px;");
+        tintedRowsDesc.getStyleClass().add("settings-note");
         tintedRowsDesc.setWrapText(true);
-        
+
         VBox tintedRowsBox = new VBox(8, tintedRowsCheckBox, tintedRowsDesc);
-        tintedRowsBox.setStyle("-fx-background-color: #f0f0f0; -fx-padding: 15; -fx-background-radius: 5;");
+        tintedRowsBox.getStyleClass().add("settings-panel");
         
         container.getChildren().addAll(infoLabel, title, tintedRowsBox);
         
@@ -369,7 +385,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
         root.setPadding(new Insets(20));
         
         Label title = new Label("All System Users");
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        title.getStyleClass().add("settings-section-title");
         
         ListView<String> usersListView = new ListView<>();
         usersListView.setPrefHeight(300);
@@ -420,6 +436,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
         root.getChildren().addAll(title, usersListView, buttonBox);
         
         Scene scene = new Scene(root, 500, 450);
+        attachBrandStylesheet(scene.getStylesheets());
         userManagementStage.setScene(scene);
         userManagementStage.showAndWait();
     }

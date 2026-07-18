@@ -1,5 +1,6 @@
 package dk.dtu;
 
+import atlantafx.base.theme.Styles;
 import dk.dtu.methods.DataManagement;
 import dk.dtu.shared.Config;
 import javafx.application.Platform;
@@ -98,17 +99,18 @@ public class Sidebar extends VBox {
             button.setText("?");
         }
         
-        button.getStyleClass().add("sidebar-button");
+        button.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.FLAT, "sidebar-button");
         Tooltip tooltip = new Tooltip(tooltipText);
-        tooltip.setStyle("-fx-font-size: 12px;");
         button.setTooltip(tooltip);
         button.setPrefSize(50, 50);
-        
+
         return button;
     }
-    
+
     private Button createThemeToggleButton() {
         Button button = new Button();
+        button.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.FLAT, "sidebar-button", "theme-toggle-button");
+        button.setPrefSize(50, 50);
         updateThemeIcon(button);
         return button;
     }
@@ -276,20 +278,13 @@ public class Sidebar extends VBox {
     
     private void updateThemeIcon(Button button) {
         // Show moon when in light mode (to switch to dark), sun when in dark mode (to switch to light)
-        Tooltip tooltip;
         if (isDarkMode) {
             button.setText("☀");
-            tooltip = new Tooltip("Light Mode");
+            button.setTooltip(new Tooltip("Light Mode"));
         } else {
             button.setText("🌙");
-            tooltip = new Tooltip("Dark Mode");
+            button.setTooltip(new Tooltip("Dark Mode"));
         }
-        // Use standard button style but with yellow icon text
-        button.setStyle("-fx-font-size: 24px; -fx-text-fill: #FFD700;");
-        button.getStyleClass().add("sidebar-button");
-        tooltip.setStyle("-fx-font-size: 12px;");
-        button.setTooltip(tooltip);
-        button.setPrefSize(50, 50);
     }
     
     private void toggleTheme() {
