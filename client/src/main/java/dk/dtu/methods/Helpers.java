@@ -13,19 +13,36 @@ public class Helpers {
     private Helpers() {
     }
 
-    // Send request and wait for response
+    // Send request and wait for response. Reuses pooled connections (see Spaces)
+    // and serializes the put+get so the shared sockets stay correct. On a
+    // connection error it drops the cached sockets and retries once.
     public static Object[] sendAndWaitForResponse(
             String requestsUri,
             String responsesUri,
             String command,
             String a1, String a2, String a3, String a4) throws Exception {
 
-        String requestId = UUID.randomUUID().toString();
-        RemoteSpace requests = new RemoteSpace(requestsUri);
-        RemoteSpace responses = new RemoteSpace(responsesUri);
+        try {
+            return exchange(requestsUri, responsesUri, command, a1, a2, a3, a4);
+        } catch (Exception first) {
+            // A stale/dropped pooled socket: reconnect and try one more time.
+            Spaces.invalidate(requestsUri);
+            Spaces.invalidate(responsesUri);
+            return exchange(requestsUri, responsesUri, command, a1, a2, a3, a4);
+        }
+    }
 
-        requests.put(command, requestId, a1, a2, a3, a4);
-        return waitForOk(responses, requestId);
+    private static Object[] exchange(
+            String requestsUri, String responsesUri, String command,
+            String a1, String a2, String a3, String a4) throws Exception {
+
+        String requestId = UUID.randomUUID().toString();
+        synchronized (Spaces.IO_LOCK) {
+            RemoteSpace requests = Spaces.get(requestsUri);
+            RemoteSpace responses = Spaces.get(responsesUri);
+            requests.put(command, requestId, a1, a2, a3, a4);
+            return waitForOk(responses, requestId);
+        }
     }
 
     // Wait for response and validate it's OK (not ERROR)

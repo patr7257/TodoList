@@ -153,7 +153,12 @@ public class SceneNavigator {
     public void connectToServer() {
         // Stop any existing listener first
         stopNotificationListener();
-        
+
+        // Drop any pooled connections so they reopen against the current server
+        // (handles connecting to a different server) and refresh cached data.
+        dk.dtu.methods.Spaces.reset();
+        dk.dtu.methods.Users.invalidateUserCache();
+
         System.out.println("[SceneNavigator] Starting notification listener for " + Config.getClientBaseUri());
         notificationListener = new NotificationListener(
                 Config.getNotificationsUri(),

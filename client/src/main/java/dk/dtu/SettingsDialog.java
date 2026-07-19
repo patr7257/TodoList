@@ -361,12 +361,14 @@ public class SettingsDialog extends Dialog<ButtonType> {
     private void loadUsersIntoListView(ListView<String> listView) {
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(Config.getUsersUri());
-                List<Object[]> tuplesResult = users.queryAll(new FormalField(String.class));
+                List<Object[]> tuplesResult;
+                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                    tuplesResult = dk.dtu.methods.Spaces.get(Config.getUsersUri()).queryAll(new FormalField(String.class));
+                }
                 if (tuplesResult == null) {
                     tuplesResult = java.util.Collections.emptyList();
                 }
-                
+
                 List<String> usernames = new ArrayList<>();
                 for (Object[] t : tuplesResult) {
                     String username = (String) t[0];
@@ -390,12 +392,14 @@ public class SettingsDialog extends Dialog<ButtonType> {
     private void loadUsersIntoCombo(ComboBox<String> combo) {
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(Config.getUsersUri());
-                List<Object[]> tuplesResult = users.queryAll(new FormalField(String.class));
+                List<Object[]> tuplesResult;
+                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                    tuplesResult = dk.dtu.methods.Spaces.get(Config.getUsersUri()).queryAll(new FormalField(String.class));
+                }
                 if (tuplesResult == null) {
                     tuplesResult = java.util.Collections.emptyList();
                 }
-                
+
                 List<String> usernames = new ArrayList<>();
                 for (Object[] t : tuplesResult) {
                     usernames.add((String) t[0]);

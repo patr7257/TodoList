@@ -17,6 +17,39 @@ public class Users {
 
     private Users() {}
 
+    // In-memory cache of the user list, shared by every owner dropdown so opening
+    // a list does ONE user query instead of one per row. Invalidated on each view
+    // refresh and whenever a user is added, so it stays in sync with the server.
+    private static volatile List<String> userCache;
+
+    /** Returns the user list, loading and caching it once on first use. */
+    public static List<String> getUsersCached(String usersUri) throws Exception {
+        List<String> cached = userCache;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (Spaces.IO_LOCK) {
+            if (userCache != null) {
+                return userCache;
+            }
+            RemoteSpace users = Spaces.get(usersUri);
+            List<Object[]> tuples = users.queryAll(new FormalField(String.class));
+            List<String> list = new java.util.ArrayList<>();
+            if (tuples != null) {
+                for (Object[] t : tuples) {
+                    list.add((String) t[0]);
+                }
+            }
+            userCache = list;
+            return list;
+        }
+    }
+
+    /** Drop the cached user list so the next dropdown load re-queries the server. */
+    public static void invalidateUserCache() {
+        userCache = null;
+    }
+
     public static void autoLoginUser(
             String username,
             String usersUri,
@@ -28,12 +61,15 @@ public class Users {
 
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(usersUri);
-                Object[] match = users.queryp(new ActualField(username));
-
-                boolean isNewUser = (match == null);
-                if (isNewUser) {
-                    users.put(username);
+                boolean isNewUser;
+                synchronized (Spaces.IO_LOCK) {
+                    RemoteSpace users = Spaces.get(usersUri);
+                    Object[] match = users.queryp(new ActualField(username));
+                    isNewUser = (match == null);
+                    if (isNewUser) {
+                        users.put(username);
+                        invalidateUserCache();
+                    }
                 }
 
                 String msg = isNewUser
@@ -64,12 +100,9 @@ public class Users {
     public static void loadUsersIntoComboBox(ComboBox<String> usersComboBox, String usersUri, boolean includeAllOption) {
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(usersUri);
-                List<Object[]> tuplesResult = users.queryAll(new FormalField(String.class));
-                if (tuplesResult == null) {
-                    tuplesResult = java.util.Collections.emptyList();
-                }
-                final List<Object[]> tuples = tuplesResult;
+                // Cached: the whole user list is fetched once per refresh, not once
+                // per dropdown/row (opening a list built one query per visible row).
+                final List<String> tuples = getUsersCached(usersUri);
 
                 Platform.runLater(() -> {
                     String previousValue = usersComboBox.getValue();
@@ -79,8 +112,7 @@ public class Users {
                         usersComboBox.getItems().add("All");
                     }
                     
-                    for (Object[] t : tuples) {
-                        String username = (String) t[0];
+                    for (String username : tuples) {
                         // Add star to main users for easy identification
                         if (MainUserConfig.isMainUser(username)) {
                             usersComboBox.getItems().add(username + " *");
@@ -136,8 +168,10 @@ public class Users {
 
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(usersUri);
-                Object[] match = users.queryp(new ActualField(username));
+                Object[] match;
+                synchronized (Spaces.IO_LOCK) {
+                    match = Spaces.get(usersUri).queryp(new ActualField(username));
+                }
 
                 if (match == null) {
                     System.err.println("User " + username + " does not exist");
@@ -173,8 +207,10 @@ public class Users {
 
         new Thread(() -> {
             try {
-                RemoteSpace users = new RemoteSpace(usersUri);
-                Object[] match = users.queryp(new ActualField(username));
+                Object[] match;
+                synchronized (Spaces.IO_LOCK) {
+                    match = Spaces.get(usersUri).queryp(new ActualField(username));
+                }
 
                 if (match != null) {
                     // User already exists
@@ -183,7 +219,10 @@ public class Users {
                 }
 
                 // Create new user
-                users.put(username);
+                synchronized (Spaces.IO_LOCK) {
+                    Spaces.get(usersUri).put(username);
+                }
+                invalidateUserCache();
                 String msg = "New user '" + username + "' created successfully";
                 System.out.println(msg);
                 
@@ -222,15 +261,15 @@ public class Users {
     private static void notifyServerLogin(String usersUri, String username) {
         try {
             String requestsUri = usersUri.replace(TupleSpaces.USERS, TupleSpaces.REQUESTS);
-            RemoteSpace requests = new RemoteSpace(requestsUri);
-            requests.put(
-                    TupleSpaces.CMD_USER_LOGIN,
-                    java.util.UUID.randomUUID().toString(),
-                    username,
-                    "",
-                    "",
-                    ""
-            );
+            synchronized (Spaces.IO_LOCK) {
+                Spaces.get(requestsUri).put(
+                        TupleSpaces.CMD_USER_LOGIN,
+                        java.util.UUID.randomUUID().toString(),
+                        username,
+                        "",
+                        "",
+                        "");
+            }
         } catch (Exception ignored) {
             if (Config.isConnectionError(ignored)) {
                 Config.handleConnectionError(ignored);

@@ -39,24 +39,25 @@ public class NotificationListener implements Runnable {
             System.out.println();
             System.out.println("Connected to server on IP: " + Config.getClientBaseUri() + "\nListening for notifications...");
             
-            // Notify server that a new client connected
+            // Notify server that a new client connected (reuses the pooled
+            // request/response connections; the blocking notification get below
+            // stays on its OWN dedicated connection, never under the IO lock).
             try {
-                RemoteSpace requests = new RemoteSpace(Config.getRequestsUri());
-                RemoteSpace responses = new RemoteSpace(Config.getResponsesUri());
                 String requestId = java.util.UUID.randomUUID().toString();
-                requests.put(TupleSpaces.CMD_CLIENT_CONNECT,
-                        requestId,
-                        "", "", "", "");
-
-                // Best-effort: consume response if the server sends one.
-                Object[] ack = responses.getp(
-                        new FormalField(Object.class),
-                        new ActualField(requestId),
-                        new FormalField(Object.class),
-                        new FormalField(Object.class),
-                        new FormalField(Object.class),
-                        new FormalField(Object.class)
-                );
+                Object[] ack;
+                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                    dk.dtu.methods.Spaces.get(Config.getRequestsUri())
+                            .put(TupleSpaces.CMD_CLIENT_CONNECT, requestId, "", "", "", "");
+                    // Best-effort: consume response if the server sends one.
+                    ack = dk.dtu.methods.Spaces.get(Config.getResponsesUri()).getp(
+                            new FormalField(Object.class),
+                            new ActualField(requestId),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class),
+                            new FormalField(Object.class)
+                    );
+                }
                 if (ack != null) {
                     System.out.println("Server acknowledged client connection.");
                 }

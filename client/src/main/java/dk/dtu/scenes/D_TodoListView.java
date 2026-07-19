@@ -199,6 +199,9 @@ public class D_TodoListView {
     }
 
     private void reloadTasks() {
+        // Refresh the shared user list once per reload (owner dropdowns read it).
+        dk.dtu.methods.Users.invalidateUserCache();
+
         Helpers.TaskEntry selected = (table != null) ? table.getSelectionModel().getSelectedItem() : null;
         final String previouslySelectedId = (selected != null) ? selected.id : null;
 

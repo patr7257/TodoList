@@ -22,23 +22,23 @@ public class DataManagement {
     public static void exportSession(String requestsUri, String responsesUri, String filePath,
                                      Callback onSuccess, Callback onError) {
         try {
-            RemoteSpace requests = new RemoteSpace(requestsUri);
-            RemoteSpace responses = new RemoteSpace(responsesUri);
-            
             String requestId = UUID.randomUUID().toString();
-            
-            // Send export request
-            requests.put(TupleSpaces.CMD_EXPORT_SESSION, requestId, filePath, "", "", "");
-            
-            // Wait for response
-            Object[] responseData = responses.get(
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.ActualField(requestId),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class));
-            
+
+            Object[] responseData;
+            synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                // Send export request
+                dk.dtu.methods.Spaces.get(requestsUri).put(TupleSpaces.CMD_EXPORT_SESSION, requestId, filePath, "", "", "");
+
+                // Wait for response
+                responseData = dk.dtu.methods.Spaces.get(responsesUri).get(
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.ActualField(requestId),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class));
+            }
+
             String status = (String) responseData[0];
             String message = (String) responseData[2];
             
@@ -75,23 +75,23 @@ public class DataManagement {
     public static void importSession(String requestsUri, String responsesUri, String filePath, String mode,
                                      Callback onSuccess, Callback onError) {
         try {
-            RemoteSpace requests = new RemoteSpace(requestsUri);
-            RemoteSpace responses = new RemoteSpace(responsesUri);
-            
             String requestId = UUID.randomUUID().toString();
-            
-            // Send import request with mode parameter
-            requests.put(TupleSpaces.CMD_IMPORT_SESSION, requestId, filePath, mode, "", "");
-            
-            // Wait for response
-            Object[] responseData = responses.get(
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.ActualField(requestId),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class),
-                    new org.jspace.FormalField(String.class));
-            
+
+            Object[] responseData;
+            synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                // Send import request with mode parameter
+                dk.dtu.methods.Spaces.get(requestsUri).put(TupleSpaces.CMD_IMPORT_SESSION, requestId, filePath, mode, "", "");
+
+                // Wait for response
+                responseData = dk.dtu.methods.Spaces.get(responsesUri).get(
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.ActualField(requestId),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class),
+                        new org.jspace.FormalField(String.class));
+            }
+
             String status = (String) responseData[0];
             String message = (String) responseData[2];
             

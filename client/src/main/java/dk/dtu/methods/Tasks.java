@@ -38,19 +38,21 @@ public class Tasks {
 
         new Thread(() -> {
             try {
-                RemoteSpace tasks = new RemoteSpace(tasksUri);
-                List<Object[]> tuples = tasks.queryAll(
-                        new ActualField(listId),
+                List<Object[]> tuples;
+                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                    tuples = dk.dtu.methods.Spaces.get(tasksUri).queryAll(
+                            new ActualField(listId),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
                         new FormalField(String.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
                         new FormalField(String.class),
-                        new FormalField(String.class),
-                        new FormalField(String.class),
-                    new FormalField(String.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(String.class),
-                    new FormalField(String.class));
+                        new FormalField(String.class));
+                }
 
                 if (tuples == null) {
                     tuples = java.util.Collections.emptyList();

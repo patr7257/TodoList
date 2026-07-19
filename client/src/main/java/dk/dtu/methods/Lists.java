@@ -32,38 +32,40 @@ public class Lists {
     public static void loadTodoLists(String todoListsUri, Consumer<List<Helpers.ListEntry>> onLoaded) {
         new Thread(() -> {
             try {
-                RemoteSpace todoLists = new RemoteSpace(todoListsUri);
                 // Lists now have 10 fields: (listId, listName, completionPercentage, owner, taskColumnsJson, priority, year, orderIndex, location, description)
-                List<Object[]> tuples = todoLists.queryAll(
+                List<Object[]> tuples;
+                List<Object[]> allTasks;
+                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+                    tuples = dk.dtu.methods.Spaces.get(todoListsUri).queryAll(
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                        new FormalField(Integer.class),
                         new FormalField(String.class),
                         new FormalField(String.class),
-                    new FormalField(Integer.class),
-                    new FormalField(String.class),
-                    new FormalField(String.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(String.class),
-                    new FormalField(String.class));
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(String.class),
+                        new FormalField(String.class));
+
+                    // Query all tasks to count them per list
+                    allTasks = dk.dtu.methods.Spaces.get(Config.getTasksUri()).queryAll(
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                            new FormalField(String.class),
+                        new FormalField(String.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(Integer.class),
+                        new FormalField(String.class),
+                        new FormalField(String.class));
+                }
 
                 if (tuples == null) {
                     tuples = java.util.Collections.emptyList();
                 }
-
-                // Query all tasks to count them per list
-                RemoteSpace tasks = new RemoteSpace(Config.getTasksUri());
-                List<Object[]> allTasks = tasks.queryAll(
-                        new FormalField(String.class),
-                        new FormalField(String.class),
-                        new FormalField(String.class),
-                        new FormalField(String.class),
-                        new FormalField(String.class),
-                    new FormalField(String.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(Integer.class),
-                    new FormalField(String.class),
-                    new FormalField(String.class));
 
                 if (allTasks == null) {
                     allTasks = java.util.Collections.emptyList();
@@ -332,19 +334,21 @@ public class Lists {
             throw new IllegalArgumentException("List ID cannot be empty");
         }
 
-        RemoteSpace todoLists = new RemoteSpace(todoListsUri);
-        Object[] tuple = todoLists.query(
-                new ActualField(listId),
+        Object[] tuple;
+        synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
+            tuple = dk.dtu.methods.Spaces.get(todoListsUri).query(
+                    new ActualField(listId),
+                    new FormalField(String.class),
+                    new FormalField(Integer.class),
+                    new FormalField(String.class),
                 new FormalField(String.class),
                 new FormalField(Integer.class),
+                new FormalField(Integer.class),
+                new FormalField(Integer.class),
                 new FormalField(String.class),
-            new FormalField(String.class),
-            new FormalField(Integer.class),
-            new FormalField(Integer.class),
-            new FormalField(Integer.class),
-            new FormalField(String.class),
-            new FormalField(String.class)
-        );
+                new FormalField(String.class)
+            );
+        }
 
         if (tuple == null || tuple.length < 10) {
             return "";
