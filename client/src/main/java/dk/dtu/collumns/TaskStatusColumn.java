@@ -43,8 +43,6 @@ public class TaskStatusColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-        ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
         ComboBox<TaskStatus> statusCombo = new ComboBox<>();
         statusCombo.setPrefWidth(prefWidth() - 10);
         statusCombo.setMinWidth(prefWidth() - 10);
@@ -57,7 +55,7 @@ public class TaskStatusColumn implements Column<Helpers.TaskEntry> {
         statusCombo.setButtonCell(createStatusCell());
 
         statusCombo.setOnAction(evt -> {
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             TaskStatus newStatus = statusCombo.getValue();

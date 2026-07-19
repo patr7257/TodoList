@@ -7,7 +7,6 @@ import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.DatePicker;
-import javafx.scene.control.ListCell;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -41,8 +40,6 @@ public class TaskDueDateColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-        ListCell<Helpers.TaskEntry> cell = ctx.cell();
-        
         DatePicker duePicker = new DatePicker();
         duePicker.setPrefWidth(prefWidth() - 10);
         duePicker.setMinWidth(prefWidth() - 10);
@@ -55,7 +52,7 @@ public class TaskDueDateColumn implements Column<Helpers.TaskEntry> {
         }
 
         duePicker.setOnAction(evt -> {
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             LocalDate newDate = duePicker.getValue();

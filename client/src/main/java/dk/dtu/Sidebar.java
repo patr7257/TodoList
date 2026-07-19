@@ -3,6 +3,7 @@ package dk.dtu;
 import atlantafx.base.theme.Styles;
 import dk.dtu.methods.DataManagement;
 import dk.dtu.shared.Config;
+import dk.dtu.ui.Icons;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,10 +11,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Tooltip;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 
@@ -53,52 +53,45 @@ public class Sidebar extends VBox {
     
     private void initializeButtons() {
         // Home button (top button - always visible, logout functionality)
-        homeButton = createIconButton("/Icons/homeicon.png", "Home");
+        homeButton = createIconButton(Icons.home(), "Home");
         homeButton.setOnAction(e -> showHomeDialog());
 
         // Theme toggle button (sun/moon icon)
         themeToggleButton = createThemeToggleButton();
         themeToggleButton.setOnAction(e -> toggleTheme());
-        
+
         // Column filter button (choose/rearrange visible columns)
-        columnFilterButton = createIconButton("/Icons/RearrangeColumn.png", "Columns");
+        columnFilterButton = createIconButton(Icons.columns(), "Columns");
         columnFilterButton.setDisable(true); // Always visible but disabled by default
 
         // List/task filter button (filter visible items)
-        listFilterButton = createIconButton("/Icons/filter.png", "Filter");
+        listFilterButton = createIconButton(Icons.filter(), "Filter");
         listFilterButton.setDisable(true); // Always visible but disabled by default
 
         // Settings button
-        settingsButton = createIconButton("/Icons/settings.png", "Settings");
+        settingsButton = createIconButton(Icons.settings(), "Settings");
         settingsButton.setOnAction(e -> showSettingsDialog());
 
         // Save button (export data)
-        saveButton = createIconButton("/Icons/save.png", "Save/Export");
+        saveButton = createIconButton(Icons.save(), "Save/Export");
         saveButton.setOnAction(e -> showSaveDialog());
 
         // Load button (import data)
-        loadButton = createIconButton("/Icons/load.png", "Load Files");
+        loadButton = createIconButton(Icons.load(), "Load Files");
         loadButton.setOnAction(e -> showLoadDialog());
 
         // Back button (always last)
-        backButton = createIconButton("/Icons/gobackicon.png", "Go Back");
+        backButton = createIconButton(Icons.back(), "Go Back");
         backButton.setVisible(false); // Hidden by default
 
         // Add buttons in order: Home, Theme, Column filter, List filter, Save, Load, Settings, Back
         this.getChildren().addAll(homeButton, themeToggleButton, columnFilterButton, listFilterButton, saveButton, loadButton, settingsButton, backButton);
     }
     
-    private Button createIconButton(String iconPath, String tooltipText) {
+    private Button createIconButton(FontIcon graphic, String tooltipText) {
         Button button = new Button();
-        try {
-            ImageView icon = new ImageView(new Image(getClass().getResourceAsStream(iconPath)));
-            icon.setFitWidth(32);
-            icon.setFitHeight(32);
-            button.setGraphic(icon);
-        } catch (Exception e) {
-            button.setText("?");
-        }
-        
+        button.setGraphic(graphic);
+
         button.getStyleClass().addAll(Styles.BUTTON_ICON, Styles.FLAT, "sidebar-button");
         Tooltip tooltip = new Tooltip(tooltipText);
         button.setTooltip(tooltip);
@@ -277,12 +270,13 @@ public class Sidebar extends VBox {
     }
     
     private void updateThemeIcon(Button button) {
-        // Show moon when in light mode (to switch to dark), sun when in dark mode (to switch to light)
+        // Show sun when in dark mode (to switch to light), moon when in light mode (to switch to dark)
+        button.setText(null);
         if (isDarkMode) {
-            button.setText("☀");
+            button.setGraphic(Icons.sun());
             button.setTooltip(new Tooltip("Light Mode"));
         } else {
-            button.setText("🌙");
+            button.setGraphic(Icons.moon());
             button.setTooltip(new Tooltip("Dark Mode"));
         }
     }

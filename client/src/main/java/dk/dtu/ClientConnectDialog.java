@@ -27,6 +27,13 @@ public final class ClientConnectDialog {
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
 
+        // The current effective server (remembered server, or the baked default):
+        // prefills Manual IP + port below, and decides the default mode.
+        String currentIp = Config.getServerIp();
+        int currentPort = Config.getPort();
+        boolean currentIsLocalhost = currentIp == null || currentIp.isBlank()
+                || currentIp.equalsIgnoreCase("127.0.0.1") || currentIp.equalsIgnoreCase("localhost");
+
         // Mode selection (match server dialog)
         ToggleGroup group = new ToggleGroup();
         RadioButton localhostMode = new RadioButton("Localhost");
@@ -35,7 +42,13 @@ public final class ClientConnectDialog {
         localhostMode.setToggleGroup(group);
         scanMode.setToggleGroup(group);
         manualMode.setToggleGroup(group);
-        localhostMode.setSelected(true);
+        // Default to Manual when the current server isn't localhost, so the
+        // remembered address is already the one selected.
+        if (currentIsLocalhost) {
+            localhostMode.setSelected(true);
+        } else {
+            manualMode.setSelected(true);
+        }
 
         // IP selection (match server dialog)
         ComboBox<String> ipCombo = new ComboBox<>();
@@ -48,13 +61,13 @@ public final class ClientConnectDialog {
         scanButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
         scanButton.setDisable(true);
 
-        TextField manualIpField = new TextField();
+        TextField manualIpField = new TextField(currentIsLocalhost ? "" : currentIp);
         manualIpField.setPromptText("e.g. 192.168.1.25");
         manualIpField.setPrefWidth(240);
         manualIpField.setDisable(true);
 
         // Port field (same behavior as server)
-        TextField portField = new TextField(Integer.toString(Config.getPort()));
+        TextField portField = new TextField(Integer.toString(currentPort));
         portField.setPrefWidth(90);
         portField.textProperty().addListener((obs, oldV, newV) -> {
             if (newV == null) return;

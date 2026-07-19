@@ -57,17 +57,19 @@ public class ListCompletionColumn implements Column<Helpers.ListEntry> {
                 double progress = item.completionPercentage / 100.0;
                 progressBar.setProgress(progress);
 
-                String barColor;
+                progressBar.getStyleClass().removeAll(
+                        "completion-high", "completion-mid", "completion-low", "completion-none");
+                String band;
                 if (progress >= 0.8) {
-                    barColor = "#28a745";
+                    band = "completion-high";
                 } else if (progress >= 0.5) {
-                    barColor = "#ffc107";
+                    band = "completion-mid";
                 } else if (progress >= 0.3) {
-                    barColor = "#fd7e14";
+                    band = "completion-low";
                 } else {
-                    barColor = "#dc3545";
+                    band = "completion-none";
                 }
-                progressBar.setStyle("-fx-accent: " + barColor + ";");
+                progressBar.getStyleClass().add(band);
                 progressBar.setTooltip(new javafx.scene.control.Tooltip(item.completionPercentage + "% complete"));
             }
         };

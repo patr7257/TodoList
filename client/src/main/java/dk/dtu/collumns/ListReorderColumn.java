@@ -1,23 +1,19 @@
 package dk.dtu.collumns;
 
 import dk.dtu.methods.Helpers;
+import dk.dtu.ui.Icons;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 
 public class ListReorderColumn implements Column<Helpers.ListEntry> {
 
-    private ImageView createIcon() {
-        try {
-            ImageView icon = new ImageView(new Image(getClass().getResourceAsStream("/Icons/reordericon.png")));
-            icon.setFitWidth(28);
-            icon.setFitHeight(28);
-            icon.setPreserveRatio(true);
-            return icon;
-        } catch (Exception e) {
-            return new ImageView();
-        }
+    private StackPane createHandle() {
+        StackPane handle = new StackPane(Icons.reorder());
+        handle.setAlignment(Pos.CENTER);
+        handle.getStyleClass().add("reorder-handle");
+        return handle;
     }
 
     @Override
@@ -47,16 +43,12 @@ public class ListReorderColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-        final ImageView icon = createIcon();
-
-        icon.getStyleClass().add("reorder-handle");
+        final StackPane handle = createHandle();
 
         return new ColumnCell<>() {
             @Override
             public Node node() {
-                icon.setFitWidth(28);
-                icon.setFitHeight(28);
-                return icon;
+                return handle;
             }
 
             @Override

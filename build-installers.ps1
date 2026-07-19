@@ -276,7 +276,9 @@ $clientArgs = @(
   "--win-upgrade-uuid", $ClientUpgradeUuid,
   "--java-options", "-Dtodolist.server.ip=$ServerHost",
   "--java-options", "-Dtodolist.port=9001",
-  "--java-options", "-Dtodolist.version=$Version"
+  "--java-options", "-Dtodolist.version=$Version",
+  "--java-options", "--add-opens",
+  "--java-options", "javafx.controls/javafx.scene.control.skin=ALL-UNNAMED"
 )
 
 jpackage @clientArgs

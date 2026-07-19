@@ -1,59 +1,99 @@
 /*
  * Brand overlay for the TodoList client.
  *
- * This is a SLIM layer on top of the AtlantaFX Primer theme (set as the global
- * user-agent stylesheet). It overrides the AtlantaFX accent looked-up colors to
- * a violet/cyan brand ramp and styles the app-specific pieces (sidebar, pseudo
- * tables, titles, status text). It deliberately builds on AtlantaFX looked-up
- * colors (-color-bg-*, -color-fg-*, -color-border-*, -color-accent-*) so both
- * the light (PrimerLight) and dark (PrimerDark) grounds work automatically.
+ * SINGLE STYLING AUTHORITY. This is the ONE brand layer on top of the AtlantaFX
+ * Primer theme (set globally as the user-agent stylesheet, swapped light/dark by
+ * DarkModeManager). It:
+ *   1. overrides AtlantaFX looked-up accent colors to a violet/cyan brand ramp, and
+ *   2. defines semantic style classes for the app's own pieces (sidebar, pseudo
+ *      tables, cards, titles, status/priority colors, vector icons).
+ *
+ * It deliberately builds on AtlantaFX looked-up colors (-color-bg-*, -color-fg-*,
+ * -color-border-*, -color-accent-*) so BOTH the light (PrimerLight) and dark
+ * (PrimerDark) grounds adapt automatically. Nothing here hardcodes a background or
+ * foreground that would fight the theme. Inline setStyle in Java is only for truly
+ * dynamic per-instance values (e.g. a user-chosen color), never for theme.
  */
 
 .root {
-    /* Brand ramp */
+    /* Brand ramp (violet primary, cyan secondary) */
     -brand-violet: #5B4FE6;
     -brand-violet-strong: #4F46E5;
     -brand-violet-soft: #8B80F9;
     -brand-cyan: #06B6D4;
 
-    /* Override AtlantaFX accent to violet (drives buttons, links, focus, selection) */
+    /* Override AtlantaFX accent to violet: drives buttons, links, focus, selection */
     -color-accent-fg: #6366F1;
     -color-accent-emphasis: -brand-violet;
     -color-accent-emphasis-plus: -brand-violet-strong;
     -color-accent-muted: -brand-violet-soft;
     -color-accent-subtle: rgba(99, 102, 241, 0.16);
+
+    -fx-font-family: "Segoe UI", "Arial";
 }
 
-/* ---------------------------------------------------------------------------
+/* ===========================================================================
+ * Vector icons (Ikonli). Colored via the theme so they follow light/dark.
+ * The old fixed-color PNG icons vanished in dark mode; these never do.
+ * ========================================================================= */
+
+.app-icon {
+    -fx-icon-color: -color-fg-muted;
+}
+
+/* Sidebar icons brighten to the violet accent on hover / active nav. */
+.sidebar-button:hover .app-icon,
+.sidebar-button:armed .app-icon,
+.sidebar-button:focused .app-icon {
+    -fx-icon-color: -color-accent-fg;
+}
+
+/* Row action icons (delete gets a danger tint on hover). */
+.icon-delete { -fx-icon-color: -color-fg-muted; }
+.list-col-delete-button:hover .icon-delete,
+.task-col-delete-button:hover .icon-delete { -fx-icon-color: -color-danger-fg; }
+.reorder-handle .app-icon { -fx-icon-color: -color-fg-subtle; }
+
+/* ===========================================================================
  * Screen roots + titles
- * ------------------------------------------------------------------------- */
+ * ========================================================================= */
 
 .welcome-screen,
 .login-root,
 .mainmenu-root,
 .todolist-root {
     -fx-background-color: -color-bg-default;
-    -fx-font-family: "Segoe UI", "Arial";
 }
 
+.mainmenu-root,
+.login-root {
+    -fx-font-size: 15px;
+}
+
+/* Welcome hero */
 .welcome-title {
-    -fx-font-size: 40px;
-    -fx-font-weight: 700;
+    -fx-font-size: 34px;
+    -fx-font-weight: 800;
     -fx-text-fill: -color-fg-default;
-    -fx-padding: 12 0 24 0;
+    -fx-padding: 12 0 6 0;
+    -fx-text-alignment: center;
 }
 
 .welcome-tagline {
     -fx-font-size: 18px;
     -fx-text-fill: -color-fg-muted;
-    -fx-font-style: italic;
-    -fx-padding: 8 0 0 0;
+    -fx-padding: 4 0 0 0;
 }
 
 .welcome-note {
     -fx-font-size: 12px;
-    -fx-text-fill: -color-fg-muted;
+    -fx-text-fill: -color-fg-subtle;
     -fx-font-style: italic;
+}
+
+/* Violet checklist brand mark on the welcome screen */
+.brand-logo {
+    -fx-icon-color: -color-accent-emphasis;
 }
 
 .login-title,
@@ -61,11 +101,6 @@
     -fx-font-size: 30px;
     -fx-font-weight: bold;
     -fx-text-fill: -color-fg-default;
-}
-
-.mainmenu-root,
-.login-root {
-    -fx-font-size: 15px;
 }
 
 .todolist-title {
@@ -84,53 +119,44 @@
     -fx-text-fill: -color-fg-subtle;
 }
 
-/* ---------------------------------------------------------------------------
- * Login screen card + main-user buttons
- * ------------------------------------------------------------------------- */
+/* ===========================================================================
+ * Cards (login box, config + settings panels)
+ * ========================================================================= */
 
-.login-box {
+.login-box,
+.config-panel {
     -fx-background-color: -color-bg-subtle;
-    -fx-background-radius: 14;
-    -fx-border-radius: 14;
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
     -fx-border-color: -color-border-default;
     -fx-border-width: 1px;
     -fx-padding: 30;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.14), 18, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.10), 24, 0, 0, 6);
 }
 
-/* Base sizing for the big main-user buttons (color is applied inline per user) */
+/* Base sizing for the big main-user buttons (color applied inline per user). */
 .main-user-button {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
     -fx-background-radius: 14;
     -fx-cursor: hand;
+    -fx-padding: 14 22;
 }
 
-/* ---------------------------------------------------------------------------
- * Connection status text (welcome + connect dialog)
- * ------------------------------------------------------------------------- */
+/* ===========================================================================
+ * Connection status text
+ * ========================================================================= */
 
 .connection-status {
     -fx-font-size: 16px;
-    -fx-font-weight: 500;
+    -fx-font-weight: 600;
     -fx-padding: 5 0;
 }
 
-.status-idle {
-    -fx-text-fill: -color-danger-fg;
-}
-
-.status-connecting {
-    -fx-text-fill: -color-warning-fg;
-}
-
-.status-connected {
-    -fx-text-fill: -color-success-fg;
-}
-
-.status-error {
-    -fx-text-fill: -color-danger-fg;
-}
+.status-idle,
+.status-error   { -fx-text-fill: -color-danger-fg; }
+.status-connecting { -fx-text-fill: -color-warning-fg; }
+.status-connected  { -fx-text-fill: -color-success-fg; }
 
 .status-label {
     -fx-font-size: 14px;
@@ -147,19 +173,9 @@
     -fx-padding: 5 0;
 }
 
-/* Card container reused by the connect dialog */
-.config-panel {
-    -fx-background-color: -color-bg-subtle;
-    -fx-border-color: -color-border-default;
-    -fx-border-width: 1px;
-    -fx-border-radius: 12;
-    -fx-background-radius: 12;
-    -fx-padding: 20;
-}
-
-/* ---------------------------------------------------------------------------
+/* ===========================================================================
  * Settings dialog helpers
- * ------------------------------------------------------------------------- */
+ * ========================================================================= */
 
 .settings-section-title {
     -fx-font-weight: bold;
@@ -169,7 +185,7 @@
 
 .settings-panel {
     -fx-background-color: -color-bg-inset;
-    -fx-background-radius: 8;
+    -fx-background-radius: 10;
     -fx-padding: 15;
 }
 
@@ -184,35 +200,40 @@
     -fx-font-weight: bold;
 }
 
-/* ---------------------------------------------------------------------------
- * Pseudo-table (main menu + task view)
- * ------------------------------------------------------------------------- */
+/* ===========================================================================
+ * Pseudo-table (main menu list of lists + task view). Kept as a ListView of
+ * HBox rows, styled to read as a real modern table: header with an accent
+ * underline, a rounded card container, hover + selection highlights, and light
+ * row separators.
+ * ========================================================================= */
 
 .list-header,
 .tasks-header {
-    -fx-font-size: 15px;
+    -fx-font-size: 13px;
     -fx-text-fill: -color-fg-muted;
-    -fx-font-weight: 600;
-    -fx-padding: 10 6;
+    -fx-font-weight: 700;
+    -fx-padding: 12 10;
     -fx-background-color: -color-bg-inset;
-    -fx-background-radius: 10 10 0 0;
+    -fx-background-radius: 12 12 0 0;
     -fx-border-color: -color-border-default;
-    -fx-border-width: 1 1 0 1;
-    -fx-border-radius: 10 10 0 0;
+    -fx-border-width: 1 1 2 1;
+    -fx-border-radius: 12 12 0 0;
 }
 
 .list-view {
     -fx-background-color: -color-bg-default;
     -fx-border-color: -color-border-default;
     -fx-border-width: 0 1 1 1;
-    -fx-border-radius: 0 0 10 10;
-    -fx-background-radius: 0 0 10 10;
+    -fx-border-radius: 0 0 12 12;
+    -fx-background-radius: 0 0 12 12;
     -fx-padding: 0;
 }
 
 .list-view .list-cell {
-    -fx-padding: 6 4;
+    -fx-padding: 8 6;
     -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-border-muted transparent;
+    -fx-border-width: 0 0 1 0;
 }
 
 .list-view .list-cell:filled:hover {
@@ -223,8 +244,15 @@
     -fx-background-color: -color-accent-subtle;
 }
 
+/* Theme-aware drag-over highlight (replaces the old black rgba overlay that was
+   invisible in dark mode). Phase B adds/removes this class instead of setStyle. */
+.drag-over {
+    -fx-background-color: -color-accent-subtle;
+}
+
 .list-col-name {
     -fx-font-size: 16px;
+    -fx-font-weight: 600;
     -fx-text-fill: -color-fg-default;
 }
 
@@ -241,16 +269,15 @@
 /* Description placeholder (empty cell hint) */
 .cell-placeholder {
     -fx-text-fill: -color-fg-subtle;
+    -fx-font-style: italic;
 }
 
-/* Delete buttons in table rows */
+/* Row delete buttons (icon buttons; the glyph is tinted via .icon-delete above) */
 .list-col-delete-button,
 .task-col-delete-button {
     -fx-background-color: transparent;
-    -fx-text-fill: -color-danger-fg;
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-    -fx-padding: 2 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4 8;
     -fx-cursor: hand;
 }
 
@@ -261,16 +288,21 @@
 
 /* Reorder drag handle */
 .reorder-handle {
-    -fx-text-fill: -color-fg-subtle;
     -fx-cursor: open-hand;
 }
 
-/* ---------------------------------------------------------------------------
+/* Compact button used inside the priority cell */
+.priority-cell-button {
+    -fx-font-size: 9px;
+    -fx-padding: 0;
+}
+
+/* ===========================================================================
  * Sortable headers
- * ------------------------------------------------------------------------- */
+ * ========================================================================= */
 
 .sort-header {
-    -fx-font-weight: bold;
+    -fx-font-weight: 700;
     -fx-cursor: hand;
     -fx-text-fill: -color-fg-muted;
 }
@@ -280,15 +312,12 @@
 }
 
 .sort-header-active {
-    -fx-font-weight: bold;
+    -fx-font-weight: 700;
     -fx-cursor: hand;
     -fx-text-fill: -color-accent-fg;
 }
 
-/* ---------------------------------------------------------------------------
- * "Create new" link
- * ------------------------------------------------------------------------- */
-
+/* "Create new" link */
 .create-link {
     -fx-text-fill: -color-accent-fg;
     -fx-font-size: 16px;
@@ -301,9 +330,9 @@
     -fx-underline: true;
 }
 
-/* ---------------------------------------------------------------------------
+/* ===========================================================================
  * Sidebar
- * ------------------------------------------------------------------------- */
+ * ========================================================================= */
 
 .sidebar {
     -fx-background-color: -color-bg-subtle;
@@ -327,44 +356,25 @@
 }
 
 /* Theme toggle glyph keeps a warm accent so it reads as sun/moon */
-.theme-toggle-button {
-    -fx-font-size: 22px;
-    -fx-text-fill: #F5A623;
+.theme-toggle-button .app-icon {
+    -fx-icon-color: #F5A623;
 }
 
-/* ---------------------------------------------------------------------------
- * Task status text colors (legible on both light and dark grounds)
- * ------------------------------------------------------------------------- */
+/* ===========================================================================
+ * Task status text colors (legible on BOTH light and dark grounds)
+ * ========================================================================= */
 
-.status-NOT_STARTED {
-    -fx-text-fill: #E5484D;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
+.status-NOT_STARTED { -fx-text-fill: #E5484D; -fx-font-size: 13px; -fx-font-weight: bold; }
+.status-IN_PROGRESS { -fx-text-fill: #4C8DFF; -fx-font-size: 13px; -fx-font-weight: bold; }
+.status-DELAYED     { -fx-text-fill: #F5A623; -fx-font-size: 13px; -fx-font-weight: bold; }
+.status-NEED_HELP   { -fx-text-fill: #9B7DF0; -fx-font-size: 13px; -fx-font-weight: bold; }
+.status-DONE        { -fx-text-fill: #2FA84F; -fx-font-size: 13px; -fx-font-weight: bold; }
 
-.status-IN_PROGRESS {
-    -fx-text-fill: #4C8DFF;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
-
-.status-DELAYED {
-    -fx-text-fill: #F5A623;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
-
-.status-NEED_HELP {
-    -fx-text-fill: #9B7DF0;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
-
-.status-DONE {
-    -fx-text-fill: #2FA84F;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
+/* List completion progress-bar fills, by band (replace the Java hex literals). */
+.completion-high .bar { -fx-background-color: #2FA84F; }   /* >= 80% green  */
+.completion-mid  .bar { -fx-background-color: #F5A623; }   /* >= 50% amber  */
+.completion-low  .bar { -fx-background-color: #FB923C; }   /* >= 30% orange */
+.completion-none .bar { -fx-background-color: #E5484D; }   /* <  30% red (behind) */
 
 /* Keep table combo boxes compact */
 .task-col-status,
@@ -373,4 +383,110 @@
     -fx-pref-height: 34px;
     -fx-min-height: 34px;
     -fx-max-height: 34px;
+}
+
+/* ===========================================================================
+ * Real TableView (lists + tasks). Native resizable/auto-fit columns with
+ * vertical dividers, one scrollbar, hover/selection, and status row tint.
+ * ========================================================================= */
+
+.app-table {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    /* Native vertical dividers between columns */
+    -fx-table-cell-border-color: -color-border-muted;
+    -fx-padding: 0;
+}
+
+.app-table:focused {
+    -fx-background-color: -color-bg-default;
+}
+
+/* Header */
+.app-table .column-header-background {
+    -fx-background-color: -color-bg-inset;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.app-table .column-header-background .filler,
+.app-table .filler {
+    -fx-background-color: -color-bg-inset;
+}
+
+.app-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-muted;
+    -fx-border-width: 0 1 2 0;
+    -fx-padding: 10 4;
+    -fx-pref-height: 44px;
+}
+
+.app-table .column-header .label {
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+    -fx-alignment: center;
+}
+
+/* Native sort arrow uses the accent */
+.app-table .column-header .sort-order-dot,
+.app-table .column-header GLYPH,
+.app-table .column-header .arrow {
+    -fx-background-color: -color-accent-fg;
+}
+
+/* Body cells */
+.app-table .table-cell {
+    -fx-alignment: center;
+    -fx-padding: 6 8;
+    -fx-text-fill: -color-fg-default;
+    /* Vertical split line between columns on every row (matches the header) */
+    -fx-border-color: transparent -color-border-muted transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.app-table .table-row-cell {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-muted;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 44px;
+}
+
+.app-table .table-row-cell:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.app-table .table-row-cell:selected {
+    -fx-background-color: -color-accent-subtle;
+}
+
+/* Theme-aware drag-over highlight on a table row (drag-reorder) */
+.app-table .table-row-cell.drag-over {
+    -fx-background-color: -color-accent-subtle;
+}
+
+/* Empty-table placeholder */
+.app-table .placeholder .label {
+    -fx-text-fill: -color-fg-subtle;
+}
+
+/* Bottom "Auto-fit columns" button (next to create/add link) */
+.autofit-button {
+    -fx-text-fill: -color-accent-fg;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+    -fx-padding: 6 12;
+    -fx-background-radius: 8;
+}
+
+.autofit-button:hover {
+    -fx-background-color: -color-accent-subtle;
+}
+
+.autofit-button .app-icon {
+    -fx-icon-color: -color-accent-fg;
 }

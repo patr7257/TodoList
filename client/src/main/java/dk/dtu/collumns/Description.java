@@ -12,7 +12,6 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.VBox;
@@ -67,8 +66,6 @@ public final class Description {
 
         @Override
         public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-            ListCell<Helpers.ListEntry> cell = ctx.cell();
-
             Label preview = new Label();
             preview.setPrefWidth(prefWidth());
             preview.setMinWidth(prefWidth());
@@ -79,7 +76,7 @@ public final class Description {
             preview.setCursor(javafx.scene.Cursor.HAND);
 
             Runnable updatePreview = () -> {
-                Helpers.ListEntry item = cell.getItem();
+                Helpers.ListEntry item = ctx.currentItem().get();
                 String text = item != null ? safe(item.description) : "";
                 if (text.isBlank()) {
                     preview.setText("Description");
@@ -96,13 +93,13 @@ public final class Description {
             };
 
             preview.setOnMouseClicked(evt -> {
-                Helpers.ListEntry item = cell.getItem();
+                Helpers.ListEntry item = ctx.currentItem().get();
                 if (item == null) return;
                 showDescriptionDialog(
                         "List description",
                         safe(item.name),
                         safe(item.description),
-                        desired -> commitList(cell, ctx, desired, updatePreview)
+                        desired -> commitList(ctx, desired, updatePreview)
                 );
             });
 
@@ -120,12 +117,11 @@ public final class Description {
         }
 
         private static void commitList(
-                ListCell<Helpers.ListEntry> cell,
                 ColumnCellContext<Helpers.ListEntry> ctx,
                 String desired,
                 Runnable revert) {
 
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String current = safe(item.description);
@@ -181,8 +177,6 @@ public final class Description {
 
         @Override
         public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-            ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
             Label preview = new Label();
             preview.setPrefWidth(prefWidth());
             preview.setMinWidth(prefWidth());
@@ -193,7 +187,7 @@ public final class Description {
             preview.setCursor(javafx.scene.Cursor.HAND);
 
             Runnable updatePreview = () -> {
-                Helpers.TaskEntry item = cell.getItem();
+                Helpers.TaskEntry item = ctx.currentItem().get();
                 String text = item != null ? safe(item.description) : "";
                 if (text.isBlank()) {
                     preview.setText("Description");
@@ -210,13 +204,13 @@ public final class Description {
             };
 
             preview.setOnMouseClicked(evt -> {
-                Helpers.TaskEntry item = cell.getItem();
+                Helpers.TaskEntry item = ctx.currentItem().get();
                 if (item == null) return;
                 showDescriptionDialog(
                         "Task description",
                         safe(item.title),
                         safe(item.description),
-                        desired -> commitTask(cell, ctx, desired, updatePreview)
+                        desired -> commitTask(ctx, desired, updatePreview)
                 );
             });
 
@@ -234,12 +228,11 @@ public final class Description {
         }
 
         private static void commitTask(
-                ListCell<Helpers.TaskEntry> cell,
                 ColumnCellContext<Helpers.TaskEntry> ctx,
                 String desired,
                 Runnable revert) {
 
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String current = safe(item.description);

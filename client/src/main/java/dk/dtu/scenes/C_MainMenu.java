@@ -8,15 +8,18 @@ import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
 import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
+import dk.dtu.ui.Icons;
+import dk.dtu.ui.Tables;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
@@ -26,8 +29,6 @@ import java.util.*;
 import java.util.prefs.Preferences;
 
 public class C_MainMenu {
-
-    private static final double COLUMN_GAP = 15;
 
     private enum EmptyFilter { ALL, EMPTY, NOT_EMPTY }
     private enum YesNoFilter { ALL, YES, NO }
@@ -44,7 +45,8 @@ public class C_MainMenu {
     private final SceneNavigator navigator;
     private final String loginMessage;
 
-    private final ListView<Helpers.ListEntry> listsView = new ListView<>();
+    private final ObservableList<Helpers.ListEntry> tableItems = FXCollections.observableArrayList();
+    private TableView<Helpers.ListEntry> table;
     private List<Helpers.ListEntry> allLists = List.of();
 
     private String ownerFilter = "All";
@@ -80,59 +82,82 @@ public class C_MainMenu {
         VBox titleSection = new VBox(5, title, userLabel, tempMessageLabel);
         titleSection.setAlignment(Pos.TOP_CENTER);
 
-        // Columns + sorting
-        List<Column<Helpers.ListEntry>> visibleColumns = getVisibleListColumns();
-        SortState<Helpers.ListEntry> sortState = new SortState<>();
+        // Refresh hook used by the delete cell and rename flow
+        Runnable refreshLists = this::reloadLists;
 
-        double tableWidth = computeTableWidth(visibleColumns);
+        // Real TableView built from the existing visible columns via the shared adapter
+        Tables.Config<Helpers.ListEntry> cfg = Tables.<Helpers.ListEntry>config()
+                .idOf(e -> e.id)
+                .persistOrder(this::persistListOrder)
+                .onOpen(e -> navigator.showTodoList(e.id, e.name))
+                .contextMenu(this::buildRowMenu)
+                .refresh(refreshLists);
 
-        // Header row (scrolls horizontally together with the list)
-        List<Label> headerLabels = new ArrayList<>();
-        HBox header = buildHeaderRow(visibleColumns, headerLabels, sortState, tableWidth);
-
-        // ListView setup
-        configureListView(tableWidth);
+        table = Tables.build(getVisibleListColumns(), tableItems, cfg);
+        VBox.setVgrow(table, javafx.scene.layout.Priority.ALWAYS);
 
         // Load lists once initially
-        Runnable refreshLists = this::reloadLists;
         refreshLists.run();
-
-        // Double-click to open list
-        listsView.setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY || e.getClickCount() != 2) return;
-            Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
-            if (selected == null) return;
-            navigator.showTodoList(selected.id, selected.name);
-        });
-
-        // Cells built from visible columns
-        listsView.setCellFactory(lv -> buildRowCell(visibleColumns, refreshLists));
 
         // Create list link
         Hyperlink createLink = new Hyperlink("+  Create new list");
         createLink.getStyleClass().add("create-link");
         createLink.setOnAction(e -> showCreateListDialog());
 
-        // Scrollable table container (header + list)
-        ScrollPane tableScroll = createScrollableTable(header, listsView);
+        // Auto-fit columns to their content's optimal width.
+        javafx.scene.control.Button autoFitButton = new javafx.scene.control.Button("Auto-fit columns");
+        autoFitButton.setGraphic(dk.dtu.ui.Icons.of("fth-maximize-2", 14));
+        autoFitButton.getStyleClass().addAll(atlantafx.base.theme.Styles.FLAT, "autofit-button");
+        autoFitButton.setOnAction(e -> dk.dtu.ui.Tables.autoFitColumns(table));
+
+        javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(24, createLink, autoFitButton);
+        footer.setAlignment(Pos.CENTER);
 
         // Spacer between title and table (instead of dummy Label(""))
         Region spacer = new Region();
         spacer.setMinHeight(8);
 
-        VBox root = new VBox(titleSection, spacer, tableScroll, createLink);
+        VBox root = new VBox(titleSection, spacer, table, footer);
         root.setSpacing(10);
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
         root.setFillWidth(true);
         root.getStyleClass().add("mainmenu-root");
 
-        Scene scene = new Scene(root, 900, 600);
+        return new Scene(root, 900, 600);
+    }
 
-        // Fix: prevent horizontal "jump" when focusing controls inside the scrollable table
-        lockHorizontalScrollOnFocus(scene, tableScroll);
+    /** Row context menu: a single "Rename list" action bound to the given entry. */
+    private ContextMenu buildRowMenu(Helpers.ListEntry item) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem renameItem = new MenuItem("Rename list");
+        renameItem.setOnAction(evt -> renameSelectedList(item));
+        menu.getItems().add(renameItem);
+        return menu;
+    }
 
-        return scene;
+    private void renameSelectedList(Helpers.ListEntry item) {
+        if (item == null) return;
+
+        TextInputDialog dialog = new TextInputDialog(item.name);
+        dialog.setTitle("Rename List");
+        dialog.setHeaderText("Rename list");
+        dialog.setContentText("New name:");
+
+        dialog.showAndWait().ifPresent(newName -> {
+            if (newName == null) return;
+            String trimmed = newName.trim();
+            if (trimmed.isBlank() || trimmed.equals(item.name)) return;
+
+            new Thread(() -> {
+                try {
+                    Lists.renameTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id, trimmed);
+                    Platform.runLater(this::reloadLists);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }, "rename-list").start();
+        });
     }
 
     // -----------------------------
@@ -143,295 +168,19 @@ public class C_MainMenu {
         if (loginMessage == null || loginMessage.isBlank()) return;
 
         tempMessageLabel.setText(loginMessage);
-        tempMessageLabel.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
+        if (!tempMessageLabel.getStyleClass().contains("status-connected")) {
+            tempMessageLabel.getStyleClass().add("status-connected");
+        }
+        // font-weight is emphasis, not a theme color, so it stays inline
+        tempMessageLabel.setStyle("-fx-font-weight: bold;");
 
         PauseTransition pt = new PauseTransition(Duration.seconds(2));
-        pt.setOnFinished(e -> tempMessageLabel.setText(""));
+        pt.setOnFinished(e -> {
+            tempMessageLabel.setText("");
+            tempMessageLabel.getStyleClass().remove("status-connected");
+            tempMessageLabel.setStyle("");
+        });
         pt.play();
-    }
-
-    private static double computeTableWidth(List<Column<Helpers.ListEntry>> visibleColumns) {
-        double w = 0;
-        for (Column<Helpers.ListEntry> col : visibleColumns) {
-            w += col.prefWidth();
-        }
-        w += COLUMN_GAP * Math.max(0, visibleColumns.size() - 1);
-        return w;
-    }
-
-    private HBox buildHeaderRow(
-            List<Column<Helpers.ListEntry>> visibleColumns,
-            List<Label> headerLabels,
-            SortState<Helpers.ListEntry> sortState,
-            double tableWidth
-    ) {
-        List<javafx.scene.Node> headerNodes = new ArrayList<>();
-
-        for (Column<Helpers.ListEntry> col : visibleColumns) {
-            javafx.scene.Node headerNode = col.createHeader(new ColumnHeaderContext<>(
-                    listsView,
-                    requested -> sortState.requestSort(requested, listsView, headerLabels)
-            ));
-
-            if (headerNode instanceof Label l) {
-                l.setUserData(col);
-                headerLabels.add(l);
-            }
-
-            StackPane wrapper = wrapCellNode(headerNode, col.prefWidth(), PINNED_NAME_ID.equals(col.id()));
-            headerNodes.add(wrapper);
-        }
-
-        HBox header = new HBox(COLUMN_GAP, headerNodes.toArray(javafx.scene.Node[]::new));
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.getStyleClass().add("list-header");
-        header.setMinWidth(tableWidth);
-        header.setPrefWidth(tableWidth);
-        header.setMaxWidth(Double.MAX_VALUE);
-        return header;
-    }
-
-    private void configureListView(double tableWidth) {
-        listsView.setMinWidth(tableWidth);
-        listsView.setPrefWidth(tableWidth);
-        listsView.setMaxWidth(Double.MAX_VALUE);
-        listsView.setPrefHeight(400);
-    }
-
-    private ListCell<Helpers.ListEntry> buildRowCell(List<Column<Helpers.ListEntry>> visibleColumns, Runnable refreshLists) {
-        return new ListCell<>() {
-
-            private final HBox row;
-            private final List<ColumnCell<Helpers.ListEntry>> cells;
-            private final ContextMenu contextMenu = new ContextMenu();
-            private javafx.scene.Node reorderHandle;
-
-            {
-                cells = new ArrayList<>();
-                List<javafx.scene.Node> cellNodes = new ArrayList<>();
-
-                for (Column<Helpers.ListEntry> col : visibleColumns) {
-                    ColumnCell<Helpers.ListEntry> cellPart = col.createCell(new ColumnCellContext<>(this, refreshLists));
-                    cells.add(cellPart);
-
-                    javafx.scene.Node node = cellPart.node();
-                    if (PINNED_REORDER_ID.equals(col.id())) {
-                        reorderHandle = node;
-                    }
-
-                    StackPane wrapper = wrapCellNode(node, col.prefWidth(), PINNED_NAME_ID.equals(col.id()));
-                    cellNodes.add(wrapper);
-                }
-
-                row = new HBox(COLUMN_GAP, cellNodes.toArray(javafx.scene.Node[]::new));
-                row.setAlignment(Pos.CENTER_LEFT);
-
-                setupDragAndDrop();
-
-                MenuItem renameItem = new MenuItem("Rename list");
-                renameItem.setOnAction(evt -> renameSelectedList(refreshLists));
-                contextMenu.getItems().add(renameItem);
-            }
-
-            private void setupDragAndDrop() {
-                if (reorderHandle != null) {
-                    reorderHandle.setOnDragDetected(evt -> {
-                        Helpers.ListEntry item = getItem();
-                        if (item == null) return;
-
-                        Dragboard db = reorderHandle.startDragAndDrop(TransferMode.MOVE);
-                        ClipboardContent content = new ClipboardContent();
-                        content.putString(item.id);
-                        db.setContent(content);
-
-                        try { db.setDragView(row.snapshot(null, null)); } catch (Exception ignored) {}
-
-                        setOpacity(0.4);
-                        evt.consume();
-                    });
-                }
-
-                setOnDragDone(evt -> setOpacity(1.0));
-
-                setOnDragOver(evt -> {
-                    Dragboard db = evt.getDragboard();
-                    if (db.hasString()) evt.acceptTransferModes(TransferMode.MOVE);
-                    evt.consume();
-                });
-
-                setOnDragEntered(evt -> {
-                    if (evt.getGestureSource() == this) return;
-                    if (evt.getDragboard() != null && evt.getDragboard().hasString() && !isEmpty()) {
-                        row.setStyle("-fx-background-color: rgba(0, 0, 0, 0.08);");
-                    }
-                });
-
-                setOnDragExited(evt -> row.setStyle(""));
-
-                setOnDragDropped(evt -> {
-                    Dragboard db = evt.getDragboard();
-                    if (!db.hasString()) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    String draggedId = db.getString();
-                    ListView<Helpers.ListEntry> view = getListView();
-                    if (view == null) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    int draggedIdx = indexOfId(view.getItems(), draggedId);
-                    if (draggedIdx < 0) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    int targetIdx = isEmpty() ? view.getItems().size() : Math.max(0, getIndex());
-                    Helpers.ListEntry dragged = view.getItems().remove(draggedIdx);
-
-                    if (targetIdx > view.getItems().size()) targetIdx = view.getItems().size();
-                    if (targetIdx > draggedIdx) targetIdx--; // account for removal
-
-                    view.getItems().add(targetIdx, dragged);
-                    view.getSelectionModel().select(dragged);
-
-                    evt.setDropCompleted(true);
-                    evt.consume();
-                    row.setStyle("");
-
-                    persistListOrder(view.getItems());
-                });
-            }
-
-            private void renameSelectedList(Runnable refreshLists) {
-                Helpers.ListEntry item = getItem();
-                if (item == null) return;
-
-                TextInputDialog dialog = new TextInputDialog(item.name);
-                dialog.setTitle("Rename List");
-                dialog.setHeaderText("Rename list");
-                dialog.setContentText("New name:");
-
-                dialog.showAndWait().ifPresent(newName -> {
-                    if (newName == null) return;
-                    String trimmed = newName.trim();
-                    if (trimmed.isBlank() || trimmed.equals(item.name)) return;
-
-                    new Thread(() -> {
-                        try {
-                            Lists.renameTodoList(Config.getRequestsUri(), Config.getResponsesUri(), item.id, trimmed);
-                            Platform.runLater(refreshLists);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }, "rename-list").start();
-                });
-            }
-
-            @Override
-            protected void updateItem(Helpers.ListEntry item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty || item == null) {
-                    setGraphic(null);
-                    setContextMenu(null);
-                    return;
-                }
-
-                for (ColumnCell<Helpers.ListEntry> c : cells) {
-                    c.update(item);
-                }
-
-                setGraphic(row);
-                setContextMenu(contextMenu);
-            }
-        };
-    }
-
-    private static StackPane wrapCellNode(javafx.scene.Node node, double prefWidth, boolean grow) {
-        StackPane wrapper = new StackPane(node);
-        wrapper.setAlignment(Pos.CENTER);
-
-        wrapper.setMinWidth(prefWidth);
-        wrapper.setPrefWidth(prefWidth);
-
-        if (grow) {
-            wrapper.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(wrapper, javafx.scene.layout.Priority.ALWAYS);
-            if (node instanceof Region r) r.setMaxWidth(Double.MAX_VALUE);
-        } else {
-            wrapper.setMaxWidth(prefWidth);
-        }
-        return wrapper;
-    }
-
-    private ScrollPane createScrollableTable(HBox header, ListView<Helpers.ListEntry> listsView) {
-        VBox content = new VBox(0, header, listsView);
-        VBox.setVgrow(listsView, javafx.scene.layout.Priority.ALWAYS);
-
-        double minTableWidth = header.getMinWidth();
-        content.setMinWidth(minTableWidth);
-
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setPannable(true);
-
-        scroll.setFitToWidth(false);
-        scroll.setFitToHeight(true);
-        
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        scroll.setStyle("-fx-background-color: transparent;");
-
-        // Keep content at least as wide as viewport (so table centers nicely when narrower)
-        scroll.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null) return;
-            double viewportWidth = newVal.getWidth();
-            content.setPrefWidth(Math.max(minTableWidth, viewportWidth));
-        });
-
-        return scroll;
-    }
-
-    /**
-     * Prevent JavaFX from auto-scrolling horizontally inside the ScrollPane when focus changes.
-     * This is what causes the "screen moved to the next one" feeling when you click into fields.
-     */
-    private void lockHorizontalScrollOnFocus(Scene scene, ScrollPane tableScroll) {
-        // Only lock focus-induced scrolling for focus owners inside the scroll content.
-        scene.focusOwnerProperty().addListener((obs, oldNode, newNode) -> {
-            if (newNode == null) return;
-            if (tableScroll.getContent() == null) return;
-
-            // Only care about nodes inside the table scroll content
-            if (!isDescendantOf(newNode, tableScroll.getContent())) return;
-
-            // Snapshot current horizontal position and restore next pulse (after JavaFX tries to "help")
-            double keepH = tableScroll.getHvalue();
-            Platform.runLater(() -> tableScroll.setHvalue(keepH));
-        });
-    }
-
-    private static boolean isDescendantOf(javafx.scene.Node node, javafx.scene.Node ancestor) {
-        javafx.scene.Node cur = node;
-        while (cur != null) {
-            if (cur == ancestor) return true;
-            cur = cur.getParent();
-        }
-        return false;
-    }
-
-    private static int indexOfId(List<Helpers.ListEntry> items, String id) {
-        for (int i = 0; i < items.size(); i++) {
-            Helpers.ListEntry e = items.get(i);
-            if (e != null && Objects.equals(e.id, id)) return i;
-        }
-        return -1;
     }
 
     private void persistListOrder(List<Helpers.ListEntry> ordered) {
@@ -483,17 +232,17 @@ public class C_MainMenu {
     }
 
     private void reloadLists() {
-        Helpers.ListEntry selected = listsView.getSelectionModel().getSelectedItem();
+        Helpers.ListEntry selected = (table != null) ? table.getSelectionModel().getSelectedItem() : null;
         final String previouslySelectedId = (selected != null) ? selected.id : null;
 
         Lists.loadTodoLists(Config.getTodoListsUri(), entries -> {
             allLists = (entries != null) ? entries : List.of();
             applyListFilters();
 
-            if (previouslySelectedId != null) {
-                for (Helpers.ListEntry e : listsView.getItems()) {
+            if (previouslySelectedId != null && table != null) {
+                for (Helpers.ListEntry e : tableItems) {
                     if (e != null && previouslySelectedId.equals(e.id)) {
-                        listsView.getSelectionModel().select(e);
+                        table.getSelectionModel().select(e);
                         break;
                     }
                 }
@@ -531,7 +280,7 @@ public class C_MainMenu {
             filtered.add(e);
         }
 
-        listsView.getItems().setAll(filtered);
+        tableItems.setAll(filtered);
     }
 
     private static boolean matchesEmptyFilter(String value, EmptyFilter filter) {
@@ -879,16 +628,17 @@ public class C_MainMenu {
 
         choicesView.setCellFactory(lv -> new ListCell<>() {
             private final CheckBox cb = new CheckBox();
-            private final Label dragHandle = new Label("≡");
+            private final Label dragHandle = new Label();
             private final HBox row = new HBox(8, dragHandle, cb);
 
             {
                 setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
 
+                dragHandle.setGraphic(Icons.reorder());
                 dragHandle.setMinWidth(18);
                 dragHandle.setPrefWidth(18);
                 dragHandle.setAlignment(Pos.CENTER);
-                dragHandle.setStyle("-fx-text-fill: #666; -fx-cursor: open-hand; -fx-font-size: 14px;");
+                dragHandle.getStyleClass().add("reorder-handle");
 
                 dragHandle.setOnDragDetected(evt -> {
                     if (getItem() == null) return;
@@ -910,11 +660,11 @@ public class C_MainMenu {
                 setOnDragEntered(evt -> {
                     if (evt.getGestureSource() == this) return;
                     if (evt.getDragboard() != null && evt.getDragboard().hasString() && !isEmpty()) {
-                        setStyle("-fx-background-color: rgba(0, 0, 0, 0.08);");
+                        if (!getStyleClass().contains("drag-over")) getStyleClass().add("drag-over");
                     }
                 });
 
-                setOnDragExited(evt -> setStyle(""));
+                setOnDragExited(evt -> getStyleClass().remove("drag-over"));
 
                 setOnDragDropped(evt -> {
                     Dragboard db = evt.getDragboard();
@@ -947,7 +697,7 @@ public class C_MainMenu {
                     evt.consume();
                 });
 
-                setOnDragDone(evt -> setStyle(""));
+                setOnDragDone(evt -> getStyleClass().remove("drag-over"));
             }
 
             @Override

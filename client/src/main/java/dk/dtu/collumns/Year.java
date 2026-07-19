@@ -7,7 +7,6 @@ import dk.dtu.shared.Config;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
 
 import java.util.Comparator;
@@ -62,8 +61,6 @@ public final class Year {
 
         @Override
         public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-            ListCell<Helpers.ListEntry> cell = ctx.cell();
-
             TextField field = new TextField();
             field.setPromptText("Year");
             field.setAlignment(Pos.CENTER);
@@ -72,7 +69,7 @@ public final class Year {
             field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
-                Helpers.ListEntry item = cell.getItem();
+                Helpers.ListEntry item = ctx.currentItem().get();
                 if (item == null) {
                     field.setText("");
                 } else {
@@ -80,10 +77,10 @@ public final class Year {
                 }
             };
 
-            field.setOnAction(evt -> commitListYear(cell, ctx, field, revert));
+            field.setOnAction(evt -> commitListYear(ctx, field, revert));
             field.focusedProperty().addListener((obs, oldVal, newVal) -> {
                 if (Boolean.FALSE.equals(newVal)) {
-                    commitListYear(cell, ctx, field, revert);
+                    commitListYear(ctx, field, revert);
                 }
             });
 
@@ -101,12 +98,11 @@ public final class Year {
         }
 
         private static void commitListYear(
-                ListCell<Helpers.ListEntry> cell,
                 ColumnCellContext<Helpers.ListEntry> ctx,
                 TextField field,
                 Runnable revert) {
 
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             int desired;
@@ -183,8 +179,6 @@ public final class Year {
 
         @Override
         public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-            ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
             TextField field = new TextField();
             field.setPromptText("Year");
             field.setAlignment(Pos.CENTER);
@@ -193,7 +187,7 @@ public final class Year {
             field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
-                Helpers.TaskEntry item = cell.getItem();
+                Helpers.TaskEntry item = ctx.currentItem().get();
                 if (item == null) {
                     field.setText("");
                 } else {
@@ -201,10 +195,10 @@ public final class Year {
                 }
             };
 
-            field.setOnAction(evt -> commitTaskYear(cell, ctx, field, revert));
+            field.setOnAction(evt -> commitTaskYear(ctx, field, revert));
             field.focusedProperty().addListener((obs, oldVal, newVal) -> {
                 if (Boolean.FALSE.equals(newVal)) {
-                    commitTaskYear(cell, ctx, field, revert);
+                    commitTaskYear(ctx, field, revert);
                 }
             });
 
@@ -222,12 +216,11 @@ public final class Year {
         }
 
         private static void commitTaskYear(
-                ListCell<Helpers.TaskEntry> cell,
                 ColumnCellContext<Helpers.TaskEntry> ctx,
                 TextField field,
                 Runnable revert) {
 
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             int desired;
