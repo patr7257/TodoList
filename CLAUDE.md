@@ -87,21 +87,28 @@ mvn clean install
 (the README's own troubleshooting note says to use `install`, not just
 `package`, so the `shared` module's jar is resolvable by `server`/`client`).
 
-Run locally, from the repo root, in two terminals:
+Run locally, from the repo root, in two terminals. Do NOT add `-am`: with
+`-am` the direct `exec:java` / `javafx:run` goal also runs on the parent
+aggregate module and fails ("parameters 'mainClass' ... are missing"). Run
+`mvn -q install -DskipTests` first so the module's dependencies resolve, then:
 
 ```powershell
-mvn -pl server -am exec:java
+mvn -pl server exec:java
 ```
 
 ```powershell
-mvn -pl client -am javafx:run
+mvn -pl client javafx:run
 ```
 
-Run the client against a server on another machine:
-
-```powershell
-mvn -pl client -am javafx:run -Djavafx.run.jvmArgs="-Dtodolist.server.ip=192.168.0.168"
-```
+Connecting to a server on another machine: use the in-app "Change Server"
+dialog. Passing `-Dtodolist.server.ip` through `javafx:run` does NOT work: the
+javafx-maven-plugin 0.0.6 execution config ignores both `-Djavafx.run.jvmArgs`
+and `-Djavafx.options` from the CLI, and the client also prefers the last
+successfully used server, persisted via `ServerPrefs` (Java Preferences,
+registry key `HKCU:\Software\JavaSoft\Prefs\dk\dtu`, values `server.ip` /
+`server.port`); an explicit system property would win over the saved value,
+but only if it actually reaches the JVM (it does in the packaged installers,
+which bake `--java-options` in).
 
 Configuration, via JVM system properties or environment variables (see
 `shared`'s `Config` class):
@@ -202,11 +209,18 @@ source) to the latest tag, downloads the platform installer, and runs it
   instead of `new RemoteSpace(uri)`; the notification listener keeps its own
   dedicated connection OUTSIDE that lock. `Users.getUsersCached` caches the user
   list so owner dropdowns do one query per view, not one per row.
-- The client visual layer is AtlantaFX (global Primer theme) + one brand
-  stylesheet (`common.css`); vector icons come from Ikonli via `dk.dtu.ui.Icons`;
-  the lists/tasks tables are real `TableView`s built by the `dk.dtu.ui.Tables`
-  adapter from the `dk.dtu.collumns.*` `Column` classes; `dk.dtu.ui.WindowChrome`
-  darkens the native Windows title bar via the Win32 DWM API (JNA).
+- The client visual layer is AtlantaFX (global Primer theme, swapped
+  light/dark) + the "Soft Warm Minimal" brand overlay: `common.css` (structure
+  + warm-paper LIGHT tokens, overriding the AtlantaFX `-color-*` looked-up
+  colors; serif Georgia display titles, status pills, warm status/band tokens)
+  and `theme-warm-dark.css` (warm-charcoal DARK token re-overrides only).
+  `DarkModeManager.applyBrand(List<String>)` attaches them in the right order
+  and is the ONE way to attach brand styling (dialogs delegate to it). Keep the
+  two token blocks in lockstep when adding a color. Vector icons come from
+  Ikonli via `dk.dtu.ui.Icons`; the lists/tasks tables are real `TableView`s
+  built by the `dk.dtu.ui.Tables` adapter from the `dk.dtu.collumns.*` `Column`
+  classes; `dk.dtu.ui.WindowChrome` darkens the native Windows title bar via
+  the Win32 DWM API (JNA).
 - Data changes are pushed to clients as a single generic `data_changed`
   notification (no per-entity notification types); clients react by
   refetching the current view rather than applying incremental updates.
