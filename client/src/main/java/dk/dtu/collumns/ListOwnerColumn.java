@@ -44,7 +44,6 @@ public class ListOwnerColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-        ListCell<Helpers.ListEntry> cell = ctx.cell();
         ComboBox<String> ownerCombo = new ComboBox<>();
         ownerCombo.setPrefWidth(prefWidth() - 10);
         ownerCombo.setMinWidth(prefWidth() - 10);
@@ -78,7 +77,7 @@ public class ListOwnerColumn implements Column<Helpers.ListEntry> {
         Users.loadUsersIntoComboBox(ownerCombo, Config.getUsersUri(), true);
 
         ownerCombo.setOnAction(evt -> {
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String newOwner = ownerCombo.getValue();

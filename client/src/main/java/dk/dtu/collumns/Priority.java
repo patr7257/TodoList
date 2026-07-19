@@ -9,7 +9,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -61,8 +60,6 @@ public final class Priority {
 
         @Override
         public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-            ListCell<Helpers.ListEntry> cell = ctx.cell();
-
             Button up = createSmallButton("▲");
             Button down = createSmallButton("▼");
             Label value = new Label();
@@ -80,15 +77,15 @@ public final class Priority {
             box.setMaxWidth(prefWidth() - 10);
 
             Runnable updateButtons = () -> {
-                Helpers.ListEntry item = cell.getItem();
+                Helpers.ListEntry item = ctx.currentItem().get();
                 int p = (item != null) ? clamp(item.priority) : 5;
                 value.setText(Integer.toString(p));
                 up.setDisable(item == null || p >= 10);
                 down.setDisable(item == null || p <= 1);
             };
 
-            up.setOnAction(evt -> changeListPriority(cell, ctx, +1, up, down, updateButtons));
-            down.setOnAction(evt -> changeListPriority(cell, ctx, -1, up, down, updateButtons));
+            up.setOnAction(evt -> changeListPriority(ctx, +1, up, down, updateButtons));
+            down.setOnAction(evt -> changeListPriority(ctx, -1, up, down, updateButtons));
 
             return new ColumnCell<>() {
                 @Override
@@ -104,14 +101,13 @@ public final class Priority {
         }
 
         private static void changeListPriority(
-                ListCell<Helpers.ListEntry> cell,
                 ColumnCellContext<Helpers.ListEntry> ctx,
                 int delta,
                 Button up,
                 Button down,
                 Runnable updateButtons) {
 
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             int next = clamp(item.priority + delta);
@@ -167,8 +163,6 @@ public final class Priority {
 
         @Override
         public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-            ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
             Button up = createSmallButton("▲");
             Button down = createSmallButton("▼");
             Label value = new Label();
@@ -186,15 +180,15 @@ public final class Priority {
             box.setMaxWidth(prefWidth() - 10);
 
             Runnable updateButtons = () -> {
-                Helpers.TaskEntry item = cell.getItem();
+                Helpers.TaskEntry item = ctx.currentItem().get();
                 int p = (item != null) ? clamp(item.priority) : 5;
                 value.setText(Integer.toString(p));
                 up.setDisable(item == null || p >= 10);
                 down.setDisable(item == null || p <= 1);
             };
 
-            up.setOnAction(evt -> changeTaskPriority(cell, ctx, +1, up, down, updateButtons));
-            down.setOnAction(evt -> changeTaskPriority(cell, ctx, -1, up, down, updateButtons));
+            up.setOnAction(evt -> changeTaskPriority(ctx, +1, up, down, updateButtons));
+            down.setOnAction(evt -> changeTaskPriority(ctx, -1, up, down, updateButtons));
 
             return new ColumnCell<>() {
                 @Override
@@ -210,14 +204,13 @@ public final class Priority {
         }
 
         private static void changeTaskPriority(
-                ListCell<Helpers.TaskEntry> cell,
                 ColumnCellContext<Helpers.TaskEntry> ctx,
                 int delta,
                 Button up,
                 Button down,
                 Runnable updateButtons) {
 
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             int next = clamp(item.priority + delta);

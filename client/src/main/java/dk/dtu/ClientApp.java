@@ -48,6 +48,11 @@ public class ClientApp extends Application {
 
         primaryStage.show();
 
+        // Now that the native window exists, match the OS title bar to the app
+        // theme (starts in light mode). Re-applied by SceneNavigator on theme
+        // toggles and scene changes.
+        dk.dtu.ui.WindowChrome.applyDarkTitleBar(primaryStage, false);
+
         // First scene is up: quietly check for a newer release in the background.
         navigator.checkForUpdatesOnLaunch();
     }

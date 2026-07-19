@@ -384,3 +384,89 @@
     -fx-min-height: 34px;
     -fx-max-height: 34px;
 }
+
+/* ===========================================================================
+ * Real TableView (lists + tasks). Native resizable/auto-fit columns with
+ * vertical dividers, one scrollbar, hover/selection, and status row tint.
+ * ========================================================================= */
+
+.app-table {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    /* Native vertical dividers between columns */
+    -fx-table-cell-border-color: -color-border-muted;
+    -fx-padding: 0;
+}
+
+.app-table:focused {
+    -fx-background-color: -color-bg-default;
+}
+
+/* Header */
+.app-table .column-header-background {
+    -fx-background-color: -color-bg-inset;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.app-table .column-header-background .filler,
+.app-table .filler {
+    -fx-background-color: -color-bg-inset;
+}
+
+.app-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-border-muted;
+    -fx-border-width: 0 1 2 0;
+    -fx-padding: 10 4;
+    -fx-pref-height: 44px;
+}
+
+.app-table .column-header .label {
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-weight: 700;
+    -fx-font-size: 13px;
+    -fx-alignment: center;
+}
+
+/* Native sort arrow uses the accent */
+.app-table .column-header .sort-order-dot,
+.app-table .column-header GLYPH,
+.app-table .column-header .arrow {
+    -fx-background-color: -color-accent-fg;
+}
+
+/* Body cells */
+.app-table .table-cell {
+    -fx-alignment: center;
+    -fx-padding: 6 8;
+    -fx-text-fill: -color-fg-default;
+    -fx-border-color: transparent;
+}
+
+.app-table .table-row-cell {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-muted;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 44px;
+}
+
+.app-table .table-row-cell:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.app-table .table-row-cell:selected {
+    -fx-background-color: -color-accent-subtle;
+}
+
+/* Theme-aware drag-over highlight on a table row (drag-reorder) */
+.app-table .table-row-cell.drag-over {
+    -fx-background-color: -color-accent-subtle;
+}
+
+/* Empty-table placeholder */
+.app-table .placeholder .label {
+    -fx-text-fill: -color-fg-subtle;
+}

@@ -7,7 +7,6 @@ import dk.dtu.shared.Config;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
 
 import java.util.Comparator;
@@ -59,8 +58,6 @@ public final class Location {
 
         @Override
         public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-            ListCell<Helpers.ListEntry> cell = ctx.cell();
-
             TextField field = new TextField();
             field.setPromptText("Location");
             field.setAlignment(Pos.CENTER);
@@ -69,14 +66,14 @@ public final class Location {
             field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
-                Helpers.ListEntry item = cell.getItem();
+                Helpers.ListEntry item = ctx.currentItem().get();
                 field.setText(item != null ? safe(item.location) : "");
             };
 
-            field.setOnAction(evt -> commitList(cell, ctx, field, revert));
+            field.setOnAction(evt -> commitList(ctx, field, revert));
             field.focusedProperty().addListener((obs, oldVal, newVal) -> {
                 if (Boolean.FALSE.equals(newVal)) {
-                    commitList(cell, ctx, field, revert);
+                    commitList(ctx, field, revert);
                 }
             });
 
@@ -94,12 +91,11 @@ public final class Location {
         }
 
         private static void commitList(
-                ListCell<Helpers.ListEntry> cell,
                 ColumnCellContext<Helpers.ListEntry> ctx,
                 TextField field,
                 Runnable revert) {
 
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String desired = safe(field.getText()).trim();
@@ -160,8 +156,6 @@ public final class Location {
 
         @Override
         public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-            ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
             TextField field = new TextField();
             field.setPromptText("Location");
             field.setAlignment(Pos.CENTER);
@@ -170,14 +164,14 @@ public final class Location {
             field.setMaxWidth(prefWidth() - 10);
 
             Runnable revert = () -> {
-                Helpers.TaskEntry item = cell.getItem();
+                Helpers.TaskEntry item = ctx.currentItem().get();
                 field.setText(item != null ? safe(item.location) : "");
             };
 
-            field.setOnAction(evt -> commitTask(cell, ctx, field, revert));
+            field.setOnAction(evt -> commitTask(ctx, field, revert));
             field.focusedProperty().addListener((obs, oldVal, newVal) -> {
                 if (Boolean.FALSE.equals(newVal)) {
-                    commitTask(cell, ctx, field, revert);
+                    commitTask(ctx, field, revert);
                 }
             });
 
@@ -195,12 +189,11 @@ public final class Location {
         }
 
         private static void commitTask(
-                ListCell<Helpers.TaskEntry> cell,
                 ColumnCellContext<Helpers.TaskEntry> ctx,
                 TextField field,
                 Runnable revert) {
 
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String desired = safe(field.getText()).trim();

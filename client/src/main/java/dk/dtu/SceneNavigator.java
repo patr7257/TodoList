@@ -74,8 +74,12 @@ public class SceneNavigator {
         // Register connection error handler
         Config.setConnectionErrorHandler(this::handleConnectionError);
         
-        // Connect sidebar theme toggle to dark mode manager
-        sidebar.setOnThemeChange(() -> darkModeManager.toggleDarkMode());
+        // Connect sidebar theme toggle to dark mode manager, then match the
+        // native OS title bar to the new theme (Windows only; no-op elsewhere).
+        sidebar.setOnThemeChange(() -> {
+            darkModeManager.toggleDarkMode();
+            dk.dtu.ui.WindowChrome.applyDarkTitleBar(stage, darkModeManager.isDarkMode());
+        });
 
         // Back button always navigates history
         sidebar.setBackButtonAction(this::goBack);
@@ -283,6 +287,10 @@ public class SceneNavigator {
         
         stage.setTitle(title);
         stage.setScene(sceneWithSidebar);
+
+        // The HWND lookup keys on the stage title, which just changed, so
+        // re-apply the themed title bar to keep it correct across navigation.
+        dk.dtu.ui.WindowChrome.applyDarkTitleBar(stage, darkModeManager.isDarkMode());
     }
 
     private String buildWindowTitle(String viewTitle) {

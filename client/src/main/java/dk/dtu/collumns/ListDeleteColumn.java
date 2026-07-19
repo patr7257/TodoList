@@ -35,8 +35,6 @@ public class ListDeleteColumn implements Column<Helpers.ListEntry> {
 
     @Override
     public ColumnCell<Helpers.ListEntry> createCell(ColumnCellContext<Helpers.ListEntry> ctx) {
-        ListCell<Helpers.ListEntry> cell = ctx.cell();
-
         Button deleteButton = new Button();
         deleteButton.setPrefWidth(prefWidth());
         deleteButton.setMinWidth(prefWidth());
@@ -51,7 +49,7 @@ public class ListDeleteColumn implements Column<Helpers.ListEntry> {
         deleteButton.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
             evt.consume();
 
-            Helpers.ListEntry item = cell.getItem();
+            Helpers.ListEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);

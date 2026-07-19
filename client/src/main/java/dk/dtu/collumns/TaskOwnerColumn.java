@@ -44,8 +44,6 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
 
     @Override
     public ColumnCell<Helpers.TaskEntry> createCell(ColumnCellContext<Helpers.TaskEntry> ctx) {
-        ListCell<Helpers.TaskEntry> cell = ctx.cell();
-
         ComboBox<String> ownerCombo = new ComboBox<>();
         ownerCombo.setPrefWidth(prefWidth() - 10);
         ownerCombo.setMinWidth(prefWidth() - 10);
@@ -79,7 +77,7 @@ public class TaskOwnerColumn implements Column<Helpers.TaskEntry> {
         Users.loadUsersIntoComboBox(ownerCombo, Config.getUsersUri(), true);
 
         ownerCombo.setOnAction(evt -> {
-            Helpers.TaskEntry item = cell.getItem();
+            Helpers.TaskEntry item = ctx.currentItem().get();
             if (item == null) return;
 
             String newOwner = ownerCombo.getValue();

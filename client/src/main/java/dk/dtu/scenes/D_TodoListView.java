@@ -12,7 +12,10 @@ import dk.dtu.methods.Users;
 import dk.dtu.shared.Config;
 import dk.dtu.shared.TaskStatus;
 import dk.dtu.ui.Icons;
+import dk.dtu.ui.Tables;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -21,11 +24,9 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
-import javafx.util.Pair;
 
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class D_TodoListView {
 
@@ -44,7 +45,8 @@ public class D_TodoListView {
     private final String listId;
     private final String listName;
 
-    private final ListView<Helpers.TaskEntry> tasksView = new ListView<>();
+    // Backing items for the real TableView.
+    private final ObservableList<Helpers.TaskEntry> tableItems = FXCollections.observableArrayList();
     private List<Helpers.TaskEntry> allTasks = List.of();
 
     // Filters
@@ -59,14 +61,14 @@ public class D_TodoListView {
     private EmptyFilter descriptionFilter = EmptyFilter.ALL;
 
     // Column state
-    private final SortState<Helpers.TaskEntry> sortState = new SortState<>();
     private List<Column<Helpers.TaskEntry>> allTaskColumns;
 
-    // Header node reference (needed for column dialog + reapply)
-    private final HBox header = new HBox(COLUMN_GAP);
+    // The columns currently shown by the table (source of truth for the columns dialog).
+    private List<Column<Helpers.TaskEntry>> visibleTaskColumns;
 
-    // Scroll reference (needed for focus-scroll lock)
-    private final AtomicReference<ScrollPane> tableScrollRef = new AtomicReference<>();
+    // Swappable table slot: the columns dialog rebuilds the table into this container.
+    private final StackPane tableContainer = new StackPane();
+    private TableView<Helpers.TaskEntry> table;
 
     public D_TodoListView(SceneNavigator navigator, String listId, String listName) {
         this.navigator = navigator;
@@ -86,21 +88,14 @@ public class D_TodoListView {
 
         allTaskColumns = getAllTaskColumns();
 
-        header.setAlignment(Pos.CENTER_LEFT);
-        header.setMaxWidth(Double.MAX_VALUE);
-        header.getStyleClass().add("tasks-header");
+        VBox.setVgrow(tableContainer, javafx.scene.layout.Priority.ALWAYS);
+        tableContainer.setMaxWidth(Double.MAX_VALUE);
 
-        tasksView.setPrefHeight(400);
-        tasksView.setMaxWidth(Double.MAX_VALUE);
-        tasksView.getStyleClass().addAll("todolist-tasks", "list-view");
-
-        Runnable refreshTasks = this::reloadTasks;
-
-        // Apply default columns immediately
-        applyTaskColumns(header, tasksView, allTaskColumns, sortState, refreshTasks);
+        // Build the table with the default columns immediately.
+        rebuildTable(allTaskColumns);
 
         // Initial load
-        refreshTasks.run();
+        reloadTasks();
 
         // Apply per-list stored column settings async
         new Thread(() -> {
@@ -108,7 +103,7 @@ public class D_TodoListView {
                 String json = Lists.getTaskColumnsJsonForList(Config.getTodoListsUri(), listId);
                 List<String> ids = parseColumnIds(json);
                 List<Column<Helpers.TaskEntry>> desired = filterTaskColumnsByIds(allTaskColumns, ids);
-                Platform.runLater(() -> applyTaskColumns(header, tasksView, desired, sortState, refreshTasks));
+                Platform.runLater(() -> rebuildTable(desired));
             } catch (Exception ignored) {
                 // Keep default columns on error
             }
@@ -118,25 +113,73 @@ public class D_TodoListView {
         addTaskLink.getStyleClass().add("create-link");
         addTaskLink.setOnAction(e -> showCreateTaskDialog());
 
-        ScrollPane tableScroll = createScrollableTable(header, tasksView);
-        tableScrollRef.set(tableScroll);
-
         Region spacer = new Region();
         spacer.setMinHeight(8);
 
-        VBox root = new VBox(titleSection, spacer, tableScroll, addTaskLink);
+        VBox root = new VBox(titleSection, spacer, tableContainer, addTaskLink);
         root.setSpacing(10);
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
         root.setFillWidth(true);
         root.getStyleClass().add("todolist-root");
 
-        Scene scene = new Scene(root, 900, 600);
+        return new Scene(root, 900, 600);
+    }
 
-        // Fix: prevent focus-induced horizontal jump inside the scroll pane
-        lockHorizontalScrollOnFocus(scene, tableScroll);
+    // -----------------------------
+    // Build / rebuild the real TableView
+    // -----------------------------
+    private void rebuildTable(List<Column<Helpers.TaskEntry>> visibleColumns) {
+        this.visibleTaskColumns = visibleColumns;
 
-        return scene;
+        Runnable refreshTasks = this::reloadTasks;
+
+        Tables.Config<Helpers.TaskEntry> cfg = Tables.<Helpers.TaskEntry>config()
+                .idOf(e -> e.id)
+                .persistOrder(this::persistTaskOrder)
+                .tintStyle(e -> getTintColorForStatus(e.status))
+                .tintEnabled(SettingsDialog::isTintedRowsEnabled)
+                .contextMenu(this::buildRowMenu)
+                .refresh(refreshTasks);
+
+        table = Tables.build(visibleColumns, tableItems, cfg);
+        table.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(table, javafx.scene.layout.Priority.ALWAYS);
+
+        tableContainer.getChildren().setAll(table);
+    }
+
+    // Right-click row menu: "Rename task" for THAT entry.
+    private ContextMenu buildRowMenu(Helpers.TaskEntry entry) {
+        ContextMenu menu = new ContextMenu();
+        MenuItem renameItem = new MenuItem("Rename task");
+        renameItem.setOnAction(evt -> renameTask(entry));
+        menu.getItems().add(renameItem);
+        return menu;
+    }
+
+    private void renameTask(Helpers.TaskEntry item) {
+        if (item == null) return;
+
+        TextInputDialog dialog = new TextInputDialog(item.title);
+        dialog.setTitle("Rename Task");
+        dialog.setHeaderText("Rename task");
+        dialog.setContentText("New name:");
+
+        dialog.showAndWait().ifPresent(newTitle -> {
+            if (newTitle == null) return;
+            String trimmed = newTitle.trim();
+            if (trimmed.isBlank() || trimmed.equals(item.title)) return;
+
+            new Thread(() -> {
+                try {
+                    Tasks.renameTask(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, trimmed);
+                    Platform.runLater(this::reloadTasks);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }, "rename-task").start();
+        });
     }
 
     // -----------------------------
@@ -147,17 +190,17 @@ public class D_TodoListView {
     }
 
     private void reloadTasks() {
-        Helpers.TaskEntry selected = tasksView.getSelectionModel().getSelectedItem();
+        Helpers.TaskEntry selected = (table != null) ? table.getSelectionModel().getSelectedItem() : null;
         final String previouslySelectedId = (selected != null) ? selected.id : null;
 
         Tasks.loadTasksForList(Config.getTasksUri(), listId, entries -> {
             allTasks = (entries != null) ? entries : List.of();
             applyTaskFilters();
 
-            if (previouslySelectedId != null) {
-                for (Helpers.TaskEntry e : tasksView.getItems()) {
+            if (previouslySelectedId != null && table != null) {
+                for (Helpers.TaskEntry e : tableItems) {
                     if (e != null && previouslySelectedId.equals(e.id)) {
-                        tasksView.getSelectionModel().select(e);
+                        table.getSelectionModel().select(e);
                         break;
                     }
                 }
@@ -196,7 +239,7 @@ public class D_TodoListView {
             filtered.add(e);
         }
 
-        tasksView.getItems().setAll(filtered);
+        tableItems.setAll(filtered);
     }
 
     private static boolean matchesEmptyFilter(String value, EmptyFilter filter) {
@@ -471,293 +514,6 @@ public class D_TodoListView {
         return result;
     }
 
-    private void applyTaskColumns(
-            HBox header,
-            ListView<Helpers.TaskEntry> view,
-            List<Column<Helpers.TaskEntry>> visibleColumns,
-            SortState<Helpers.TaskEntry> sortState,
-            Runnable refreshTasks
-    ) {
-        Pair<List<Label>, Double> headerBuild = buildHeader(header, view, visibleColumns, sortState);
-        double tableWidth = headerBuild.getValue();
-
-        view.setMinWidth(tableWidth);
-        view.setPrefWidth(tableWidth);
-        view.setMaxWidth(Double.MAX_VALUE);
-
-        view.setCellFactory(lv -> buildTaskRowCell(visibleColumns, refreshTasks));
-        view.refresh();
-    }
-
-    private Pair<List<Label>, Double> buildHeader(
-            HBox header,
-            ListView<Helpers.TaskEntry> view,
-            List<Column<Helpers.TaskEntry>> visibleColumns,
-            SortState<Helpers.TaskEntry> sortState
-    ) {
-        List<javafx.scene.Node> headerNodes = new ArrayList<>();
-        List<Label> headerLabels = new ArrayList<>();
-
-        for (Column<Helpers.TaskEntry> col : visibleColumns) {
-            javafx.scene.Node headerNode = col.createHeader(new ColumnHeaderContext<>(
-                    view,
-                    requested -> sortState.requestSort(requested, view, headerLabels)
-            ));
-
-            if (headerNode instanceof Label l) {
-                l.setUserData(col);
-                headerLabels.add(l);
-            }
-
-            StackPane wrapper = wrapCellNode(headerNode, col.prefWidth(), PINNED_TITLE_ID.equals(col.id()));
-            headerNodes.add(wrapper);
-        }
-
-        header.getChildren().setAll(headerNodes);
-
-        double tableWidth = 0;
-        for (Column<Helpers.TaskEntry> col : visibleColumns) tableWidth += col.prefWidth();
-        tableWidth += header.getSpacing() * Math.max(0, visibleColumns.size() - 1);
-
-        header.setMinWidth(tableWidth);
-        header.setPrefWidth(tableWidth);
-        header.setMaxWidth(Double.MAX_VALUE);
-
-        return new Pair<>(headerLabels, tableWidth);
-    }
-
-    private ListCell<Helpers.TaskEntry> buildTaskRowCell(List<Column<Helpers.TaskEntry>> visibleColumns, Runnable refreshTasks) {
-        return new ListCell<>() {
-
-            private final HBox row;
-            private final List<ColumnCell<Helpers.TaskEntry>> cells;
-            private javafx.scene.Node reorderHandle;
-
-            {
-                cells = new ArrayList<>();
-                List<javafx.scene.Node> cellNodes = new ArrayList<>();
-
-                for (Column<Helpers.TaskEntry> col : visibleColumns) {
-                    ColumnCell<Helpers.TaskEntry> cellPart = col.createCell(new ColumnCellContext<>(this, refreshTasks));
-                    cells.add(cellPart);
-
-                    javafx.scene.Node node = cellPart.node();
-                    if (PINNED_REORDER_ID.equals(col.id())) reorderHandle = node;
-
-                    StackPane wrapper = wrapCellNode(node, col.prefWidth(), PINNED_TITLE_ID.equals(col.id()));
-                    cellNodes.add(wrapper);
-                }
-
-                row = new HBox(COLUMN_GAP, cellNodes.toArray(javafx.scene.Node[]::new));
-                row.setAlignment(Pos.CENTER_LEFT);
-
-                setupDragAndDrop();
-                setupContextMenu(refreshTasks);
-            }
-
-            private void setupDragAndDrop() {
-                if (reorderHandle != null) {
-                    reorderHandle.setOnDragDetected(evt -> {
-                        Helpers.TaskEntry item = getItem();
-                        if (item == null) return;
-
-                        Dragboard db = reorderHandle.startDragAndDrop(TransferMode.MOVE);
-                        ClipboardContent content = new ClipboardContent();
-                        content.putString(item.id);
-                        db.setContent(content);
-
-                        try { db.setDragView(row.snapshot(null, null)); } catch (Exception ignored) {}
-
-                        setOpacity(0.4);
-                        evt.consume();
-                    });
-                }
-
-                setOnDragDone(evt -> {
-                    setOpacity(1.0);
-                    row.getStyleClass().remove("drag-over");
-                });
-
-                setOnDragOver(evt -> {
-                    Dragboard db = evt.getDragboard();
-                    if (db.hasString()) evt.acceptTransferModes(TransferMode.MOVE);
-                    evt.consume();
-                });
-
-                setOnDragEntered(evt -> {
-                    if (evt.getGestureSource() == this) return;
-                    if (evt.getDragboard() != null && evt.getDragboard().hasString() && !isEmpty()) {
-                        if (!row.getStyleClass().contains("drag-over")) row.getStyleClass().add("drag-over");
-                    }
-                });
-
-                setOnDragExited(evt -> row.getStyleClass().remove("drag-over"));
-
-                setOnDragDropped(evt -> {
-                    Dragboard db = evt.getDragboard();
-                    if (!db.hasString()) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    ListView<Helpers.TaskEntry> view = getListView();
-                    if (view == null) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    String draggedId = db.getString();
-                    int draggedIdx = indexOfId(view.getItems(), draggedId);
-                    if (draggedIdx < 0) {
-                        evt.setDropCompleted(false);
-                        evt.consume();
-                        return;
-                    }
-
-                    int targetIdx = isEmpty() ? view.getItems().size() : Math.max(0, getIndex());
-                    Helpers.TaskEntry dragged = view.getItems().remove(draggedIdx);
-
-                    if (targetIdx > view.getItems().size()) targetIdx = view.getItems().size();
-                    if (targetIdx > draggedIdx) targetIdx--;
-
-                    view.getItems().add(targetIdx, dragged);
-                    view.getSelectionModel().select(dragged);
-
-                    evt.setDropCompleted(true);
-                    evt.consume();
-
-                    row.getStyleClass().remove("drag-over");
-                    persistTaskOrder(view.getItems());
-                });
-            }
-
-            private void setupContextMenu(Runnable refreshTasks) {
-                ContextMenu contextMenu = new ContextMenu();
-                MenuItem renameItem = new MenuItem("Rename task");
-                renameItem.setOnAction(evt -> renameTask(refreshTasks));
-                contextMenu.getItems().add(renameItem);
-                setContextMenu(contextMenu);
-            }
-
-            private void renameTask(Runnable refreshTasks) {
-                Helpers.TaskEntry item = getItem();
-                if (item == null) return;
-
-                TextInputDialog dialog = new TextInputDialog(item.title);
-                dialog.setTitle("Rename Task");
-                dialog.setHeaderText("Rename task");
-                dialog.setContentText("New name:");
-
-                dialog.showAndWait().ifPresent(newTitle -> {
-                    if (newTitle == null) return;
-                    String trimmed = newTitle.trim();
-                    if (trimmed.isBlank() || trimmed.equals(item.title)) return;
-
-                    new Thread(() -> {
-                        try {
-                            Tasks.renameTask(Config.getRequestsUri(), Config.getResponsesUri(), item.listId, item.id, trimmed);
-                            Platform.runLater(refreshTasks);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }, "rename-task").start();
-                });
-            }
-
-            @Override
-            protected void updateItem(Helpers.TaskEntry item, boolean empty) {
-                super.updateItem(item, empty);
-
-                if (empty || item == null) {
-                    setGraphic(null);
-                    setStyle("");
-                    return;
-                }
-
-                for (ColumnCell<Helpers.TaskEntry> c : cells) c.update(item);
-
-                setGraphic(row);
-
-                if (SettingsDialog.isTintedRowsEnabled() && item.status != null) {
-                    String css = getTintColorForStatus(item.status);
-                    setStyle(css);
-                } else {
-                    setStyle("");
-                }
-            }
-        };
-    }
-
-    private static StackPane wrapCellNode(javafx.scene.Node node, double prefWidth, boolean grow) {
-        StackPane wrapper = new StackPane(node);
-        wrapper.setAlignment(Pos.CENTER);
-
-        wrapper.setMinWidth(prefWidth);
-        wrapper.setPrefWidth(prefWidth);
-
-        if (grow) {
-            wrapper.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(wrapper, javafx.scene.layout.Priority.ALWAYS);
-            if (node instanceof Region r) r.setMaxWidth(Double.MAX_VALUE);
-        } else {
-            wrapper.setMaxWidth(prefWidth);
-        }
-        return wrapper;
-    }
-
-    private ScrollPane createScrollableTable(HBox header, ListView<Helpers.TaskEntry> tasksView) {
-        VBox content = new VBox(0, header, tasksView);
-        VBox.setVgrow(tasksView, javafx.scene.layout.Priority.ALWAYS);
-
-        double minTableWidth = header.getMinWidth();
-        content.setMinWidth(minTableWidth);
-
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setPannable(true);
-        scroll.setFitToWidth(false);
-        scroll.setFitToHeight(true);
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setStyle("-fx-background-color: transparent;");
-
-        scroll.viewportBoundsProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal == null) return;
-            content.setPrefWidth(Math.max(minTableWidth, newVal.getWidth()));
-        });
-
-        return scroll;
-    }
-
-    private void lockHorizontalScrollOnFocus(Scene scene, ScrollPane tableScroll) {
-        scene.focusOwnerProperty().addListener((obs, oldNode, newNode) -> {
-            if (newNode == null) return;
-            if (tableScroll.getContent() == null) return;
-            if (!isDescendantOf(newNode, tableScroll.getContent())) return;
-
-            double keepH = tableScroll.getHvalue();
-            Platform.runLater(() -> tableScroll.setHvalue(keepH));
-        });
-    }
-
-    private static boolean isDescendantOf(javafx.scene.Node node, javafx.scene.Node ancestor) {
-        javafx.scene.Node cur = node;
-        while (cur != null) {
-            if (cur == ancestor) return true;
-            cur = cur.getParent();
-        }
-        return false;
-    }
-
-    private static int indexOfId(List<Helpers.TaskEntry> items, String id) {
-        for (int i = 0; i < items.size(); i++) {
-            Helpers.TaskEntry e = items.get(i);
-            if (e != null && Objects.equals(e.id, id)) return i;
-        }
-        return -1;
-    }
-
     private void persistTaskOrder(List<Helpers.TaskEntry> ordered) {
         List<String> orderedIds = ordered.stream().map(e -> e.id).toList();
         new Thread(() -> {
@@ -775,18 +531,10 @@ public class D_TodoListView {
     private void showTaskColumnDialog() {
         List<Column<Helpers.TaskEntry>> all = this.allTaskColumns != null ? this.allTaskColumns : getAllTaskColumns();
 
-        // Determine current visible ids by inspecting the header wrappers' child Label userData (in order)
+        // Current visible ids come from the tracked visible columns, not header labels.
         List<String> current = new ArrayList<>();
-        for (javafx.scene.Node n : header.getChildren()) {
-            // header children are StackPane wrappers
-            if (!(n instanceof StackPane sp)) continue;
-            if (sp.getChildren().isEmpty()) continue;
-            javafx.scene.Node child = sp.getChildren().get(0);
-            if (child instanceof Label l && l.getUserData() instanceof Column<?> c) {
-                @SuppressWarnings("unchecked")
-                Column<Helpers.TaskEntry> col = (Column<Helpers.TaskEntry>) c;
-                current.add(col.id());
-            }
+        if (visibleTaskColumns != null) {
+            for (Column<Helpers.TaskEntry> col : visibleTaskColumns) current.add(col.id());
         }
         if (current.isEmpty()) {
             for (Column<Helpers.TaskEntry> col : all) current.add(col.id());
@@ -944,7 +692,7 @@ public class D_TodoListView {
                 try {
                     Lists.setTaskColumnsForList(Config.getRequestsUri(), Config.getResponsesUri(), listId, json);
                     List<Column<Helpers.TaskEntry>> desired = filterTaskColumnsByIds(all, selectedIds);
-                    Platform.runLater(() -> applyTaskColumns(header, tasksView, desired, sortState, this::reloadTasks));
+                    Platform.runLater(() -> rebuildTable(desired));
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }

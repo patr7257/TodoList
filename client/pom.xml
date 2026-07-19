@@ -41,6 +41,19 @@
             <artifactId>ikonli-feather-pack</artifactId>
             <version>12.3.1</version>
         </dependency>
+        <!-- JNA: call the Win32 DWM API so the native title bar can follow the
+             app's light/dark theme. Rides the classpath via copy-dependencies
+             into target/libs (non-modular app), so no jlink/jpackage changes. -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>5.14.0</version>
+        </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
