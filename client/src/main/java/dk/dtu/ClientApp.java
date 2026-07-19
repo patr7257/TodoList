@@ -18,6 +18,16 @@ public class ClientApp extends Application {
         // Set before the stage is shown so every window, including dialogs, picks it up.
         Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
 
+        // Default to the last server we successfully connected to, if any, so
+        // Config and the welcome screen's auto-connect pick it up below. An
+        // explicitly passed -Dtodolist.server.ip always wins over the saved value.
+        if (System.getProperty("todolist.server.ip") == null) {
+            ServerPrefs.savedIp().ifPresent(ip -> {
+                System.setProperty("todolist.server.ip", ip);
+                System.setProperty("todolist.port", Integer.toString(ServerPrefs.savedPort(Config.getPort())));
+            });
+        }
+
         // Set initial window size
         primaryStage.setWidth(970);
         primaryStage.setHeight(600);

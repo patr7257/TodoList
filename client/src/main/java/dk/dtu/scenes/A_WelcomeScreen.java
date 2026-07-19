@@ -3,6 +3,7 @@ package dk.dtu.scenes;
 import atlantafx.base.theme.Styles;
 import dk.dtu.ClientConnectDialog;
 import dk.dtu.SceneNavigator;
+import dk.dtu.ServerPrefs;
 import dk.dtu.shared.Config;
 import javafx.animation.FadeTransition;
 import javafx.geometry.Insets;
@@ -78,8 +79,54 @@ public class A_WelcomeScreen {
     ft.setFromValue(0);
     ft.setToValue(1);
     ft.play();
+
+    // Try the remembered (or default) server automatically, so the user isn't
+    // forced to click "Connect to Server" on every launch.
+    attemptAutoConnect();
+
     return scene;
 }
+
+	// Attempt a connection to the current effective server (remembered server, or
+	// the baked default) as soon as the welcome screen loads. Mirrors the dialog's
+	// connection test in handleConnect(), but is driven by Config instead of a
+	// dialog result, and stays quiet on failure since this is not a user action.
+	private void attemptAutoConnect() {
+		String ip = Config.getServerIp();
+		int port = Config.getPort();
+
+		connectionStatus.setText("Connecting to " + ip + ":" + port + "...");
+		setStatusClass("status-connecting");
+		connectButton.setDisable(true);
+
+		new Thread(() -> {
+			try {
+				org.jspace.RemoteSpace testSpace = new org.jspace.RemoteSpace(Config.getRequestsUri());
+
+				javafx.application.Platform.runLater(() -> {
+					isConnected = true;
+					connectionStatus.setText("Connected to " + ip + ":" + port);
+					setStatusClass("status-connected");
+					loginButton.setDisable(false);
+					connectButton.setDisable(false);
+					connectButton.setText("Change Server");
+
+					// Remember this server since the connection actually succeeded.
+					ServerPrefs.save(ip, port);
+
+					navigator.connectToServer();
+				});
+			} catch (Exception e) {
+				javafx.application.Platform.runLater(() -> {
+					isConnected = false;
+					connectionStatus.setText("Not connected to server");
+					setStatusClass("status-idle");
+					loginButton.setDisable(true);
+					connectButton.setDisable(false);
+				});
+			}
+		}, "auto-connect").start();
+	}
 
 	// Swap the single active semantic status class on the connection label
 	private void setStatusClass(String statusClass) {
@@ -117,7 +164,10 @@ public class A_WelcomeScreen {
 						loginButton.setDisable(false);
 						connectButton.setDisable(false);
 						connectButton.setText("Change Server");
-						
+
+						// Remember this server since the connection actually succeeded.
+						ServerPrefs.save(settings.serverIp(), settings.port());
+
 						// Start notification listener for this connection
 						navigator.connectToServer();
 					});
