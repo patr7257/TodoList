@@ -153,6 +153,39 @@ them to a GitHub Release.
   "Auto-fit columns" reflection into the TableView skin works in the packaged
   build (the same option is in `client/pom.xml` for `mvn javafx:run`).
 
+Release conventions (do not break these):
+- The version comes from the git tag: a `Compute version` step strips the
+  leading `v` and feeds it to `--app-version` AND `--java-options
+  -Dtodolist.version=...` (macOS rejects a leading-zero major, so the non-tag
+  fallback is `1.0.0`).
+- Each release also gets STABLE, versionless asset copies
+  (`TodoList-Client-Windows.msi`, `TodoList-Client-macOS.dmg`, and the server
+  ones) so `releases/latest/download/<name>` is a permanent URL the website and
+  the in-app updater rely on.
+- Client installers default their server host to the `TODOLIST_SERVER_HOST`
+  Actions repo variable (the runtime connect dialog still overrides).
+- `--win-upgrade-uuid` (client `c70294f3-...`, server `d4b1957b-...`) and
+  `--mac-package-identifier` are PERMANENT; changing one orphans installed
+  copies. App icon is `client/src/main/resources/Icons/appicon.{ico,png}`.
+
+## Hosting the server
+
+The server can run headless via `dk.dtu.ServerMain` (no JavaFX), which is how it
+is hosted. `Dockerfile` + `docker-compose.yml` build and run it; see
+`docs/HOSTING.md`. It is deployed on a Dokploy VPS and reachable ONLY over
+Tailscale (the app has no auth and no TLS), with the container port bound to the
+tailnet IP. `TODOLIST_DATA_DIR` maps to the property `todolist.data.dir`; state
+persists in a `/data` volume.
+
+## Auto-update
+
+The client checks for updates on launch (a dismissible banner) and via a
+Settings "Updates" tab (`dk.dtu.update.*`): it queries the public GitHub
+Releases API anonymously, compares the running version
+(`System.getProperty("todolist.version", "dev")`, so no nagging when run from
+source) to the latest tag, downloads the platform installer, and runs it
+(`msiexec /i` on Windows, `open` on macOS), upgrading in place.
+
 ## Notable conventions
 
 - Package root is `dk.dtu` for all three modules (`dk.dtu.shared.*` for the
