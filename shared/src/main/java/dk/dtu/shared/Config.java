@@ -20,6 +20,24 @@ public final class Config {
     public static final String DEFAULT_SERVER_IP = "127.0.0.1";
     public static final int DEFAULT_PORT = 9001;
     public static final String DEFAULT_SERVER_BIND_HOST = "0.0.0.0";
+
+    // HTTP API CONFIGURATION (client only)
+    // The JavaFX desktop client talks to the shared HTTP todo API instead of the
+    // legacy jSpace TCP transport. The base URL is runtime-configurable so the
+    // packaged app can point at any deployment:
+    // - System property:      -Dtodolist.api.url=<baseUrl>
+    // - Environment variable:  TODOLIST_API_URL
+    // Default is the public production API. The value is the origin only, with no
+    // trailing "/api/todo" path (the client appends that itself).
+    public static final String DEFAULT_API_BASE_URL = "https://api.todolist.patrickrobel.dk";
+
+    public static String getApiBaseUrl() {
+        String url = System.getProperty("todolist.api.url");
+        if (url == null || url.isBlank()) {
+            url = System.getenv("TODOLIST_API_URL");
+        }
+        return (url == null || url.isBlank()) ? DEFAULT_API_BASE_URL : url.trim();
+    }
     
     // DATA PERSISTENCE CONFIGURATION
     // Default data directory in user home folder (works for both development and MSI installations)

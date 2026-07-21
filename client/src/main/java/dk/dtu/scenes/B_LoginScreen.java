@@ -1,21 +1,27 @@
 package dk.dtu.scenes;
 
 import atlantafx.base.theme.Styles;
-import dk.dtu.shared.Config;
-import dk.dtu.MainUserConfig;
-import dk.dtu.methods.Users;
 import dk.dtu.SceneNavigator;
+import dk.dtu.ServerPrefs;
+import dk.dtu.net.ApiModels.LoginResponse;
+import dk.dtu.net.ApiSession;
+import dk.dtu.shared.Config;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
-import javafx.application.Platform;
 
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * Email + password login against the shared todo HTTP API. On success the
+ * bearer token is stored (in memory via {@link ApiSession} and persisted via
+ * {@link ServerPrefs} so a relaunch stays signed in), the state poller starts,
+ * and the app routes to the main menu.
+ */
 public class B_LoginScreen {
 
     private final SceneNavigator navigator;
@@ -25,197 +31,111 @@ public class B_LoginScreen {
     }
 
     public Scene createScene() {
-        Label title = new Label("Login");
+        Label title = new Label("Sign in");
         title.getStyleClass().add("login-title");
 
-        // Dynamically create main user buttons based on configuration
-        List<Button> mainUserButtons = new ArrayList<>();
-        List<String> mainUsers = MainUserConfig.getMainUsers();
-        
-        for (int i = 0; i < mainUsers.size(); i++) {
-            String username = mainUsers.get(i);
-            String color = (i == 0) ? MainUserConfig.getMainUser1Color() : MainUserConfig.getMainUser2Color();
-            
-            Button userButton = new Button(username);
-            // AtlantaFX accent button as the base, colored per the user's chosen color.
-            // The color is user data, so it stays an inline background on just this button;
-            // the rest of the look (radius, text color, sizing) comes from CSS classes.
-            userButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE, "main-user-button");
-            userButton.setMinWidth(220);
-            userButton.setMinHeight(80);
-            userButton.setStyle("-fx-background-color: " + color + ";");
+        Label serverLabel = new Label("Server: " + Config.getApiBaseUrl());
+        serverLabel.getStyleClass().add("settings-note");
 
-            userButton.setOnAction(e -> loginAsUser(username, userButton));
-            mainUserButtons.add(userButton);
-        }
+        TextField emailField = new TextField();
+        emailField.setPromptText("Email");
+        emailField.setPrefWidth(320);
+        emailField.setMaxWidth(320);
+        ServerPrefs.savedEmail().ifPresent(emailField::setText);
 
-        // Place main user buttons (1 or 2) side by side
-        HBox mainUserButtonContainer = new HBox(20);
-        mainUserButtonContainer.setAlignment(Pos.CENTER);
-        mainUserButtonContainer.getChildren().addAll(mainUserButtons);
-        
-        // Container box for main login section (title + user buttons)
-        VBox mainLoginBox = new VBox(20, title, mainUserButtonContainer);
-        mainLoginBox.setAlignment(Pos.CENTER);
-        mainLoginBox.getStyleClass().add("login-box");
-        mainLoginBox.setMaxWidth(600);
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+        passwordField.setPrefWidth(320);
+        passwordField.setMaxWidth(320);
 
-        // Action buttons section - only create and login as other
-        Button createUserButton = new Button("Create new user...");
-        createUserButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
-        createUserButton.setPrefWidth(250);
-        createUserButton.setOnAction(evt -> showCreateUserDialog(createUserButton));
+        Label errorLabel = new Label();
+        errorLabel.getStyleClass().add("status-error");
+        errorLabel.setWrapText(true);
+        errorLabel.setMaxWidth(320);
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
 
-        // "Login as other user" button
-        Button otherUserButton = new Button("Login as other user");
-        otherUserButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
-        otherUserButton.setPrefWidth(250);
-        otherUserButton.setOnAction(e -> showOtherUserDialog(otherUserButton));
+        Button signInButton = new Button("Sign in");
+        signInButton.setDefaultButton(true);
+        signInButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
+        signInButton.setPrefWidth(320);
 
-        VBox actionButtons = new VBox(12, createUserButton, otherUserButton);
-        actionButtons.setAlignment(Pos.CENTER);
+        Runnable submit = () -> attemptLogin(emailField, passwordField, errorLabel, signInButton);
+        signInButton.setOnAction(e -> submit.run());
+        passwordField.setOnAction(e -> submit.run());
 
-        VBox root = new VBox(30, mainLoginBox, actionButtons);
+        VBox box = new VBox(14, title, serverLabel, emailField, passwordField, errorLabel, signInButton);
+        box.setAlignment(Pos.CENTER);
+        box.getStyleClass().add("login-box");
+        box.setMaxWidth(420);
+
+        VBox root = new VBox(box);
         root.setAlignment(Pos.CENTER);
-        root.setFillWidth(false);  
+        root.setFillWidth(false);
         root.getStyleClass().add("login-root");
         root.setPadding(new Insets(40));
 
         return new Scene(root, 900, 600);
     }
 
-    private void loginAsUser(String username, Button button) {
-        button.setDisable(true);
+    private void attemptLogin(TextField emailField, PasswordField passwordField,
+                              Label errorLabel, Button signInButton) {
+        String email = emailField.getText() != null ? emailField.getText().trim() : "";
+        String password = passwordField.getText() != null ? passwordField.getText() : "";
+
+        if (email.isEmpty() || password.isEmpty()) {
+            showError(errorLabel, "Enter both email and password.");
+            return;
+        }
+
+        signInButton.setDisable(true);
+        signInButton.setText("Signing in...");
+        errorLabel.setVisible(false);
+        errorLabel.setManaged(false);
+
         new Thread(() -> {
             try {
-                Users.loginExistingUser(username, Config.getUsersUri(), (message) -> {
-                    navigator.setCurrentUser(username);
-                    navigator.showMainMenuWithMessage(message);
-                    Platform.runLater(() -> button.setDisable(false));
+                // Make sure the client points at the currently configured base URL.
+                ApiSession.get().configure(null);
+                LoginResponse res = ApiSession.get().login(email, password);
+                String name = (res.user() != null && res.user().name() != null)
+                        ? res.user().name() : email;
+
+                // Persist the session so a relaunch stays logged in.
+                ServerPrefs.saveApiBaseUrl(Config.getApiBaseUrl());
+                ServerPrefs.saveAuth(res.token(), email);
+
+                Platform.runLater(() -> {
+                    signInButton.setDisable(false);
+                    signInButton.setText("Sign in");
+                    navigator.setCurrentUser(name);
+                    navigator.connectToServer(); // start the state poller
+                    navigator.showMainMenuWithMessage("Logged in as " + name);
                 });
             } catch (Exception ex) {
-                Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Login Error");
-                    alert.setHeaderText("Could not login");
-                    alert.setContentText("User '" + username + "' does not exist in the system. Please create this user first.");
-                    alert.showAndWait();
-                    button.setDisable(false);
-                });
                 ex.printStackTrace();
+                Platform.runLater(() -> {
+                    signInButton.setDisable(false);
+                    signInButton.setText("Sign in");
+                    showError(errorLabel, friendlyError(ex));
+                });
             }
-        }, "login-main-user").start();
+        }, "api-login").start();
     }
 
-    private void showOtherUserDialog(Button triggerButton) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Login as Other User");
-        dialog.setHeaderText("Select a user to login");
-
-        // Tooltip explaining the star
-        Label infoLabel = new Label("ℹ Users with a * are main users");
-        infoLabel.getStyleClass().add("settings-note");
-
-        ComboBox<String> userComboBox = new ComboBox<>();
-        userComboBox.setPromptText("Select a user...");
-        userComboBox.setPrefWidth(300);
-        
-        // Load existing users into the combo box
-        Users.loadUsersIntoComboBox(userComboBox, Config.getUsersUri());
-
-        VBox content = new VBox(15, infoLabel, new Label("Choose user:"), userComboBox);
-        content.setAlignment(Pos.CENTER_LEFT);
-        content.setPadding(new Insets(15));
-        
-        dialog.getDialogPane().setContent(content);
-        
-        ButtonType loginBtn = new ButtonType("Login", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(loginBtn, ButtonType.CANCEL);
-
-        dialog.showAndWait().ifPresent(btn -> {
-            if (btn != loginBtn) return;
-            
-            String username = userComboBox.getValue();
-            if (username == null || username.isBlank()) return;
-            
-            // Strip star if present
-            username = username.replace(" *", "");
-
-            triggerButton.setDisable(true);
-            final String finalUsername = username;
-            new Thread(() -> {
-                try {
-                    Users.loginExistingUser(finalUsername, Config.getUsersUri(), (message) -> {
-                        navigator.setCurrentUser(finalUsername);
-                        navigator.showMainMenuWithMessage(message);
-                        Platform.runLater(() -> triggerButton.setDisable(false));
-                    });
-                } catch (Exception ex) {
-                    Platform.runLater(() -> triggerButton.setDisable(false));
-                    ex.printStackTrace();
-                }
-            }, "login-other-user").start();
-        });
+    private static String friendlyError(Exception ex) {
+        if (ex instanceof dk.dtu.net.ApiException api) {
+            if (api.isUnauthorized()) {
+                return "Invalid email or password.";
+            }
+            return "Sign in failed (server said HTTP " + api.status() + ").";
+        }
+        return "Could not reach the server. Check the server URL and your connection.";
     }
 
-    private void showCreateUserDialog(Button triggerButton) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Create new user");
-        dialog.setHeaderText("Create a new username (max 15 characters)");
-
-        TextField usernameField = new TextField();
-        usernameField.setPromptText("Enter new username");
-        usernameField.setPrefWidth(320);
-
-        usernameField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null && newValue.length() > 15) {
-                usernameField.setText(oldValue);
-            }
-        });
-
-        VBox content = new VBox(10, new Label("Username:"), usernameField);
-        content.setAlignment(Pos.CENTER_LEFT);
-        content.setPadding(new Insets(15));
-        dialog.getDialogPane().setContent(content);
-
-        ButtonType createAndLogin = new ButtonType("Create & Login", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(createAndLogin, ButtonType.CANCEL);
-
-        javafx.scene.Node okButton = dialog.getDialogPane().lookupButton(createAndLogin);
-        okButton.setDisable(true);
-
-        usernameField.textProperty().addListener((obs, oldVal, newVal) -> {
-            okButton.setDisable(newVal == null || newVal.trim().isBlank());
-        });
-
-        dialog.showAndWait().ifPresent(btn -> {
-            if (btn != createAndLogin) return;
-
-            String username = usernameField.getText() != null ? usernameField.getText().trim() : "";
-            if (username.isBlank()) return;
-
-            triggerButton.setDisable(true);
-            new Thread(() -> {
-                try {
-                    Users.createNewUser(username, Config.getUsersUri(), (message) -> {
-                        navigator.setCurrentUser(username);
-                        navigator.showMainMenuWithMessage(message);
-                        Platform.runLater(() -> triggerButton.setDisable(false));
-                    }, (error) -> {
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Error");
-                            alert.setHeaderText("Cannot create user");
-                            alert.setContentText(error);
-                            alert.showAndWait();
-                            triggerButton.setDisable(false);
-                        });
-                    });
-                } catch (Exception ex) {
-                    Platform.runLater(() -> triggerButton.setDisable(false));
-                    ex.printStackTrace();
-                }
-            }, "create-user").start();
-        });
+    private static void showError(Label errorLabel, String message) {
+        errorLabel.setText(message);
+        errorLabel.setVisible(true);
+        errorLabel.setManaged(true);
     }
 }

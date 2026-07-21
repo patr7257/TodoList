@@ -1,9 +1,11 @@
 package dk.dtu;
 
 import atlantafx.base.theme.PrimerLight;
-import dk.dtu.shared.Config;
+import dk.dtu.net.ApiSession;
 import javafx.application.Application;
 import javafx.stage.Stage;
+
+import java.util.Optional;
 
 // Main JavaFX application class
 public class ClientApp extends Application {
@@ -18,14 +20,10 @@ public class ClientApp extends Application {
         // Set before the stage is shown so every window, including dialogs, picks it up.
         Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
 
-        // Default to the last server we successfully connected to, if any, so
-        // Config and the welcome screen's auto-connect pick it up below. An
-        // explicitly passed -Dtodolist.server.ip always wins over the saved value.
-        if (System.getProperty("todolist.server.ip") == null) {
-            ServerPrefs.savedIp().ifPresent(ip -> {
-                System.setProperty("todolist.server.ip", ip);
-                System.setProperty("todolist.port", Integer.toString(ServerPrefs.savedPort(Config.getPort())));
-            });
+        // Default to the last API server we used, if any, so Config picks it up.
+        // An explicitly passed -Dtodolist.api.url always wins over the saved value.
+        if (System.getProperty("todolist.api.url") == null) {
+            ServerPrefs.savedApiBaseUrl().ifPresent(url -> System.setProperty("todolist.api.url", url));
         }
 
         // Set initial window size
@@ -34,9 +32,20 @@ public class ClientApp extends Application {
         primaryStage.setMinWidth(800);
         primaryStage.setMinHeight(500);
         
-        // Show welcome screen first (connection happens from there)
+        // Restore a persisted session if we have one, so a relaunch stays logged
+        // in; otherwise start at the welcome screen. An invalid/expired token is
+        // handled gracefully: the first state fetch returns 401 and routes back
+        // to the login screen via the auth-expired handler.
         SceneNavigator navigator = new SceneNavigator(primaryStage);
-        navigator.showWelcome();
+        Optional<String> savedToken = ServerPrefs.savedToken();
+        if (savedToken.isPresent()) {
+            ApiSession.get().configure(savedToken.get());
+            navigator.setCurrentUser(ServerPrefs.savedEmail().orElse("User"));
+            navigator.connectToServer();
+            navigator.showMainMenu();
+        } else {
+            navigator.showWelcome();
+        }
         
         // Handle application shutdown
         primaryStage.setOnCloseRequest(event -> {

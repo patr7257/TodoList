@@ -1,6 +1,8 @@
 package dk.dtu;
 
 import atlantafx.base.theme.Styles;
+import dk.dtu.net.ApiSession;
+import dk.dtu.net.StatePoller;
 import dk.dtu.shared.Config;
 import dk.dtu.scenes.A_WelcomeScreen;
 import dk.dtu.scenes.B_LoginScreen;
@@ -32,10 +34,13 @@ public class SceneNavigator {
 
     private static final String APP_TITLE = "TodoList Management System";
 
+    // How often the client polls GET /state for changes (the API has no push).
+    private static final long POLL_INTERVAL_MILLIS = 4000;
+
     private final Stage stage;
     private String currentUser;
-    private Thread notificationThread;
-    private NotificationListener notificationListener;
+    private Thread pollerThread;
+    private StatePoller poller;
 
     // References to current scene for auto-refresh
     private C_MainMenu currentMainMenu;
@@ -73,7 +78,10 @@ public class SceneNavigator {
         
         // Register connection error handler
         Config.setConnectionErrorHandler(this::handleConnectionError);
-        
+
+        // When the API rejects the session (401), force a re-login.
+        ApiSession.get().setOnAuthExpired(() -> Platform.runLater(this::showLogin));
+
         // Connect sidebar theme toggle to dark mode manager, then match the
         // native OS title bar to the new theme (Windows only; no-op elsewhere).
         sidebar.setOnThemeChange(() -> {
@@ -149,44 +157,45 @@ public class SceneNavigator {
         }
     }
 
-    // Start the notification listener thread (called after successful server connection)
+    // Start the state poller (called after a successful login). The HTTP API has
+    // no server push, so we periodically re-fetch and refresh the current view,
+    // mirroring the old "data changed -> refetch" behavior. Polling pauses while
+    // the window is not focused.
     public void connectToServer() {
-        // Stop any existing listener first
-        stopNotificationListener();
+        // Stop any existing poller first
+        stopPoller();
 
-        // Drop any pooled connections so they reopen against the current server
-        // (handles connecting to a different server) and refresh cached data.
-        dk.dtu.methods.Spaces.reset();
+        // (Re)point the API client at the current base URL + token, and refresh
+        // cached data so the next load re-fetches from the server.
+        ApiSession.get().configure(ApiSession.get().token());
         dk.dtu.methods.Users.invalidateUserCache();
 
-        System.out.println("[SceneNavigator] Starting notification listener for " + Config.getClientBaseUri());
-        notificationListener = new NotificationListener(
-                Config.getNotificationsUri(),
-                this::refreshCurrentView
-        );
-        notificationThread = new Thread(notificationListener, "notification-listener");
-        notificationThread.setDaemon(true);
-        notificationThread.start();
+        System.out.println("[SceneNavigator] Starting state poller for " + Config.getApiBaseUrl());
+        poller = new StatePoller(POLL_INTERVAL_MILLIS, this::refreshCurrentView, stage::isFocused);
+        pollerThread = new Thread(poller, "state-poller");
+        pollerThread.setDaemon(true);
+        pollerThread.start();
     }
-    
-    private void stopNotificationListener() {
-        if (notificationListener != null && notificationThread != null && notificationThread.isAlive()) {
-            System.out.println("[SceneNavigator] Stopping existing notification listener...");
-            notificationListener.stop();
+
+    private void stopPoller() {
+        if (poller != null && pollerThread != null && pollerThread.isAlive()) {
+            System.out.println("[SceneNavigator] Stopping existing state poller...");
+            poller.stop();
+            pollerThread.interrupt();
             try {
-                notificationThread.join(2000); // Wait up to 2 seconds
+                pollerThread.join(2000); // Wait up to 2 seconds
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.err.println("[SceneNavigator] Interrupted while stopping notification listener");
+                System.err.println("[SceneNavigator] Interrupted while stopping state poller");
             }
         }
     }
-    
+
     private void handleConnectionError(Exception e) {
         System.err.println("[SceneNavigator] Connection error detected: " + e.getMessage());
-        
-        // Stop notification listener since connection is lost
-        stopNotificationListener();
+
+        // Stop polling since the connection is lost
+        stopPoller();
         
         // Show error dialog on JavaFX thread
         javafx.application.Platform.runLater(() -> {
@@ -225,30 +234,10 @@ public class SceneNavigator {
 
     public void shutdown() {
         System.out.println("[SceneNavigator] Shutting down client...");
-        
-        // Stop notification listener first
-        stopNotificationListener();
-        
-        // Then notify server of disconnect
-        try {
-            org.jspace.RemoteSpace requests = new org.jspace.RemoteSpace(Config.getRequestsUri());
-            String requestId = java.util.UUID.randomUUID().toString();
-            requests.put(dk.dtu.shared.TupleSpaces.CMD_CLIENT_DISCONNECT,
-                    requestId,
-                    currentUser != null ? currentUser : "",
-                    "",
-                    "",
-                    "");
-        } catch (Exception e) {
-            // ignore
-        }
 
-        if (notificationListener != null) {
-            notificationListener.stop();
-        }
-        if (notificationThread != null) {
-            notificationThread.interrupt();
-        }
+        // Stop the poller. The session token is intentionally kept persisted so a
+        // relaunch stays logged in (a logout clears it explicitly).
+        stopPoller();
     }
 
     // Helper: always apply stylesheet + title in one place, and wrap content with sidebar
@@ -427,10 +416,15 @@ public class SceneNavigator {
     }
 
     private void renderLogin() {
+        // Entering the login screen ends any active session: stop polling and
+        // forget the token (the saved email is kept for convenience).
         if (currentUser != null) {
             System.out.println("Logged out: " + currentUser);
             currentUser = null;
         }
+        stopPoller();
+        ApiSession.get().logout();
+        ServerPrefs.clearAuth();
         currentMainMenu = null;
         currentTodoListView = null;
         sidebar.setColumnFilterButtonAction(null);

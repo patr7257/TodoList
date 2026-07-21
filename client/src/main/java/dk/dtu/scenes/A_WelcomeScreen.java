@@ -4,6 +4,8 @@ import atlantafx.base.theme.Styles;
 import dk.dtu.ClientConnectDialog;
 import dk.dtu.SceneNavigator;
 import dk.dtu.ServerPrefs;
+import dk.dtu.net.ApiSession;
+import dk.dtu.net.TodoApiClient;
 import dk.dtu.shared.Config;
 import dk.dtu.ui.Icons;
 import javafx.animation.FadeTransition;
@@ -20,7 +22,6 @@ import javafx.util.Duration;
 
 public class A_WelcomeScreen {
 	private final SceneNavigator navigator;
-	private boolean isConnected = false;
 	private Label connectionStatus;
 	private Button loginButton;
 	private Button connectButton;
@@ -46,34 +47,29 @@ public class A_WelcomeScreen {
     tagline.getStyleClass().add("welcome-tagline");
 
     // Connection status label
-    connectionStatus = new Label("Not connected to server");
+    connectionStatus = new Label("Checking server...");
     connectionStatus.getStyleClass().addAll("connection-status", "status-idle");
 
-    Label connectionNote = new Label("You must connect to the server before signing in.");
+    Label connectionNote = new Label("Sign in with your email and password to continue.");
     connectionNote.getStyleClass().add("welcome-note");
 
-    // Connect to Server button
-    connectButton = new Button("Connect to Server");
-    connectButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
+    // Change/choose API server button
+    connectButton = new Button("Change Server");
+    connectButton.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
     connectButton.setMinWidth(200);
     connectButton.setOnAction(e -> handleConnect());
 
-    // Sign in button (disabled until connected)
+    // Sign in button (always enabled; login validates against the API)
     loginButton = new Button("Sign in");
     loginButton.setDefaultButton(true);
-    loginButton.getStyleClass().addAll(Styles.BUTTON_OUTLINED, Styles.LARGE);
+    loginButton.getStyleClass().addAll(Styles.ACCENT, Styles.LARGE);
     loginButton.setMinWidth(200);
-    loginButton.setDisable(true);
     loginButton.setOnAction(e -> navigator.showLogin());
 
-    // NEW: group logo + title with tight spacing
     VBox headerBox = new VBox(5, logo, title);
     headerBox.setAlignment(Pos.CENTER);
 
-    // Content as a tidy, fixed-width centered column. A StackPane wrapper
-    // guarantees the column is centered in the scene regardless of how the
-    // outer BorderPane (sidebar) sizes the content region.
-    VBox column = new VBox(15, headerBox, connectionStatus, connectionNote, connectButton, loginButton, tagline);
+    VBox column = new VBox(15, headerBox, connectionStatus, connectionNote, loginButton, connectButton, tagline);
     column.setAlignment(Pos.CENTER);
     column.setFillWidth(false);
     column.setMaxWidth(560);
@@ -91,52 +87,32 @@ public class A_WelcomeScreen {
     ft.setToValue(1);
     ft.play();
 
-    // Try the remembered (or default) server automatically, so the user isn't
-    // forced to click "Connect to Server" on every launch.
-    attemptAutoConnect();
+    // Best-effort reachability probe (status only; does not block sign in).
+    probeServer();
 
     return scene;
 }
 
-	// Attempt a connection to the current effective server (remembered server, or
-	// the baked default) as soon as the welcome screen loads. Mirrors the dialog's
-	// connection test in handleConnect(), but is driven by Config instead of a
-	// dialog result, and stays quiet on failure since this is not a user action.
-	private void attemptAutoConnect() {
-		String ip = Config.getServerIp();
-		int port = Config.getPort();
-
-		connectionStatus.setText("Connecting to " + ip + ":" + port + "...");
+	// Background reachability probe against the configured API base URL. Purely
+	// informational: it never disables Sign in, since login itself validates the
+	// connection and credentials against the API.
+	private void probeServer() {
+		String baseUrl = Config.getApiBaseUrl();
+		connectionStatus.setText("Checking " + baseUrl + "...");
 		setStatusClass("status-connecting");
-		connectButton.setDisable(true);
 
 		new Thread(() -> {
-			try {
-				org.jspace.RemoteSpace testSpace = new org.jspace.RemoteSpace(Config.getRequestsUri());
-
-				javafx.application.Platform.runLater(() -> {
-					isConnected = true;
-					connectionStatus.setText("Connected to " + ip + ":" + port);
+			boolean reachable = new TodoApiClient(baseUrl, null).ping();
+			javafx.application.Platform.runLater(() -> {
+				if (reachable) {
+					connectionStatus.setText("Server: " + baseUrl);
 					setStatusClass("status-connected");
-					loginButton.setDisable(false);
-					connectButton.setDisable(false);
-					connectButton.setText("Change Server");
-
-					// Remember this server since the connection actually succeeded.
-					ServerPrefs.save(ip, port);
-
-					navigator.connectToServer();
-				});
-			} catch (Exception e) {
-				javafx.application.Platform.runLater(() -> {
-					isConnected = false;
-					connectionStatus.setText("Not connected to server");
+				} else {
+					connectionStatus.setText("Server not reachable: " + baseUrl + " (you can still try signing in)");
 					setStatusClass("status-idle");
-					loginButton.setDisable(true);
-					connectButton.setDisable(false);
-				});
-			}
-		}, "auto-connect").start();
+				}
+			});
+		}, "api-probe").start();
 	}
 
 	// Swap the single active semantic status class on the connection label
@@ -146,53 +122,16 @@ public class A_WelcomeScreen {
 	}
 
 	private void handleConnect() {
-		// Get the stage from the scene
 		Stage ownerStage = (Stage) connectButton.getScene().getWindow();
-		
-		ClientConnectDialog.ConnectionSettings settings = ClientConnectDialog.show(ownerStage);
+
+		ClientConnectDialog.ApiSettings settings = ClientConnectDialog.show(ownerStage);
 		if (settings != null) {
-			// Update system properties first
-			System.setProperty("todolist.server.ip", settings.serverIp());
-			System.setProperty("todolist.port", Integer.toString(settings.port()));
-			
-			// Show connecting status
-			connectionStatus.setText("Connecting to " + settings.serverIp() + ":" + settings.port() + "...");
-			setStatusClass("status-connecting");
-			connectButton.setDisable(true);
-			loginButton.setDisable(true);
-			
-			// Test connection in background thread
-			new Thread(() -> {
-				try {
-					// Try to create a RemoteSpace connection to verify server is reachable
-					org.jspace.RemoteSpace testSpace = new org.jspace.RemoteSpace(Config.getRequestsUri());
-					
-					// Connection successful - start notification listener
-					javafx.application.Platform.runLater(() -> {
-						isConnected = true;
-						connectionStatus.setText("Connected to " + settings.serverIp() + ":" + settings.port());
-						setStatusClass("status-connected");
-						loginButton.setDisable(false);
-						connectButton.setDisable(false);
-						connectButton.setText("Change Server");
-
-						// Remember this server since the connection actually succeeded.
-						ServerPrefs.save(settings.serverIp(), settings.port());
-
-						// Start notification listener for this connection
-						navigator.connectToServer();
-					});
-				} catch (Exception e) {
-					// Connection failed
-					javafx.application.Platform.runLater(() -> {
-						isConnected = false;
-						connectionStatus.setText("Connection failed: " + e.getMessage());
-						setStatusClass("status-error");
-						loginButton.setDisable(true);
-						connectButton.setDisable(false);
-					});
-				}
-			}, "connection-test").start();
+			// Point Config (system property) and the persisted prefs at the new URL,
+			// then rebuild the API client so subsequent calls hit it.
+			System.setProperty("todolist.api.url", settings.baseUrl());
+			ServerPrefs.saveApiBaseUrl(settings.baseUrl());
+			ApiSession.get().configure(ApiSession.get().token());
+			probeServer();
 		}
 	}
 }

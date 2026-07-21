@@ -1,72 +1,148 @@
 package dk.dtu.methods;
 
-import dk.dtu.shared.TupleSpaces;
-import org.jspace.ActualField;
-import org.jspace.FormalField;
-import org.jspace.RemoteSpace;
+import dk.dtu.net.ApiModels.ItemDto;
+import dk.dtu.net.ApiModels.ListDto;
+import dk.dtu.shared.Defaults;
 
-import java.util.UUID;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
-// Helper methods and data structures
+// Helper data structures and HTTP <-> UI mapping utilities.
+//
+// This used to build/await jSpace tuples. The client now talks to the shared
+// HTTP API (see dk.dtu.net), so the request plumbing is gone and Helpers just
+// carries the UI row types (ListEntry, TaskEntry) plus the mapping from the API
+// DTOs and the date conversions the UI expects.
 public class Helpers {
 
     private Helpers() {
     }
 
-    // Send request and wait for response. Reuses pooled connections (see Spaces)
-    // and serializes the put+get so the shared sockets stay correct. On a
-    // connection error it drops the cached sockets and retries once.
-    public static Object[] sendAndWaitForResponse(
-            String requestsUri,
-            String responsesUri,
-            String command,
-            String a1, String a2, String a3, String a4) throws Exception {
+    // The UI due-date column uses LocalDate.toString(), i.e. "yyyy-MM-dd".
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ISO_LOCAL_DATE;
 
+    // -- date conversions ------------------------------------------------------
+
+    /**
+     * Convert an API ISO-8601 instant (for example {@code 2026-07-20T00:00:00Z})
+     * to the "yyyy-MM-dd" string the desktop due-date column uses. Empty string
+     * when the instant is null/blank/unparseable.
+     */
+    public static String isoInstantToDate(String iso) {
+        if (iso == null || iso.isBlank()) {
+            return "";
+        }
         try {
-            return exchange(requestsUri, responsesUri, command, a1, a2, a3, a4);
-        } catch (Exception first) {
-            // A stale/dropped pooled socket: reconnect and try one more time.
-            Spaces.invalidate(requestsUri);
-            Spaces.invalidate(responsesUri);
-            return exchange(requestsUri, responsesUri, command, a1, a2, a3, a4);
+            Instant instant = Instant.parse(iso);
+            return DATE.format(instant.atZone(ZoneOffset.UTC).toLocalDate());
+        } catch (Exception e) {
+            // Some servers may already return a plain date; keep the first 10 chars.
+            return iso.length() >= 10 ? iso.substring(0, 10) : iso;
         }
     }
 
-    private static Object[] exchange(
-            String requestsUri, String responsesUri, String command,
-            String a1, String a2, String a3, String a4) throws Exception {
-
-        String requestId = UUID.randomUUID().toString();
-        synchronized (Spaces.IO_LOCK) {
-            RemoteSpace requests = Spaces.get(requestsUri);
-            RemoteSpace responses = Spaces.get(responsesUri);
-            requests.put(command, requestId, a1, a2, a3, a4);
-            return waitForOk(responses, requestId);
+    /**
+     * Convert a "yyyy-MM-dd" date string to an ISO-8601 instant at UTC midnight
+     * (for example {@code 2026-07-20T00:00:00Z}), which the API accepts. Returns
+     * null when the input is blank (the API treats null as "no due date").
+     */
+    public static String dateToIsoInstant(String date) {
+        if (date == null || date.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate d = LocalDate.parse(date.trim());
+            return DateTimeFormatter.ISO_INSTANT.format(d.atStartOfDay(ZoneOffset.UTC).toInstant());
+        } catch (Exception e) {
+            // Already an instant or another accepted form: pass through unchanged.
+            return date.trim();
         }
     }
 
-    // Wait for response and validate it's OK (not ERROR)
-    private static Object[] waitForOk(RemoteSpace responses, String requestId) throws Exception {
-        Object[] tuple = responses.get(
-                new FormalField(Object.class),
-                new ActualField(requestId),
-                new FormalField(Object.class),
-                new FormalField(Object.class),
-                new FormalField(Object.class),
-                new FormalField(Object.class));
+    // -- DTO -> UI mapping -----------------------------------------------------
 
-        Object code = tuple[0];
+    /** Map an API list (with its items) to the list-overview row. */
+    public static ListEntry toListEntry(ListDto l) {
+        int priority = l.priority() != null ? l.priority() : Defaults.PRIORITY;
+        int year = l.year() != null ? l.year() : Defaults.YEAR;
+        int completion = l.completionPercentage() != null ? l.completionPercentage() : 0;
 
-        if (TupleSpaces.RESP_OK.equals(code)) {
-            return tuple;
+        int taskCount = 0;
+        int overdueCount = 0;
+        LocalDate today = LocalDate.now();
+        if (l.items() != null) {
+            taskCount = l.items().size();
+            for (ItemDto it : l.items()) {
+                if (it == null) {
+                    continue;
+                }
+                String due = isoInstantToDate(it.dueAt());
+                if (!due.isBlank() && !"DONE".equals(it.status())) {
+                    try {
+                        if (LocalDate.parse(due).isBefore(today)) {
+                            overdueCount++;
+                        }
+                    } catch (Exception ignored) {
+                        // skip unparseable dates
+                    }
+                }
+            }
         }
 
-        if (TupleSpaces.RESP_ERROR.equals(code)) {
-            String msg = tuple[2] != null ? tuple[2].toString() : "unknown error";
-            throw new RuntimeException("Server error: " + msg);
-        }
+        return new ListEntry(
+                l.id(),
+                l.name(),
+                safe(l.owner()),
+                l.taskColumnsJson() != null ? l.taskColumnsJson() : "",
+                priority,
+                year,
+                l.sort(),
+                safe(l.location()),
+                safe(l.description()),
+                completion,
+                taskCount,
+                overdueCount);
+    }
 
-        throw new RuntimeException("Unexpected response code: " + code);
+    /** Map an API item to the task row (owner column shows the assignee name). */
+    public static TaskEntry toTaskEntry(ItemDto it) {
+        int priority = it.priority() != null ? it.priority() : Defaults.PRIORITY;
+        int year = it.year() != null ? it.year() : Defaults.YEAR;
+        return new TaskEntry(
+                it.listId(),
+                it.id(),
+                it.text(),
+                safe(it.assigneeName()),
+                it.status(),
+                isoInstantToDate(it.dueAt()),
+                priority,
+                year,
+                it.sort(),
+                safe(it.location()),
+                safe(it.description()));
+    }
+
+    /** All items of a list mapped to task rows, ordered by their sort field. */
+    public static List<TaskEntry> toTaskEntries(ListDto l) {
+        List<TaskEntry> out = new ArrayList<>();
+        if (l != null && l.items() != null) {
+            List<ItemDto> items = new ArrayList<>(l.items());
+            items.sort((a, b) -> Integer.compare(a.sort(), b.sort()));
+            for (ItemDto it : items) {
+                if (it != null) {
+                    out.add(toTaskEntry(it));
+                }
+            }
+        }
+        return out;
+    }
+
+    private static String safe(String s) {
+        return s != null ? s : "";
     }
 
     // Represents a todo list entry with ID and name

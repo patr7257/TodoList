@@ -1,121 +1,54 @@
 package dk.dtu.methods;
 
-import dk.dtu.shared.Config;
-import dk.dtu.shared.TupleSpaces;
-import org.jspace.RemoteSpace;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import dk.dtu.net.ApiModels.StateResponse;
+import dk.dtu.net.ApiSession;
 
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * Client-side methods for exporting and importing session data
+ * Client-side data export/import.
+ *
+ * <p>With the HTTP API there is no server-side session file to export/import.
+ * Export therefore writes a client-side snapshot of GET /state to a JSON file
+ * (useful for backups/inspection). Import has no bulk endpoint on the API and
+ * is reported as unsupported.
  */
 public class DataManagement {
-    
-    /**
-     * Export session data to a file
-     * @param requestsUri URI for requests space
-     * @param responsesUri URI for responses space
-     * @param filePath Path to export file
-     * @param onSuccess Callback on success
-     * @param onError Callback on error
-     */
+
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+
     public static void exportSession(String requestsUri, String responsesUri, String filePath,
                                      Callback onSuccess, Callback onError) {
         try {
-            String requestId = UUID.randomUUID().toString();
-
-            Object[] responseData;
-            synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
-                // Send export request
-                dk.dtu.methods.Spaces.get(requestsUri).put(TupleSpaces.CMD_EXPORT_SESSION, requestId, filePath, "", "", "");
-
-                // Wait for response
-                responseData = dk.dtu.methods.Spaces.get(responsesUri).get(
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.ActualField(requestId),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class));
+            StateResponse state = ApiSession.get().fetchState();
+            String json = GSON.toJson(state);
+            Files.write(Path.of(filePath), json.getBytes(StandardCharsets.UTF_8));
+            if (onSuccess != null) {
+                onSuccess.invoke("Exported current server state to " + filePath);
             }
-
-            String status = (String) responseData[0];
-            String message = (String) responseData[2];
-            
-            if (TupleSpaces.RESP_OK.equals(status)) {
-                if (onSuccess != null) {
-                    onSuccess.invoke(message);
-                }
-            } else {
-                if (onError != null) {
-                    onError.invoke(message);
-                }
-            }
-            
         } catch (Exception e) {
+            e.printStackTrace();
+            ApiSession.get().reportError(e);
             if (onError != null) {
                 onError.invoke("Export failed: " + e.getMessage());
             }
-            e.printStackTrace();
-            if (Config.isConnectionError(e)) {
-                Config.handleConnectionError(e);
-            }
         }
     }
-    
-    /**
-     * Import session data from a file
-     * @param requestsUri URI for requests space
-     * @param responsesUri URI for responses space
-     * @param filePath Path to import file
-     * @param mode Import mode ("replace" or "merge")
-     * @param onSuccess Callback on success
-     * @param onError Callback on error
-     */
+
     public static void importSession(String requestsUri, String responsesUri, String filePath, String mode,
                                      Callback onSuccess, Callback onError) {
-        try {
-            String requestId = UUID.randomUUID().toString();
-
-            Object[] responseData;
-            synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
-                // Send import request with mode parameter
-                dk.dtu.methods.Spaces.get(requestsUri).put(TupleSpaces.CMD_IMPORT_SESSION, requestId, filePath, mode, "", "");
-
-                // Wait for response
-                responseData = dk.dtu.methods.Spaces.get(responsesUri).get(
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.ActualField(requestId),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class),
-                        new org.jspace.FormalField(String.class));
-            }
-
-            String status = (String) responseData[0];
-            String message = (String) responseData[2];
-            
-            if (TupleSpaces.RESP_OK.equals(status)) {
-                if (onSuccess != null) {
-                    onSuccess.invoke(message);
-                }
-            } else {
-                if (onError != null) {
-                    onError.invoke(message);
-                }
-            }
-            
-        } catch (Exception e) {
-            if (onError != null) {
-                onError.invoke("Import failed: " + e.getMessage());
-            }
-            e.printStackTrace();
-            if (Config.isConnectionError(e)) {
-                Config.handleConnectionError(e);
-            }
+        // The shared API has no bulk import endpoint; importing would need to
+        // replay individual create calls, which is out of scope here.
+        if (onError != null) {
+            onError.invoke("Importing is not supported when connected to the shared API server. "
+                    + "Add or edit lists and tasks directly instead.");
         }
     }
-    
+
     /**
      * Callback interface for async operations
      */

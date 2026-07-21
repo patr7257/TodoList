@@ -1,200 +1,105 @@
 package dk.dtu;
 
 import atlantafx.base.theme.Styles;
+import dk.dtu.net.TodoApiClient;
 import dk.dtu.shared.Config;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.*;
-
+/**
+ * Dialog for choosing the todo API server the client connects to. Replaces the
+ * old jSpace IP/port + network-scan dialog: the client now speaks HTTP, so all
+ * that is needed is the API base URL (origin), for example
+ * {@code https://api.todolist.patrickrobel.dk}. Includes a best-effort "Test"
+ * that pings the API without needing valid credentials.
+ */
 public final class ClientConnectDialog {
 
-    public record ConnectionSettings(String serverIp, int port) {}
+    /** The chosen API origin (no trailing /api/todo). */
+    public record ApiSettings(String baseUrl) {}
 
     private ClientConnectDialog() {}
 
-    public static ConnectionSettings show(Stage owner) {
+    public static ApiSettings show(Stage owner) {
         Stage stage = new Stage();
-        stage.setTitle("Connect to TodoList Server");
+        stage.setTitle("Connect to TodoList API");
         stage.initOwner(owner);
         stage.initModality(Modality.APPLICATION_MODAL);
 
-        // The current effective server (remembered server, or the baked default):
-        // prefills Manual IP + port below, and decides the default mode.
-        String currentIp = Config.getServerIp();
-        int currentPort = Config.getPort();
-        boolean currentIsLocalhost = currentIp == null || currentIp.isBlank()
-                || currentIp.equalsIgnoreCase("127.0.0.1") || currentIp.equalsIgnoreCase("localhost");
+        Label heading = new Label("Server API base URL");
+        heading.getStyleClass().add("settings-section-title");
 
-        // Mode selection (match server dialog)
-        ToggleGroup group = new ToggleGroup();
-        RadioButton localhostMode = new RadioButton("Localhost");
-        RadioButton scanMode = new RadioButton("Network");
-        RadioButton manualMode = new RadioButton("Manual");
-        localhostMode.setToggleGroup(group);
-        scanMode.setToggleGroup(group);
-        manualMode.setToggleGroup(group);
-        // Default to Manual when the current server isn't localhost, so the
-        // remembered address is already the one selected.
-        if (currentIsLocalhost) {
-            localhostMode.setSelected(true);
-        } else {
-            manualMode.setSelected(true);
-        }
+        TextField urlField = new TextField(Config.getApiBaseUrl());
+        urlField.setPromptText("https://api.todolist.patrickrobel.dk");
+        urlField.setPrefWidth(420);
 
-        // IP selection (match server dialog)
-        ComboBox<String> ipCombo = new ComboBox<>();
-        ipCombo.setEditable(false);
-        ipCombo.setPrefWidth(240);
-        ipCombo.getItems().add("127.0.0.1");
-        ipCombo.getSelectionModel().selectFirst();
-
-        Button scanButton = new Button("Rescan");
-        scanButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
-        scanButton.setDisable(true);
-
-        TextField manualIpField = new TextField(currentIsLocalhost ? "" : currentIp);
-        manualIpField.setPromptText("e.g. 192.168.1.25");
-        manualIpField.setPrefWidth(240);
-        manualIpField.setDisable(true);
-
-        // Port field (same behavior as server)
-        TextField portField = new TextField(Integer.toString(currentPort));
-        portField.setPrefWidth(90);
-        portField.textProperty().addListener((obs, oldV, newV) -> {
-            if (newV == null) return;
-            if (!newV.matches("\\d*")) {
-                portField.setText(newV.replaceAll("[^\\d]", ""));
-            }
-        });
+        Label note = new Label("Enter the API origin (without the /api/todo path). "
+                + "The default is the public production server.");
+        note.getStyleClass().add("settings-note");
+        note.setWrapText(true);
 
         Label statusLabel = new Label("");
         statusLabel.getStyleClass().add("status-label");
 
-        Label connectPreview = new Label("");
-        connectPreview.getStyleClass().add("connect-info-label");
+        Button testButton = new Button("Test");
+        testButton.getStyleClass().add(Styles.BUTTON_OUTLINED);
 
-        Button connectBtn = new Button("Connect");
+        Button connectBtn = new Button("Save");
         connectBtn.getStyleClass().add(Styles.SUCCESS);
 
         Button cancelBtn = new Button("Cancel");
         cancelBtn.getStyleClass().add(Styles.BUTTON_OUTLINED);
 
-        // Layout (match server dialog structure)
-        HBox modeRow = new HBox(15, new Label("Mode:"), localhostMode, scanMode, manualMode);
-        modeRow.setAlignment(Pos.CENTER_LEFT);
-
-        HBox hostRow = new HBox(10,
-                new Label("Server IP:"),
-                ipCombo,
-                manualIpField,
-                scanButton,
-                new Label("Port:"),
-                portField);
-        hostRow.setAlignment(Pos.CENTER_LEFT);
-
-        HBox buttonsRow = new HBox(12, connectBtn, cancelBtn);
-        buttonsRow.setAlignment(Pos.CENTER_RIGHT);
-
-        VBox root = new VBox(15, modeRow, hostRow, statusLabel, connectPreview, buttonsRow);
-
-        // IMPORTANT:
-        // - Do NOT add padding here (config-panel CSS already has padding)
-        // - Make panel stretch to fill the window
-        root.getStyleClass().add("config-panel");
-        root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-
-        // Outer background layer (themed by AtlantaFX so it follows light/dark)
-        StackPane container = new StackPane(root);
-        container.setStyle("-fx-background-color: -color-bg-default;");
-        container.setPadding(Insets.EMPTY); // remove outer whitespace
-        StackPane.setAlignment(root, Pos.CENTER);
-
-        Runnable updatePreview = () -> {
-            String ip;
-            if (localhostMode.isSelected()) {
-                ip = "127.0.0.1";
-            } else if (scanMode.isSelected()) {
-                ip = ipCombo.getValue();
-            } else {
-                ip = manualIpField.getText() != null ? manualIpField.getText().trim() : "";
-            }
-
-            Integer port = parsePort(portField.getText());
-            boolean ok = ip != null && !ip.isBlank() && port != null;
-
-            connectBtn.setDisable(!ok);
-            connectPreview.setText(ok ? ("Connect to: tcp://" + ip + ":" + port + "/") : "");
-        };
-
-        Runnable updateModeUi = () -> {
-            boolean isScan = scanMode.isSelected();
-            boolean isManual = manualMode.isSelected();
-
-            ipCombo.setDisable(isManual);
-            scanButton.setDisable(!isScan);
-            manualIpField.setDisable(!isManual);
-
-            if (isScan && ipCombo.getItems().size() <= 1) {
-                scanButton.fire();
-            }
-
-            updatePreview.run();
-        };
-
-        scanButton.setOnAction(e -> {
-            statusLabel.setText("Scanning network interfaces...");
-            List<String> ips = scanLocalIPv4s();
-            if (ips.isEmpty()) {
-                statusLabel.setText("No network interfaces found");
+        testButton.setOnAction(e -> {
+            String url = urlField.getText() != null ? urlField.getText().trim() : "";
+            if (url.isBlank()) {
+                statusLabel.setText("Enter a URL first.");
                 return;
             }
-
-            if (!ips.contains("127.0.0.1")) {
-                ips.add(0, "127.0.0.1");
-            }
-
-            ipCombo.getItems().setAll(ips);
-
-            String recommended = ips.stream()
-                    .filter(x -> !Objects.equals(x, "127.0.0.1"))
-                    .findFirst()
-                    .orElse("127.0.0.1");
-            ipCombo.getSelectionModel().select(recommended);
-
-            statusLabel.setText("Found " + ips.size() + " network interface(s). Recommended: " + recommended);
-            updatePreview.run();
+            statusLabel.setText("Testing " + url + "...");
+            testButton.setDisable(true);
+            new Thread(() -> {
+                boolean reachable = new TodoApiClient(url, null).ping();
+                Platform.runLater(() -> {
+                    testButton.setDisable(false);
+                    statusLabel.setText(reachable
+                            ? "Server reachable."
+                            : "Could not reach the server (you can still save and try signing in).");
+                });
+            }, "api-test").start();
         });
 
-        group.selectedToggleProperty().addListener((obs, oldT, newT) -> updateModeUi.run());
-        ipCombo.valueProperty().addListener((obs, o, n) -> updatePreview.run());
-        manualIpField.textProperty().addListener((obs, o, n) -> updatePreview.run());
-        portField.textProperty().addListener((obs, o, n) -> updatePreview.run());
+        HBox buttonsRow = new HBox(12, testButton, connectBtn, cancelBtn);
+        buttonsRow.setAlignment(Pos.CENTER_RIGHT);
 
-        final ConnectionSettings[] result = new ConnectionSettings[1];
+        VBox root = new VBox(15, heading, urlField, note, statusLabel, buttonsRow);
+        root.getStyleClass().add("config-panel");
+        root.setPadding(new Insets(24));
+        root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        StackPane container = new StackPane(root);
+        container.setStyle("-fx-background-color: -color-bg-default;");
+        StackPane.setAlignment(root, Pos.CENTER);
+
+        final ApiSettings[] result = new ApiSettings[1];
 
         connectBtn.setOnAction(e -> {
-            String ip;
-            if (localhostMode.isSelected()) {
-                ip = "127.0.0.1";
-            } else if (scanMode.isSelected()) {
-                ip = ipCombo.getValue();
-            } else {
-                ip = manualIpField.getText() != null ? manualIpField.getText().trim() : "";
+            String url = urlField.getText() != null ? urlField.getText().trim() : "";
+            if (url.isBlank()) {
+                statusLabel.setText("Enter a URL first.");
+                return;
             }
-
-            Integer port = parsePort(portField.getText());
-            if (ip == null || ip.isBlank() || port == null) return;
-
-            result[0] = new ConnectionSettings(ip.trim(), port);
+            result[0] = new ApiSettings(url);
             stage.close();
         });
 
@@ -205,93 +110,13 @@ public final class ClientConnectDialog {
 
         stage.setOnCloseRequest(e -> result[0] = null);
 
-        Scene scene = new Scene(container, 900, 300);
-
-        // Apply the brand overlay for the current theme (light/dark warm tokens)
+        Scene scene = new Scene(container, 620, 300);
         DarkModeManager.applyBrand(scene.getStylesheets());
-
         stage.setScene(scene);
-        stage.setMinWidth(900);
+        stage.setMinWidth(620);
         stage.setMinHeight(300);
 
-        updateModeUi.run();
         stage.showAndWait();
-
         return result[0];
-    }
-
-    private static Integer parsePort(String text) {
-        if (text == null || text.isBlank()) return null;
-        try {
-            int port = Integer.parseInt(text.trim());
-            return (port >= 1 && port <= 65535) ? port : null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static List<String> scanLocalIPv4s() {
-        List<IpCandidate> candidates = new ArrayList<>();
-        try {
-            Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
-            if (ifaces == null) return List.of();
-
-            while (ifaces.hasMoreElements()) {
-                NetworkInterface ni = ifaces.nextElement();
-                try {
-                    if (!ni.isUp() || ni.isLoopback()) continue;
-                } catch (Exception ignored) {
-                    continue;
-                }
-
-                Enumeration<InetAddress> addrs = ni.getInetAddresses();
-                while (addrs.hasMoreElements()) {
-                    InetAddress addr = addrs.nextElement();
-                    if (addr instanceof Inet4Address) {
-                        String ip = addr.getHostAddress();
-                        if (ip == null || ip.isBlank()) continue;
-                        candidates.add(new IpCandidate(ip, ni.getName(), ni.getDisplayName()));
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        candidates.sort((a, b) -> Integer.compare(rankInterface(b), rankInterface(a)));
-
-        List<String> results = new ArrayList<>();
-        for (IpCandidate c : candidates) {
-            if (!results.contains(c.ip)) results.add(c.ip);
-        }
-        return results;
-    }
-
-    private static int rankInterface(IpCandidate c) {
-        String n = (c.ifaceName + " " + c.ifaceDisplayName).toLowerCase();
-
-        int score = 0;
-
-        if (n.contains("wi-fi") || n.contains("wifi") || n.contains("wireless") || n.contains("wlan")) score += 100;
-        if (n.contains("ethernet") || n.contains("lan")) score += 80;
-
-        if (n.contains("virtual") || n.contains("vmware") || n.contains("vbox") || n.contains("virtualbox")) score -= 120;
-        if (n.contains("host-only") || n.contains("hostonly")) score -= 120;
-        if (n.contains("tunnel") || n.contains("teredo") || n.contains("isatap")) score -= 150;
-        if (n.contains("hyper-v") || n.contains("hyperv")) score -= 120;
-        if (n.contains("vpn") || n.contains("wireguard") || n.contains("tailscale") || n.contains("hamachi")) score -= 60;
-
-        return score;
-    }
-
-    private static class IpCandidate {
-        final String ip;
-        final String ifaceName;
-        final String ifaceDisplayName;
-
-        IpCandidate(String ip, String ifaceName, String ifaceDisplayName) {
-            this.ip = ip;
-            this.ifaceName = ifaceName != null ? ifaceName : "";
-            this.ifaceDisplayName = ifaceDisplayName != null ? ifaceDisplayName : "";
-        }
     }
 }

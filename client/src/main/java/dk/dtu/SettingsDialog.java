@@ -18,8 +18,6 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import org.jspace.FormalField;
-import org.jspace.RemoteSpace;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -355,17 +353,10 @@ public class SettingsDialog extends Dialog<ButtonType> {
     private void loadUsersIntoListView(ListView<String> listView) {
         new Thread(() -> {
             try {
-                List<Object[]> tuplesResult;
-                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
-                    tuplesResult = dk.dtu.methods.Spaces.get(Config.getUsersUri()).queryAll(new FormalField(String.class));
-                }
-                if (tuplesResult == null) {
-                    tuplesResult = java.util.Collections.emptyList();
-                }
+                List<String> users = Users.getUsersCached(Config.getUsersUri());
 
                 List<String> usernames = new ArrayList<>();
-                for (Object[] t : tuplesResult) {
-                    String username = (String) t[0];
+                for (String username : users) {
                     // Add star to main users
                     if (MainUserConfig.isMainUser(username)) {
                         usernames.add(username + " *");
@@ -373,32 +364,19 @@ public class SettingsDialog extends Dialog<ButtonType> {
                         usernames.add(username);
                     }
                 }
-                
-                Platform.runLater(() -> {
-                    listView.getItems().setAll(usernames);
-                });
+
+                Platform.runLater(() -> listView.getItems().setAll(usernames));
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }, "load-users-list").start();
     }
-    
+
     private void loadUsersIntoCombo(ComboBox<String> combo) {
         new Thread(() -> {
             try {
-                List<Object[]> tuplesResult;
-                synchronized (dk.dtu.methods.Spaces.IO_LOCK) {
-                    tuplesResult = dk.dtu.methods.Spaces.get(Config.getUsersUri()).queryAll(new FormalField(String.class));
-                }
-                if (tuplesResult == null) {
-                    tuplesResult = java.util.Collections.emptyList();
-                }
+                List<String> usernames = new ArrayList<>(Users.getUsersCached(Config.getUsersUri()));
 
-                List<String> usernames = new ArrayList<>();
-                for (Object[] t : tuplesResult) {
-                    usernames.add((String) t[0]);
-                }
-                
                 String currentValue = combo.getValue();
                 Platform.runLater(() -> {
                     combo.getItems().setAll(usernames);
