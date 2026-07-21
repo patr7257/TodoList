@@ -2,8 +2,10 @@ package dk.dtu.scenes;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import dk.dtu.DarkModeManager;
 import dk.dtu.SceneNavigator;
 import dk.dtu.SettingsDialog;
+import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
 import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
@@ -36,6 +38,11 @@ public class D_TodoListView {
 
     private static final Gson GSON = new Gson();
     private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
+
+    // View id for the tasks view's per-user-global state (column widths, sort,
+    // and filters). The per-list visible-columns choice is stored separately per
+    // list via Lists.setTaskColumnsForList / getTaskColumnsJsonForList.
+    private static final String VIEW_ID = "tasks";
 
     private static final String PINNED_REORDER_ID = "reorder";
     private static final String PINNED_TITLE_ID = "title";
@@ -90,6 +97,10 @@ public class D_TodoListView {
 
         VBox.setVgrow(tableContainer, javafx.scene.layout.Priority.ALWAYS);
         tableContainer.setMaxWidth(Double.MAX_VALUE);
+
+        // Restore saved filters (per user) before the first load so the initial
+        // fetch renders already filtered the way the user left it.
+        restoreFilters(ViewPrefs.load(VIEW_ID).filters);
 
         // Build the table with the default columns immediately.
         rebuildTable(allTaskColumns);
@@ -155,7 +166,72 @@ public class D_TodoListView {
         table.setMaxWidth(Double.MAX_VALUE);
         VBox.setVgrow(table, javafx.scene.layout.Priority.ALWAYS);
 
+        // Restore saved column widths + sort, then wire auto-save (resize, header
+        // reorder, sort) so every change persists. Restore runs before binding so
+        // it does not echo back as a save.
+        List<String> knownIds = getAllTaskColumns().stream().map(Column::id).toList();
+        ViewPrefs.ViewState state = ViewPrefs.load(VIEW_ID).sanitized(knownIds);
+        Tables.applyState(table, state.widths, state.sortColumn, state.sortAscending);
+        Tables.bindAutoSave(table, this::persistTableState);
+
         tableContainer.getChildren().setAll(table);
+    }
+
+    /**
+     * Persist the tasks view state after a change: column widths + sort go to the
+     * per-user-global "tasks" profile; the current column order (visibility +
+     * order) goes to this list's local column store.
+     */
+    private void persistTableState() {
+        if (table == null) return;
+        ViewPrefs.ViewState s = ViewPrefs.load(VIEW_ID);
+        s.widths = Tables.columnWidths(table);
+        s.sortColumn = Tables.sortColumnId(table);
+        s.sortAscending = Tables.sortAscending(table);
+        ViewPrefs.save(VIEW_ID, s);
+
+        List<String> orderedIds = ensurePinnedTaskColumnOrder(Tables.columnOrder(table));
+        try {
+            Lists.setTaskColumnsForList(Config.getRequestsUri(), Config.getResponsesUri(),
+                    listId, GSON.toJson(orderedIds));
+        } catch (Exception ignored) {
+            // local write; ignore failures rather than break the view
+        }
+    }
+
+    // -----------------------------
+    // Filter persistence (per user, tasks view)
+    // -----------------------------
+
+    private void saveFilters() {
+        ViewPrefs.ViewState s = ViewPrefs.load(VIEW_ID);
+        s.filters = captureFilters();
+        ViewPrefs.save(VIEW_ID, s);
+    }
+
+    private Map<String, String> captureFilters() {
+        Map<String, String> f = new LinkedHashMap<>();
+        f.put("owner", ownerFilter == null ? "All" : ownerFilter);
+        f.put("year", yearFilter == null ? "" : Integer.toString(yearFilter));
+        f.put("priority", priorityFilter == null ? "" : Integer.toString(priorityFilter));
+        f.put("status", statusFilter == null ? "" : statusFilter.name());
+        f.put("title", titleFilter.name());
+        f.put("dueDate", dueDateFilter.name());
+        f.put("location", locationFilter.name());
+        f.put("description", descriptionFilter.name());
+        return f;
+    }
+
+    private void restoreFilters(Map<String, String> f) {
+        if (f == null || f.isEmpty()) return;
+        ownerFilter = f.getOrDefault("owner", "All");
+        yearFilter = Helpers.parseIntOrNull(f.get("year"));
+        priorityFilter = Helpers.parseIntOrNull(f.get("priority"));
+        statusFilter = Helpers.parseEnum(TaskStatus.class, f.get("status"), null);
+        titleFilter = Helpers.parseEnum(EmptyFilter.class, f.get("title"), EmptyFilter.ALL);
+        dueDateFilter = Helpers.parseEnum(EmptyFilter.class, f.get("dueDate"), EmptyFilter.ALL);
+        locationFilter = Helpers.parseEnum(EmptyFilter.class, f.get("location"), EmptyFilter.ALL);
+        descriptionFilter = Helpers.parseEnum(EmptyFilter.class, f.get("description"), EmptyFilter.ALL);
     }
 
     // Right-click row menu: "Rename task" for THAT entry.
@@ -171,6 +247,7 @@ public class D_TodoListView {
         if (item == null) return;
 
         TextInputDialog dialog = new TextInputDialog(item.title);
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(tableContainer));
         dialog.setTitle("Rename Task");
         dialog.setHeaderText("Rename task");
         dialog.setContentText("New name:");
@@ -269,6 +346,7 @@ public class D_TodoListView {
     // -----------------------------
     public void openFilterDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(tableContainer));
         dialog.setTitle("Filter tasks");
 
         final double FILTER_CONTROL_WIDTH = 240;
@@ -367,6 +445,7 @@ public class D_TodoListView {
                 locationFilter = EmptyFilter.ALL;
                 descriptionFilter = EmptyFilter.ALL;
                 applyTaskFilters();
+                saveFilters();
                 return;
             }
             if (btn != apply) return;
@@ -422,6 +501,7 @@ public class D_TodoListView {
             };
 
             applyTaskFilters();
+            saveFilters();
         });
     }
 
@@ -430,6 +510,7 @@ public class D_TodoListView {
     // -----------------------------
     private void showCreateTaskDialog() {
         TextInputDialog dialog = new TextInputDialog();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(tableContainer));
         dialog.setTitle("Add New Task");
         dialog.setHeaderText("Enter a description for the new task:");
         dialog.setContentText("Task:");
@@ -554,6 +635,7 @@ public class D_TodoListView {
         current = ensurePinnedTaskColumnOrder(current);
 
         Dialog<ButtonType> dialog = new Dialog<>();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(tableContainer));
         dialog.setTitle("Choose columns");
         dialog.setHeaderText("Select which columns to show for this list");
 

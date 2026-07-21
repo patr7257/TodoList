@@ -20,7 +20,13 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.paint.Color;
 
+import javafx.animation.PauseTransition;
+import javafx.collections.ListChangeListener;
+import javafx.util.Duration;
+
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -86,6 +92,9 @@ public final class Tables {
 
     private static <T> TableColumn<T, T> buildColumn(Column<T> column, Config<T> cfg) {
         TableColumn<T, T> tc = new TableColumn<>(column.title());
+        // The column id travels with the TableColumn so saved view state (widths,
+        // sort, order) can be matched back to the right column across rebuilds.
+        tc.setUserData(column.id());
         tc.setCellValueFactory(cd -> new ReadOnlyObjectWrapper<>(cd.getValue()));
 
         boolean fixed = "reorder".equals(column.id()) || "delete".equals(column.id());
@@ -308,5 +317,110 @@ public final class Tables {
             if (id.equals(idOf.apply(items.get(i)))) return i;
         }
         return -1;
+    }
+
+    // -------------------------------------------------------------------------
+    // View-state helpers (persisted column widths, sort, and order)
+    // -------------------------------------------------------------------------
+
+    /** The column id carried in a TableColumn's user data, or null. */
+    public static String columnId(TableColumn<?, ?> tc) {
+        return (tc != null && tc.getUserData() instanceof String s) ? s : null;
+    }
+
+    /** Current column order, top-level columns only, by id (nulls skipped). */
+    public static List<String> columnOrder(TableView<?> table) {
+        List<String> ids = new java.util.ArrayList<>();
+        if (table != null) {
+            for (TableColumn<?, ?> tc : table.getColumns()) {
+                String id = columnId(tc);
+                if (id != null) ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /** Current widths of resizable columns, keyed by id. */
+    public static Map<String, Double> columnWidths(TableView<?> table) {
+        Map<String, Double> widths = new LinkedHashMap<>();
+        if (table != null) {
+            for (TableColumn<?, ?> tc : table.getColumns()) {
+                String id = columnId(tc);
+                if (id != null && tc.isResizable() && tc.getWidth() > 0) {
+                    widths.put(id, tc.getWidth());
+                }
+            }
+        }
+        return widths;
+    }
+
+    /** The id of the primary sort column, or null when nothing is sorted. */
+    public static String sortColumnId(TableView<?> table) {
+        if (table == null || table.getSortOrder().isEmpty()) return null;
+        return columnId(table.getSortOrder().get(0));
+    }
+
+    /** Whether the primary sort column is ascending (true when unsorted). */
+    public static boolean sortAscending(TableView<?> table) {
+        if (table == null || table.getSortOrder().isEmpty()) return true;
+        return table.getSortOrder().get(0).getSortType() == TableColumn.SortType.ASCENDING;
+    }
+
+    /**
+     * Restore saved widths + sort onto an already-built table. Unknown ids are
+     * ignored. Call BEFORE attaching auto-save listeners so restoring does not
+     * echo back as a save.
+     */
+    public static <S> void applyState(TableView<S> table, Map<String, Double> widths,
+                                      String sortColumnId, boolean ascending) {
+        if (table == null) return;
+        try {
+            if (widths != null && !widths.isEmpty()) {
+                for (TableColumn<S, ?> tc : table.getColumns()) {
+                    String id = columnId(tc);
+                    Double w = (id == null) ? null : widths.get(id);
+                    if (w != null && w > 0 && tc.isResizable()) {
+                        tc.setPrefWidth(w);
+                    }
+                }
+            }
+            table.getSortOrder().clear();
+            if (sortColumnId != null) {
+                for (TableColumn<S, ?> tc : table.getColumns()) {
+                    if (sortColumnId.equals(columnId(tc)) && tc.isSortable()) {
+                        tc.setSortType(ascending ? TableColumn.SortType.ASCENDING
+                                : TableColumn.SortType.DESCENDING);
+                        table.getSortOrder().setAll(tc);
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+            // never let restore break the view
+        }
+    }
+
+    /**
+     * Persist changes automatically: column reorder (header drag) and sort
+     * changes fire {@code onChange} immediately; width changes are debounced so a
+     * drag-resize writes once it settles. Auto-fit, which sets widths, therefore
+     * also persists. Attach AFTER {@link #applyState}.
+     */
+    public static void bindAutoSave(TableView<?> table, Runnable onChange) {
+        if (table == null || onChange == null) return;
+
+        PauseTransition widthDebounce = new PauseTransition(Duration.millis(400));
+        widthDebounce.setOnFinished(e -> onChange.run());
+
+        // A ListChangeListener<TableColumn<?,?>> is a valid ? super listener for
+        // the column / sort-order lists, so no unchecked cast is needed.
+        ListChangeListener<TableColumn<?, ?>> colListener = c -> onChange.run();
+        table.getColumns().addListener(colListener);
+        table.getSortOrder().addListener(colListener);
+
+        for (TableColumn<?, ?> tc : table.getColumns()) {
+            tc.widthProperty().addListener((obs, oldV, newV) -> widthDebounce.playFromStart());
+            tc.sortTypeProperty().addListener((obs, oldV, newV) -> onChange.run());
+        }
     }
 }

@@ -1,5 +1,6 @@
 package dk.dtu.methods;
 
+import dk.dtu.ViewPrefs;
 import dk.dtu.net.ApiModels.ListDto;
 import dk.dtu.net.ApiModels.StateResponse;
 import dk.dtu.net.ApiSession;
@@ -12,7 +13,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.prefs.Preferences;
 
 /**
  * Service for todo-list operations, backed by the shared HTTP API.
@@ -32,8 +32,9 @@ public class Lists {
 
     private Lists() {}
 
-    private static final Preferences COLUMN_PREFS = Preferences.userNodeForPackage(Lists.class);
-    private static final String COLUMN_KEY_PREFIX = "taskColumns.";
+    // Per-list visible-column choice is a local, per-user view preference stored
+    // through ViewPrefs (the single view-state store) under this view id prefix.
+    private static final String COLUMN_VIEW_PREFIX = "tasks.cols:";
 
     public static void loadTodoLists(ListView<Helpers.ListEntry> listsView, String todoListsUri) {
         loadTodoLists(todoListsUri, entries -> listsView.getItems().setAll(entries));
@@ -117,10 +118,10 @@ public class Lists {
         patchList(listId, "owner", null); // sent as JSON null to clear the owner
     }
 
-    /** Per-list visible-column choice. Stored locally (view preference). */
+    /** Per-list visible-column choice. Stored locally per user (view preference). */
     public static void setTaskColumnsForList(String requestsUri, String responsesUri, String listId, String taskColumnsJson) throws Exception {
         requireId(listId);
-        COLUMN_PREFS.put(COLUMN_KEY_PREFIX + listId, taskColumnsJson != null ? taskColumnsJson : "");
+        ViewPrefs.putString(COLUMN_VIEW_PREFIX + listId, taskColumnsJson != null ? taskColumnsJson : "");
     }
 
     public static void createTodoList(String requestsUri, String responsesUri, String listName, String owner) throws Exception {
@@ -142,7 +143,7 @@ public class Lists {
      */
     public static String getTaskColumnsJsonForList(String todoListsUri, String listId) throws Exception {
         requireId(listId);
-        String local = COLUMN_PREFS.get(COLUMN_KEY_PREFIX + listId, "");
+        String local = ViewPrefs.getString(COLUMN_VIEW_PREFIX + listId, "");
         if (local != null && !local.isBlank()) {
             return local;
         }

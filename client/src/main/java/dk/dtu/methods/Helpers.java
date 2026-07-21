@@ -25,6 +25,32 @@ public class Helpers {
     // The UI due-date column uses LocalDate.toString(), i.e. "yyyy-MM-dd".
     private static final DateTimeFormatter DATE = DateTimeFormatter.ISO_LOCAL_DATE;
 
+    // -- small parse helpers (used by persisted view-state filters) ------------
+
+    /** Parse an int, or null when the text is blank/unparseable. */
+    public static Integer parseIntOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Parse an enum constant by name, falling back to {@code def} on any miss. */
+    public static <E extends Enum<E>> E parseEnum(Class<E> type, String name, E def) {
+        if (type == null || name == null || name.isBlank()) {
+            return def;
+        }
+        try {
+            return Enum.valueOf(type, name.trim());
+        } catch (IllegalArgumentException e) {
+            return def;
+        }
+    }
+
     // -- date conversions ------------------------------------------------------
 
     /**

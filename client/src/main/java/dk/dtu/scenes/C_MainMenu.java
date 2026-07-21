@@ -1,8 +1,8 @@
 package dk.dtu.scenes;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import dk.dtu.DarkModeManager;
 import dk.dtu.SceneNavigator;
+import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
 import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
@@ -24,9 +24,7 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 
-import java.lang.reflect.Type;
 import java.util.*;
-import java.util.prefs.Preferences;
 
 public class C_MainMenu {
 
@@ -34,9 +32,8 @@ public class C_MainMenu {
     private enum YesNoFilter { ALL, YES, NO }
     private enum CompletionFilter { ALL, COMPLETED, NOT_COMPLETED }
 
-    private static final Gson GSON = new Gson();
-    private static final Type STRING_LIST_TYPE = new TypeToken<List<String>>() {}.getType();
-    private static final String PREF_LIST_COLUMNS_JSON = "mainMenu.listColumnsJson";
+    // View id for this view's persisted state (columns, widths, sort, filters).
+    private static final String VIEW_ID = "lists";
 
     private static final String PINNED_REORDER_ID = "reorder";
     private static final String PINNED_NAME_ID = "name";
@@ -96,6 +93,13 @@ public class C_MainMenu {
         table = Tables.build(getVisibleListColumns(), tableItems, cfg);
         VBox.setVgrow(table, javafx.scene.layout.Priority.ALWAYS);
 
+        // Restore saved column widths + sort, restore filters, then wire auto-save
+        // so any later change (resize, reorder, sort, filter) persists immediately.
+        ViewPrefs.ViewState state = loadState();
+        Tables.applyState(table, state.widths, state.sortColumn, state.sortAscending);
+        restoreFilters(state.filters);
+        Tables.bindAutoSave(table, this::persistTableState);
+
         // Load lists once initially
         refreshLists.run();
 
@@ -140,6 +144,7 @@ public class C_MainMenu {
         if (item == null) return;
 
         TextInputDialog dialog = new TextInputDialog(item.name);
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(table));
         dialog.setTitle("Rename List");
         dialog.setHeaderText("Rename list");
         dialog.setContentText("New name:");
@@ -200,6 +205,7 @@ public class C_MainMenu {
 
     private void showCreateListDialog() {
         TextInputDialog dialog = new TextInputDialog();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(table));
         dialog.setTitle("Create New To Do List");
         dialog.setHeaderText("Enter name for the new list:");
         dialog.setContentText("Name:");
@@ -302,6 +308,7 @@ public class C_MainMenu {
 
     public void openFilterDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(table));
         dialog.setTitle("Filter lists");
 
         ComboBox<String> nameCombo = new ComboBox<>();
@@ -427,6 +434,7 @@ public class C_MainMenu {
                 hasTasksFilter = YesNoFilter.ALL;
                 overdueFilter = YesNoFilter.ALL;
                 applyListFilters();
+                saveFilters();
                 return;
             }
             if (btn != apply) return;
@@ -489,6 +497,7 @@ public class C_MainMenu {
             };
 
             applyListFilters();
+            saveFilters();
         });
     }
 
@@ -542,25 +551,70 @@ public class C_MainMenu {
         return result;
     }
 
+    // -----------------------------
+    // Per-user view-state persistence (columns, widths, sort, filters)
+    // -----------------------------
+
+    private ViewPrefs.ViewState loadState() {
+        List<String> knownIds = getAllListColumns().stream().map(Column::id).toList();
+        return ViewPrefs.load(VIEW_ID).sanitized(knownIds);
+    }
+
     private List<String> loadListColumnIds() {
-        Preferences prefs = Preferences.userNodeForPackage(C_MainMenu.class);
-        String json = prefs.get(PREF_LIST_COLUMNS_JSON, "");
-
+        List<String> stored = loadState().columns;
         List<String> defaultIds = getAllListColumns().stream().map(Column::id).toList();
-        if (json == null || json.isBlank()) return ensurePinnedColumnOrder(defaultIds);
-
-        try {
-            List<String> parsed = GSON.fromJson(json, STRING_LIST_TYPE);
-            if (parsed == null || parsed.isEmpty()) return ensurePinnedColumnOrder(defaultIds);
-            return ensurePinnedColumnOrder(parsed);
-        } catch (Exception e) {
-            return ensurePinnedColumnOrder(defaultIds);
-        }
+        if (stored == null || stored.isEmpty()) return ensurePinnedColumnOrder(defaultIds);
+        return ensurePinnedColumnOrder(stored);
     }
 
     private void saveListColumnIds(List<String> ids) {
-        Preferences prefs = Preferences.userNodeForPackage(C_MainMenu.class);
-        prefs.put(PREF_LIST_COLUMNS_JSON, GSON.toJson(ensurePinnedColumnOrder(ids)));
+        ViewPrefs.ViewState s = ViewPrefs.load(VIEW_ID);
+        s.columns = ensurePinnedColumnOrder(ids);
+        ViewPrefs.save(VIEW_ID, s);
+    }
+
+    /** Persist current column order + widths + sort (filters left untouched). */
+    private void persistTableState() {
+        if (table == null) return;
+        ViewPrefs.ViewState s = ViewPrefs.load(VIEW_ID);
+        s.columns = ensurePinnedColumnOrder(Tables.columnOrder(table));
+        s.widths = Tables.columnWidths(table);
+        s.sortColumn = Tables.sortColumnId(table);
+        s.sortAscending = Tables.sortAscending(table);
+        ViewPrefs.save(VIEW_ID, s);
+    }
+
+    private void saveFilters() {
+        ViewPrefs.ViewState s = ViewPrefs.load(VIEW_ID);
+        s.filters = captureFilters();
+        ViewPrefs.save(VIEW_ID, s);
+    }
+
+    private Map<String, String> captureFilters() {
+        Map<String, String> f = new LinkedHashMap<>();
+        f.put("owner", ownerFilter == null ? "All" : ownerFilter);
+        f.put("year", yearFilter == null ? "" : Integer.toString(yearFilter));
+        f.put("priority", priorityFilter == null ? "" : Integer.toString(priorityFilter));
+        f.put("completion", completionFilter.name());
+        f.put("name", nameFilter.name());
+        f.put("location", locationFilter.name());
+        f.put("description", descriptionFilter.name());
+        f.put("hasTasks", hasTasksFilter.name());
+        f.put("overdue", overdueFilter.name());
+        return f;
+    }
+
+    private void restoreFilters(Map<String, String> f) {
+        if (f == null || f.isEmpty()) return;
+        ownerFilter = f.getOrDefault("owner", "All");
+        yearFilter = Helpers.parseIntOrNull(f.get("year"));
+        priorityFilter = Helpers.parseIntOrNull(f.get("priority"));
+        completionFilter = Helpers.parseEnum(CompletionFilter.class, f.get("completion"), CompletionFilter.ALL);
+        nameFilter = Helpers.parseEnum(EmptyFilter.class, f.get("name"), EmptyFilter.ALL);
+        locationFilter = Helpers.parseEnum(EmptyFilter.class, f.get("location"), EmptyFilter.ALL);
+        descriptionFilter = Helpers.parseEnum(EmptyFilter.class, f.get("description"), EmptyFilter.ALL);
+        hasTasksFilter = Helpers.parseEnum(YesNoFilter.class, f.get("hasTasks"), YesNoFilter.ALL);
+        overdueFilter = Helpers.parseEnum(YesNoFilter.class, f.get("overdue"), YesNoFilter.ALL);
     }
 
     private List<String> ensurePinnedColumnOrder(List<String> ids) {
@@ -590,6 +644,7 @@ public class C_MainMenu {
 
     private void showListColumnDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(table));
         dialog.setTitle("Choose columns");
         dialog.setHeaderText("Select which columns to show in the list overview");
 

@@ -10,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -108,10 +109,16 @@ public class Sidebar extends VBox {
         return button;
     }
     
+    /** Owner + window-modality + brand/dark styling for a dialog or alert. */
+    private void prepare(Dialog<?> dialog) {
+        DarkModeManager.prepareDialog(dialog, DarkModeManager.windowOf(this));
+    }
+
     private void showHomeDialog() {
         if (navigator.getCurrentUser() != null) {
             // User is logged in - show options dialog
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            prepare(alert);
             alert.setTitle("Home Options");
             alert.setHeaderText("Choose an action");
             alert.setContentText("What would you like to do?");
@@ -151,6 +158,7 @@ public class Sidebar extends VBox {
             
             // Show loading indicator
             Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+            prepare(loadingAlert);
             loadingAlert.setTitle("Exporting");
             loadingAlert.setHeaderText("Exporting session data...");
             loadingAlert.setContentText("Please wait...");
@@ -165,6 +173,7 @@ public class Sidebar extends VBox {
                     (message) -> Platform.runLater(() -> {
                         loadingAlert.close();
                         Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                        prepare(successAlert);
                         successAlert.setTitle("Export Successful");
                         successAlert.setHeaderText("Session data exported");
                         successAlert.setContentText("File saved to:\n" + filePath);
@@ -173,6 +182,7 @@ public class Sidebar extends VBox {
                     (error) -> Platform.runLater(() -> {
                         loadingAlert.close();
                         Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                        prepare(errorAlert);
                         errorAlert.setTitle("Export Failed");
                         errorAlert.setHeaderText("Could not export session");
                         errorAlert.setContentText(error);
@@ -196,6 +206,7 @@ public class Sidebar extends VBox {
             
             // Ask user: Merge or Replace?
             Alert modeAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            prepare(modeAlert);
             modeAlert.setTitle("Import Mode");
             modeAlert.setHeaderText("Choose import mode");
             modeAlert.setContentText("File: " + file.getName() + "\n\n" +
@@ -219,6 +230,7 @@ public class Sidebar extends VBox {
                 
                 // Show loading indicator
                 Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+                prepare(loadingAlert);
                 loadingAlert.setTitle(actionDesc);
                 loadingAlert.setHeaderText(actionDesc + " session data...");
                 loadingAlert.setContentText("Please wait...");
@@ -234,6 +246,7 @@ public class Sidebar extends VBox {
                         (message) -> Platform.runLater(() -> {
                             loadingAlert.close();
                             Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                            prepare(successAlert);
                             successAlert.setTitle("Import Successful");
                             successAlert.setHeaderText("Session data " + (mode.equals("merge") ? "merged" : "imported"));
                             successAlert.setContentText("Data loaded from:\n" + filePath + "\n\n" +
@@ -248,6 +261,7 @@ public class Sidebar extends VBox {
                         (error) -> Platform.runLater(() -> {
                             loadingAlert.close();
                             Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                            prepare(errorAlert);
                             errorAlert.setTitle("Import Failed");
                             errorAlert.setHeaderText("Could not import session");
                             errorAlert.setContentText(error);
@@ -261,6 +275,7 @@ public class Sidebar extends VBox {
     
     private void showSettingsDialog() {
         SettingsDialog dialog = new SettingsDialog();
+        prepare(dialog);
         dialog.setOnSettingsChanged(() -> {
             // Refresh current scene if needed - settings were changed
             System.out.println("Settings changed - restart scenes to see changes");

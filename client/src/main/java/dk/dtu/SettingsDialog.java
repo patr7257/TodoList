@@ -121,6 +121,11 @@ public class SettingsDialog extends Dialog<ButtonType> {
         DarkModeManager.applyBrand(stylesheets);
     }
 
+    /** Owner + window-modality + brand styling for a child dialog/alert. */
+    private void prepare(javafx.scene.control.Dialog<?> dialog) {
+        DarkModeManager.prepareDialog(dialog, getOwner());
+    }
+
     /**
      * Convert JavaFX Color to hex string
      */
@@ -392,6 +397,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
     
     private void showAddUserDialog(ListView<String> listView, ComboBox<String> combo1, ComboBox<String> combo2) {
         TextInputDialog dialog = new TextInputDialog();
+        prepare(dialog);
         dialog.setTitle("Add User");
         dialog.setHeaderText("Create a new user");
         dialog.setContentText("Username (max 15 characters):");
@@ -430,7 +436,10 @@ public class SettingsDialog extends Dialog<ButtonType> {
     private void showAllUsersDialog(ComboBox<String> mainUser1Combo, ComboBox<String> mainUser2Combo) {
         Stage userManagementStage = new Stage();
         userManagementStage.setTitle("User Management");
-        userManagementStage.initModality(Modality.APPLICATION_MODAL);
+        userManagementStage.initModality(Modality.WINDOW_MODAL);
+        if (getOwner() != null) {
+            userManagementStage.initOwner(getOwner());
+        }
         
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -506,6 +515,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
         }
         
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        prepare(confirm);
         confirm.setTitle("Confirm Delete");
         confirm.setHeaderText("Delete user '" + username + "'?");
         confirm.setContentText("This user will be permanently deleted if they don't own any lists or tasks.");
@@ -533,6 +543,7 @@ public class SettingsDialog extends Dialog<ButtonType> {
     
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        prepare(alert);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);

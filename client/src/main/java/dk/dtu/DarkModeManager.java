@@ -3,7 +3,11 @@ package dk.dtu;
 import atlantafx.base.theme.PrimerDark;
 import atlantafx.base.theme.PrimerLight;
 import javafx.application.Application;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Dialog;
+import javafx.stage.Modality;
+import javafx.stage.Window;
 
 import java.util.List;
 
@@ -85,6 +89,46 @@ public class DarkModeManager {
         } catch (Exception e) {
             System.err.println("Could not load brand stylesheets: " + e.getMessage());
         }
+    }
+
+    /**
+     * Prepare any application dialog/alert so it behaves and looks right:
+     * <ul>
+     *   <li>attach it to the app window ({@code initOwner}) and make it
+     *       {@code WINDOW_MODAL}. Owner-less modal dialogs opened over a
+     *       maximized/fullscreen window on macOS slide the whole app away; an
+     *       owned, window-modal dialog stays put (harmless on Windows).</li>
+     *   <li>route its pane stylesheets through {@link #applyBrand(List)} so it
+     *       follows the warm brand and the current light/dark theme.</li>
+     * </ul>
+     * Safe to call with a null owner (falls back to an unowned dialog) and must
+     * be called before the dialog is shown.
+     */
+    public static void prepareDialog(Dialog<?> dialog, Window owner) {
+        if (dialog == null) {
+            return;
+        }
+        try {
+            if (owner != null && dialog.getOwner() == null) {
+                dialog.initOwner(owner);
+            }
+            dialog.initModality(Modality.WINDOW_MODAL);
+        } catch (IllegalStateException ignored) {
+            // owner/modality can only be set before the dialog is shown; ignore
+        }
+        if (!dialog.getDialogPane().getStyleClass().contains("app-dialog")) {
+            dialog.getDialogPane().getStyleClass().add("app-dialog");
+        }
+        applyBrand(dialog.getDialogPane().getStylesheets());
+    }
+
+    /** The window owning a node's scene, or null if the node is not shown yet. */
+    public static Window windowOf(Node node) {
+        if (node == null) {
+            return null;
+        }
+        Scene scene = node.getScene();
+        return scene == null ? null : scene.getWindow();
     }
 
     private void applyTheme() {
