@@ -19,13 +19,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # INSTALL JSPACE FIRST (not on Maven Central)
-      - name: Clone and install jSpace
-        run: |
-          git clone https://github.com/pSpaces/jSpace.git
-          cd jSpace
-          mvn -B install -DskipTests
-
       - name: Build all modules
         run: mvn -B clean package
 
@@ -42,12 +35,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path client-jpackage-input
           Copy-Item client/target/todolist-client-1.0.0.jar client-jpackage-input/
           Copy-Item client/target/libs/*.jar client-jpackage-input/
-
-      - name: Prepare Server jpackage input
-        run: |
-          New-Item -ItemType Directory -Force -Path server-jpackage-input
-          Copy-Item server/target/todolist-server-1.0.0.jar server-jpackage-input/
-          Copy-Item server/target/libs/*.jar server-jpackage-input/
 
       # --win-upgrade-uuid is a PERMANENT upgrade code and must never change:
       # in-place upgrades are matched by it, so changing it orphans installed copies.
@@ -78,32 +65,10 @@ jobs:
             --java-options "javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" ^
             --dest installers
 
-      - name: Create Windows Server Installer
-        shell: cmd
-        run: |
-          jpackage ^
-            --type msi ^
-            --name "TodoList Server" ^
-            --input server-jpackage-input ^
-            --main-jar todolist-server-1.0.0.jar ^
-            --main-class dk.dtu.ServerApp ^
-            --app-version ${{ steps.ver.outputs.version }} ^
-            --vendor "TodoList" ^
-            --description "TodoList Management Server" ^
-            --module-path server-jpackage-input ^
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
-            --win-menu ^
-            --win-shortcut ^
-            --icon client/src/main/resources/Icons/appicon.ico ^
-            --win-upgrade-uuid d4b1957b-8e7a-40f7-8a52-a6709d8aa830 ^
-            --java-options "-Dtodolist.port=9001" ^
-            --dest installers
-
       # Stable, versionless copies so releases/latest/download/<name> never breaks.
       - name: Create stable-named copies
         run: |
           Copy-Item "installers/TodoList Client-${{ steps.ver.outputs.version }}.msi" "installers/TodoList-Client-Windows.msi"
-          Copy-Item "installers/TodoList Server-${{ steps.ver.outputs.version }}.msi" "installers/TodoList-Server-Windows.msi"
 
       - name: Upload Windows Installers to Release
         uses: softprops/action-gh-release@v2
@@ -111,7 +76,6 @@ jobs:
           files: |
             installers/*.msi
             installers/TodoList-Client-Windows.msi
-            installers/TodoList-Server-Windows.msi
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,12 +91,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-
-      - name: Clone and install jSpace
-        run: |
-          git clone https://github.com/pSpaces/jSpace.git
-          cd jSpace
-          mvn -B install -DskipTests
 
       - name: Build all modules
         run: mvn -B clean package
@@ -150,12 +108,6 @@ jobs:
           mkdir -p client-jpackage-input
           cp client/target/todolist-client-1.0.0.jar client-jpackage-input/
           cp client/target/libs/*.jar client-jpackage-input/
-
-      - name: Prepare Server jpackage input
-        run: |
-          mkdir -p server-jpackage-input
-          cp server/target/todolist-server-1.0.0.jar server-jpackage-input/
-          cp server/target/libs/*.jar server-jpackage-input/
 
       # Build a macOS .icns from the client app icon (sips + iconutil are part of
       # macOS, so this is reliable on the runner).
@@ -195,29 +147,10 @@ jobs:
             --java-options "javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" \
             --dest installers
 
-      - name: Create macOS Server DMG
-        run: |
-          jpackage \
-            --type dmg \
-            --name "TodoList Server" \
-            --input server-jpackage-input \
-            --main-jar todolist-server-1.0.0.jar \
-            --main-class dk.dtu.ServerApp \
-            --app-version ${{ steps.ver.outputs.version }} \
-            --vendor "TodoList" \
-            --description "TodoList Management Server" \
-            --module-path server-jpackage-input \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
-            --icon TodoList.icns \
-            --mac-package-identifier com.patr7257.todolist.server \
-            --java-options "-Dtodolist.port=9001" \
-            --dest installers
-
       # Stable, versionless copies so releases/latest/download/<name> never breaks.
       - name: Create stable-named copies
         run: |
           cp "installers/TodoList Client-${{ steps.ver.outputs.version }}.dmg" "installers/TodoList-Client-macOS.dmg"
-          cp "installers/TodoList Server-${{ steps.ver.outputs.version }}.dmg" "installers/TodoList-Server-macOS.dmg"
 
       - name: Upload macOS Installers to Release
         uses: softprops/action-gh-release@v2
@@ -225,7 +158,6 @@ jobs:
           files: |
             installers/*.dmg
             installers/TodoList-Client-macOS.dmg
-            installers/TodoList-Server-macOS.dmg
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

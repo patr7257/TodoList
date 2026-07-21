@@ -21,7 +21,6 @@
     <modules>
         <module>shared</module>
         <module>client</module>
-        <module>server</module>
         <module>api</module>
     </modules>
 </project>

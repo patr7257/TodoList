@@ -6,11 +6,10 @@ Param(
   [string]$ServerHost = "127.0.0.1"
 )
 
-# Permanent Windows upgrade codes. These MUST never change: in-place upgrades
+# Permanent Windows upgrade code. This MUST never change: in-place upgrades
 # (installing a new version over an old one) are matched by upgrade code, so
-# changing either GUID would orphan every already-installed copy.
+# changing the GUID would orphan every already-installed copy.
 $ClientUpgradeUuid = "c70294f3-9868-42a9-9ffc-7c3d80b71a4e"
-$ServerUpgradeUuid = "d4b1957b-8e7a-40f7-8a52-a6709d8aa830"
 
 $ErrorActionPreference = "Stop"
 
@@ -70,7 +69,6 @@ New-Item -ItemType Directory -Force -Path $dist | Out-Null
 $destDir = Join-Path $dist ("run-{0}" -f (Get-Date -Format "yyyyMMdd-HHmmss"))
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
 
-$serverTarget = Join-Path $PSScriptRoot "server\target"
 $clientTarget = Join-Path $PSScriptRoot "client\target"
 $sharedTarget = Join-Path $PSScriptRoot "shared\target"
 
@@ -80,32 +78,22 @@ if (Test-Path $stageRoot) {
   Remove-Item -Recurse -Force $stageRoot
 }
 
-$serverInput = Join-Path $stageRoot "server"
 $clientInput = Join-Path $stageRoot "client"
-New-Item -ItemType Directory -Force -Path $serverInput | Out-Null
 New-Item -ItemType Directory -Force -Path $clientInput | Out-Null
 
-$serverJar = "todolist-server-$Version.jar"
 $clientJar = "todolist-client-$Version.jar"
 $sharedJar = "todolist-shared-$Version.jar"
 
-$serverJarPath = Join-Path $serverTarget $serverJar
 $clientJarPath = Join-Path $clientTarget $clientJar
 $sharedJarPath = Join-Path $sharedTarget $sharedJar
 
-if (-not (Test-Path $serverJarPath)) { throw "Missing server jar: $serverJarPath" }
 if (-not (Test-Path $clientJarPath)) { throw "Missing client jar: $clientJarPath" }
 if (-not (Test-Path $sharedJarPath)) { throw "Missing shared jar: $sharedJarPath" }
 
-Copy-Item -Force $serverJarPath (Join-Path $serverInput $serverJar)
 Copy-Item -Force $clientJarPath (Join-Path $clientInput $clientJar)
 
-# Ensure shared module is on the runtime classpath for both apps
-Copy-Item -Force $sharedJarPath (Join-Path $serverInput $sharedJar)
+# Ensure shared module is on the runtime classpath for the client
 Copy-Item -Force $sharedJarPath (Join-Path $clientInput $sharedJar)
-
-Write-Host "Staging runtime dependencies for server..." -ForegroundColor Green
-mvn -q -pl server -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="$serverInput"
 
 Write-Host "Staging runtime dependencies for client..." -ForegroundColor Green
 mvn -q -pl client -DskipTests dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="$clientInput"
@@ -224,35 +212,6 @@ if ($LASTEXITCODE -ne 0) {
 Verify-RuntimeImage $runtimeDir
 
 Write-Host "`nCustom runtime created successfully at: $runtimeDir" -ForegroundColor Green
-
-# ============================================================================
-# PACKAGE SERVER
-# ============================================================================
-Write-Host "`nPackaging Server UI ($Type)..." -ForegroundColor Green
-
-$serverArgs = @(
-  "--dest", $destDir,
-  "--input", $serverInput,
-  "--name", "TodoList Server",
-  "--main-jar", $serverJar,
-  "--main-class", "dk.dtu.ServerApp",
-  "--type", $Type,
-  "--app-version", $Version,
-  "--vendor", "TodoList",
-  "--description", "TodoList Management Server",
-  "--runtime-image", $runtimeDir,
-  "--win-menu",
-  "--win-shortcut",
-  "--icon", "client\src\main\resources\Icons\appicon.ico",
-  "--win-upgrade-uuid", $ServerUpgradeUuid,
-  "--java-options", "-Dtodolist.port=9001"
-)
-
-jpackage @serverArgs
-
-if ($LASTEXITCODE -ne 0) {
-  throw "jpackage failed for Server"
-}
 
 # ============================================================================
 # PACKAGE CLIENT

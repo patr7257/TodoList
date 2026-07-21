@@ -2,20 +2,15 @@
 # Public service (own token auth); TLS is terminated by Dokploy's Traefik.
 
 # ---------------------------------------------------------------------------
-# Build stage: install jSpace (transitive via todolist-shared), build the api
-# module + its dependencies (shared), producing the shaded fat jar.
+# Build stage: build the api module + its dependency (shared), producing the
+# shaded fat jar. No jSpace needed: shared no longer depends on it.
 # ---------------------------------------------------------------------------
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 
-# jSpace is not on Maven Central, so install it into the local repo first.
-RUN git clone https://github.com/pSpaces/jSpace.git \
-    && mvn -B -f jSpace/pom.xml install -DskipTests
-
 # Poms first (dependency-resolution cache), then the sources we actually build.
 COPY pom.xml ./
 COPY shared/pom.xml shared/pom.xml
-COPY server/pom.xml server/pom.xml
 COPY client/pom.xml client/pom.xml
 COPY api/pom.xml api/pom.xml
 COPY shared/src shared/src
