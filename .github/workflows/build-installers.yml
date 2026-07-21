@@ -36,6 +36,22 @@ jobs:
           Copy-Item client/target/todolist-client-1.0.0.jar client-jpackage-input/
           Copy-Item client/target/libs/*.jar client-jpackage-input/
 
+      # Guard: jdeps computes the JDK modules the app actually references. If any
+      # is not in the --add-modules list below, FAIL the build here instead of
+      # shipping an installer that crashes silently at launch (as v2.0.0 did when
+      # java.net.http was missing). Keep $declared in sync with --add-modules.
+      - name: Guard against missing installer modules
+        shell: pwsh
+        run: |
+          $declared = @('java.base','java.desktop','java.logging','java.naming','java.sql','java.xml','java.management','java.instrument','java.prefs','java.scripting','jdk.unsupported','jdk.jfr','jdk.crypto.ec','java.net.http','jdk.charsets','java.datatransfer','javafx.base','javafx.graphics','javafx.controls','javafx.fxml')
+          $jars = (Get-ChildItem client-jpackage-input/*.jar).FullName
+          $out = & jdeps --multi-release 21 --ignore-missing-deps --print-module-deps $jars 2>$null
+          if (-not $out) { Write-Host 'jdeps produced no output; skipping guard'; exit 0 }
+          $needed = ($out -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'java.*' -or $_ -like 'jdk.*' } | Sort-Object -Unique
+          $missing = $needed | Where-Object { $declared -notcontains $_ }
+          if ($missing) { Write-Error ('Installer --add-modules is missing: ' + ($missing -join ', ') + '. Add them to build-installers.yml (both jobs) and build-installers.ps1.'); exit 1 }
+          Write-Host ('Module guard OK. jdeps-required: ' + ($needed -join ', '))
+
       # --win-upgrade-uuid is a PERMANENT upgrade code and must never change:
       # in-place upgrades are matched by it, so changing it orphans installed copies.
       # -Dtodolist.server.ip default comes from the TODOLIST_SERVER_HOST repo
@@ -53,7 +69,7 @@ jobs:
             --vendor "TodoList" ^
             --description "TodoList Management Client" ^
             --module-path client-jpackage-input ^
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
+            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.jfr,jdk.crypto.ec,java.net.http,jdk.charsets,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml ^
             --win-menu ^
             --win-shortcut ^
             --icon client/src/main/resources/Icons/appicon.ico ^
@@ -109,6 +125,20 @@ jobs:
           cp client/target/todolist-client-1.0.0.jar client-jpackage-input/
           cp client/target/libs/*.jar client-jpackage-input/
 
+      # Guard: fail if the app references a JDK module not in --add-modules below
+      # (prevents the silent-launch-crash class of bug). Keep $declared in sync.
+      - name: Guard against missing installer modules
+        shell: pwsh
+        run: |
+          $declared = @('java.base','java.desktop','java.logging','java.naming','java.sql','java.xml','java.management','java.instrument','java.prefs','java.scripting','jdk.unsupported','jdk.jfr','jdk.crypto.ec','java.net.http','jdk.charsets','java.datatransfer','javafx.base','javafx.graphics','javafx.controls','javafx.fxml')
+          $jars = (Get-ChildItem client-jpackage-input/*.jar).FullName
+          $out = & jdeps --multi-release 21 --ignore-missing-deps --print-module-deps $jars 2>$null
+          if (-not $out) { Write-Host 'jdeps produced no output; skipping guard'; exit 0 }
+          $needed = ($out -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -like 'java.*' -or $_ -like 'jdk.*' } | Sort-Object -Unique
+          $missing = $needed | Where-Object { $declared -notcontains $_ }
+          if ($missing) { Write-Error ('Installer --add-modules is missing: ' + ($missing -join ', ') + '. Add them to build-installers.yml (both jobs) and build-installers.ps1.'); exit 1 }
+          Write-Host ('Module guard OK. jdeps-required: ' + ($needed -join ', '))
+
       # Build a macOS .icns from the client app icon (sips + iconutil are part of
       # macOS, so this is reliable on the runner).
       - name: Generate macOS app icon
@@ -137,7 +167,7 @@ jobs:
             --vendor "TodoList" \
             --description "TodoList Management Client" \
             --module-path client-jpackage-input \
-            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.crypto.ec,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
+            --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.xml,java.management,java.instrument,java.prefs,java.scripting,jdk.unsupported,jdk.jfr,jdk.crypto.ec,java.net.http,jdk.charsets,java.datatransfer,javafx.base,javafx.graphics,javafx.controls,javafx.fxml \
             --icon TodoList.icns \
             --mac-package-identifier com.patr7257.todolist.client \
             --java-options "-Dtodolist.server.ip=${{ vars.TODOLIST_SERVER_HOST || '127.0.0.1' }}" \

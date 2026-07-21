@@ -154,7 +154,11 @@ $javaModules = @(
   "java.prefs",
   "java.scripting",
   "jdk.unsupported",
-  "jdk.crypto.ec"
+  "jdk.jfr",
+  "jdk.crypto.ec",
+  "java.net.http",
+  "jdk.charsets",
+  "java.datatransfer"
 )
 
 # JavaFX modules (these will be resolved from the JavaFX JARs)
