@@ -1,138 +1,103 @@
 # TodoList Management System
 
-Multi-module Maven project with a JavaFX client and a jSpace (tuple space) server.
+Multi-module Maven project with a JavaFX desktop client and an HTTP API backed
+by Postgres.
 
 ## Modules
 
-- `shared/`: shared constants/config + JSON models (used by both client and server)
-- `server/`: jSpace server (opens a TCP gate and persists session data)
-- `client/`: JavaFX desktop client (connects to server via jSpace `RemoteSpace`)
+- `shared/`: shared constants/config + JSON models (used by both client and api)
+- `api/`: headless HTTP API (Javalin + JDBI + HikariCP over Postgres); main class
+  `dk.dtu.api.ApiMain`. Packages to a self-contained fat jar (`todolist-api.jar`).
+- `client/`: JavaFX desktop client that talks to the API over HTTPS/JSON.
 
 ## How it works (high level)
 
-- The server creates tuple spaces (`requests`, `responses`, `users`, `tasks`, `todoLists`, `notifications`) and opens a TCP gate.
-- The client connects to the server over TCP and uses request/response tuples for operations.
-- The server broadcasts a simple `data_changed` notification; the client listens and refreshes the current view.
+- The API exposes JSON endpoints for auth, lists, tasks, and a snapshot/state
+  endpoint, persisting everything to Postgres.
+- The client authenticates against the API, then reads and writes lists and tasks
+  over HTTP and polls the state endpoint to refresh the current view.
 
 ## Run locally (development)
 
-From the repo root:
-
-1) Start the server:
+Prerequisites: JDK 21 and Maven. Build the whole reactor first:
 
 ```powershell
-mvn -pl server -am exec:java
+mvn -q install -DskipTests
+```
+
+1) Start the API. It needs `DATABASE_URL` (a Postgres connection string) and
+   `TODO_SESSION_SECRET` in the environment; the `api` module can start an
+   embedded Postgres for local dev when no external database is configured:
+
+```powershell
+mvn -pl api exec:java
 ```
 
 2) Start the client (in a separate terminal):
 
 ```powershell
-mvn -pl client -am javafx:run
+mvn -pl client javafx:run
 ```
 
-## Configuration (important for packaging)
+Point the client at an API base URL from the in-app connect dialog (it also
+remembers the last one used).
 
-These can be set as JVM system properties (or environment variables):
+## Download the client
 
-- `todolist.server.ip` (env: `TODOLIST_SERVER_IP`) – where the client connects (default: `127.0.0.1`)
-- `todolist.port` (env: `TODOLIST_PORT`) – TCP port for jSpace (default: `9001`)
-- `todolist.bind.host` (env: `TODOLIST_BIND_HOST`) – server bind host (default: `0.0.0.0`)
-- `todolist.data.dir` – where the server stores `session.json` (default: `%USERPROFILE%\.todolist-data`)
-
-### Seed data vs. saved session
-
-On first run (no existing `session.json`), the server initializes a small demo dataset.
-
-If you previously ran the app, you may already have a saved session in `%USERPROFILE%\.todolist-data`. In that case, the server will load that session instead of the demo seed data.
-
-**Reset to demo data (Windows):**
-
-1. Stop the server
-2. Delete `%USERPROFILE%\.todolist-data` (or just `session.json` inside it)
-3. Start the server again
-
-Example (client connects to a server on another PC):
-
-```powershell
-mvn -pl client -am javafx:run -Djavafx.run.jvmArgs="-Dtodolist.server.ip=192.168.0.168"
-```
-
-## Download Installers
-
-**Pre-built installers are automatically created for every release:**
+Pre-built client installers are attached to every tagged release:
 
 1. Go to the [Releases page](../../releases)
 2. Download the installer for your platform:
-   - **Windows**: `TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
-   - **macOS**: `TodoList Client-1.0.0.dmg` and `TodoList Server-1.0.0.dmg`
+   - **Windows**: `TodoList Client-<version>.msi` (or the stable
+     `TodoList-Client-Windows.msi`)
+   - **macOS**: `TodoList Client-<version>.dmg` (or the stable
+     `TodoList-Client-macOS.dmg`)
 
 ### Installation
 
 **Windows:**
-1. Right-click the `.msi` file → Run as Administrator
+1. Right-click the `.msi` file, then Run as Administrator
 2. Follow the installation wizard
-3. Launch from Start Menu shortcuts
+3. Launch from the Start Menu shortcut
 
 **macOS:**
 1. Double-click the `.dmg` file
-2. Drag the app to Applications folder
+2. Drag the app to the Applications folder
 3. Launch from Applications or Spotlight
 
-> **No Java required!** The installers bundle everything needed to run the application.
+> No Java required. The installer bundles everything needed to run the client.
 
----
+## API hosting
 
-## Building Installers Locally
+The API is deployed on a Dokploy VPS, built from `Dockerfile.api`, and exposed
+publicly behind Dokploy's Traefik reverse proxy with Let's Encrypt TLS at
+`https://api.todolist.patrickrobel.dk`. `DATABASE_URL` and
+`TODO_SESSION_SECRET` are provided as Dokploy service environment variables.
 
-### Automated Builds (GitHub Actions)
+## Building the client installer
 
-The project uses GitHub Actions to automatically build installers for both Windows and macOS. Every push to `main` creates artifacts that can be downloaded from the Actions tab. Tagged releases (e.g., `v1.0.0`) automatically create a GitHub Release with installers attached.
+### Automated builds (GitHub Actions)
+
+`.github/workflows/build-installers.yml` builds the Windows and macOS client
+installers on every push of a `v*` tag (and on manual `workflow_dispatch`) and
+attaches them to a GitHub Release, including stable versionless asset names.
 
 **To trigger a build:**
+
 ```bash
 git tag v1.0.1
 git push origin v1.0.1
 ```
 
-### Manual Local Builds
+### Manual local build (Windows)
 
-#### Windows
+Prerequisites:
+- JDK 21 (https://adoptium.net/temurin/releases/?version=21)
+- Maven (https://maven.apache.org/download.cgi)
+- WiX Toolset for MSI (https://wixtoolset.org/)
 
-**Prerequisites:**
-- JDK 21 (download from https://adoptium.net/temurin/releases/?version=21)
-- Maven (download from https://maven.apache.org/download.cgi)
-- WiX Toolset for MSI (download from https://wixtoolset.org/)
-
-**Build MSI installers:**
 ```powershell
 .\build-installers.ps1
 ```
 
-Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi` and `TodoList Server-1.0.0.msi`
-
-#### macOS
-
-**Prerequisites:**
-- JDK 21
-- Maven
-
-**Build DMG installers:**
-```bash
-mvn clean install -DskipTests
-
-jpackage \
-  --input server/target \
-  --name "TodoList Server" \
-  --main-jar todolist-server-1.0.0.jar \
-  --main-class dk.dtu.ServerApp \
-  --type dmg \
-  --app-version 1.0.0
-
-jpackage \
-  --input client/target \
-  --name "TodoList Client" \
-  --main-jar todolist-client-1.0.0.jar \
-  --main-class dk.dtu.ClientApp \
-  --type dmg \
-  --app-version 1.0.0
-```
+Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi`.

@@ -5,10 +5,10 @@
 # visual change can actually be seen and eyeballed before any release.
 #
 # LOOP (run each in its own terminal, then capture):
-#   1. Start the local server (seeds demo data on first run):
-#        cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q -pl server -am exec:java
+#   1. Start the local HTTP API (starts an embedded Postgres for dev):
+#        cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q -pl api exec:java
 #   2. Run the client:
-#        cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q -pl client -am javafx:run
+#        cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q -pl client javafx:run
 #   3. Navigate the client to the screen you want (and toggle dark mode for the dark shot),
 #      then run THIS script and type a label at the prompt (e.g. "mainmenu-dark").
 #
