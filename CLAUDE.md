@@ -170,6 +170,17 @@ anonymously, compares the running version
 source) to the latest tag, downloads the platform installer, and runs it
 (`msiexec /i` on Windows, `open` on macOS), upgrading in place.
 
+## Planned: TodoTinder (issue #44, idea stage, nothing built)
+
+A mobile-first swipe app living in THIS repo: multiple decks (AcTindervitivities,
+VacayTinderation, SwoppingSwiper, DateNighTinders), right swipe creates an item in the
+deck's linked todo list via the existing API, gated by the existing token auth (the two
+account holders only). Grocery deck recycles staples every run; idea decks deplete per
+user and offer a copyable POST URL to have a Claude session refill the deck. The full
+spec draft and the "Questions for Patrick" checklist live in issue #44; run a design
+session against that issue before writing any code. This supersedes the Activity Tinder
+note in `patr7257/BoredAPIActivityWheel`.
+
 ## Notable conventions
 
 - Package root is `dk.dtu` for all three modules (`dk.dtu.shared.*` for the
