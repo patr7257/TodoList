@@ -118,10 +118,15 @@ public class Helpers {
             }
         }
 
+        // ownerName (resolved from the real user reference) wins over the
+        // legacy free-text owner column for display; fall back when unset.
+        String ownerDisplay = (l.ownerName() != null && !l.ownerName().isBlank())
+                ? l.ownerName() : safe(l.owner());
+
         return new ListEntry(
                 l.id(),
                 l.name(),
-                safe(l.owner()),
+                ownerDisplay,
                 l.taskColumnsJson() != null ? l.taskColumnsJson() : "",
                 priority,
                 year,
@@ -130,7 +135,8 @@ public class Helpers {
                 safe(l.description()),
                 completion,
                 taskCount,
-                overdueCount);
+                overdueCount,
+                l.ownerId());
     }
 
     /** Map an API item to the task row (owner column shows the assignee name). */
@@ -148,7 +154,8 @@ public class Helpers {
                 year,
                 it.sort(),
                 safe(it.location()),
-                safe(it.description()));
+                safe(it.description()),
+                it.assigneeId());
     }
 
     /** All items of a list mapped to task rows, ordered by their sort field. */
@@ -184,8 +191,11 @@ public class Helpers {
         public int completionPercentage;
         public final int taskCount;
         public final int overdueTaskCount;
+        // Real user reference (V3): the source of truth for "is this mine" and
+        // for the owner ComboBox selection, compared by id (never by name/text).
+        public final String ownerId;
 
-        public ListEntry(String id, String name, String owner, String taskColumnsJson, int priority, int year, int orderIndex, String location, String description, int completionPercentage, int taskCount, int overdueTaskCount) {
+        public ListEntry(String id, String name, String owner, String taskColumnsJson, int priority, int year, int orderIndex, String location, String description, int completionPercentage, int taskCount, int overdueTaskCount, String ownerId) {
             this.id = id;
             this.name = name;
             this.owner = owner;
@@ -198,6 +208,7 @@ public class Helpers {
             this.completionPercentage = completionPercentage;
             this.taskCount = taskCount;
             this.overdueTaskCount = overdueTaskCount;
+            this.ownerId = ownerId;
         }
 
         @Override
@@ -219,9 +230,12 @@ public class Helpers {
         public final int orderIndex;
         public final String location;
         public final String description;
+        // Real user reference (V3 items.assignee_id): the source of truth for
+        // "is this mine", compared by id (never by the displayed owner name).
+        public final String assigneeId;
 
         public TaskEntry(String listId, String id, String title,
-                String owner, String status, String dueDate, int priority, int year, int orderIndex, String location, String description) {
+                String owner, String status, String dueDate, int priority, int year, int orderIndex, String location, String description, String assigneeId) {
             this.listId = listId;
             this.id = id;
             this.title = title;
@@ -233,6 +247,7 @@ public class Helpers {
             this.orderIndex = orderIndex;
             this.location = location;
             this.description = description;
+            this.assigneeId = assigneeId;
         }
 
         // Pretty status text for the UI

@@ -44,7 +44,14 @@ public final class ApiModels {
             String assigneeName) {
     }
 
-    /** One list row, with its nested items and derived completion percentage. */
+    /**
+     * One list row, with its nested items and derived completion percentage.
+     * {@code ownerId}/{@code ownerName} are the V3 real-user-reference fields,
+     * appended last: {@code ownerId} is the source of truth going forward,
+     * {@code owner} is the legacy denormalized display text (kept in lockstep
+     * server-side), and {@code ownerName} is the id resolved to a display name
+     * (null on mutation responses, which do not resolve it -- see Views.list).
+     */
     public record ListDto(
             String id,
             String name,
@@ -57,7 +64,9 @@ public final class ApiModels {
             String description,
             String taskColumnsJson,
             Integer completionPercentage,
-            List<ItemDto> items) {
+            List<ItemDto> items,
+            String ownerId,
+            String ownerName) {
     }
 
     /** GET /state response: current user, all users, all lists (with items). */

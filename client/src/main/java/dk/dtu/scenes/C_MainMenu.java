@@ -4,9 +4,11 @@ import dk.dtu.DarkModeManager;
 import dk.dtu.SceneNavigator;
 import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
+import dk.dtu.methods.Filters;
 import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
 import dk.dtu.methods.Users;
+import dk.dtu.net.ApiSession;
 import dk.dtu.ui.Icons;
 import dk.dtu.ui.Tables;
 import javafx.animation.PauseTransition;
@@ -49,6 +51,8 @@ public class C_MainMenu {
     private Integer yearFilter = null;
     private Integer priorityFilter = null;
     private CompletionFilter completionFilter = CompletionFilter.ALL;
+    private boolean onlyMyLists = false;
+    private CheckBox onlyMyListsCheck;
 
     private EmptyFilter nameFilter = EmptyFilter.ALL;
     private EmptyFilter locationFilter = EmptyFilter.ALL;
@@ -113,7 +117,17 @@ public class C_MainMenu {
         autoFitButton.getStyleClass().addAll(atlantafx.base.theme.Styles.FLAT, "autofit-button");
         autoFitButton.setOnAction(e -> dk.dtu.ui.Tables.autoFitColumns(table));
 
-        javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(24, createLink, autoFitButton);
+        // Always-visible "Only my lists" filter, one click, persisted per user
+        // alongside the rest of this view's filters.
+        onlyMyListsCheck = new CheckBox("Only my lists");
+        onlyMyListsCheck.setSelected(onlyMyLists);
+        onlyMyListsCheck.setOnAction(e -> {
+            onlyMyLists = onlyMyListsCheck.isSelected();
+            applyListFilters();
+            saveFilters();
+        });
+
+        javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(24, createLink, autoFitButton, onlyMyListsCheck);
         footer.setAlignment(Pos.CENTER);
 
         // Spacer between title and table (instead of dummy Label(""))
@@ -212,9 +226,14 @@ public class C_MainMenu {
         dialog.showAndWait().ifPresent(name -> {
             if (name == null || name.isBlank()) return;
 
+            // The new list's owner is the signed-in user's real id, not their
+            // display name (Lists.createTodoList's second param is an ownerId).
+            dk.dtu.net.ApiModels.CurrentUser currentUser = ApiSession.get().currentUser();
+            String ownerId = currentUser != null ? currentUser.id() : null;
+
             new Thread(() -> {
                 try {
-                    Lists.createTodoList(name, navigator.getCurrentUser());
+                    Lists.createTodoList(name, ownerId);
                     Platform.runLater(this::reloadLists);
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -255,8 +274,11 @@ public class C_MainMenu {
 
     private void applyListFilters() {
         List<Helpers.ListEntry> filtered = new ArrayList<>();
+        String currentUserId = currentUserIdOrNull();
         for (Helpers.ListEntry e : allLists) {
             if (e == null) continue;
+
+            if (onlyMyLists && !Filters.matchesOnlyMine(e.ownerId, currentUserId)) continue;
 
             if (!matchesEmptyFilter(e.name, nameFilter)) continue;
 
@@ -294,6 +316,12 @@ public class C_MainMenu {
             case NOT_EMPTY -> !empty;
             default -> true;
         };
+    }
+
+    /** The signed-in user's real id, or null when not yet known (state not landed). */
+    private static String currentUserIdOrNull() {
+        dk.dtu.net.ApiModels.CurrentUser user = ApiSession.get().currentUser();
+        return user != null ? user.id() : null;
     }
 
     // -----------------------------
@@ -427,6 +455,10 @@ public class C_MainMenu {
                 descriptionFilter = EmptyFilter.ALL;
                 hasTasksFilter = YesNoFilter.ALL;
                 overdueFilter = YesNoFilter.ALL;
+                // Clear must also untick the always-visible checkbox, or the
+                // control and the persisted/applied state disagree.
+                onlyMyLists = false;
+                if (onlyMyListsCheck != null) onlyMyListsCheck.setSelected(false);
                 applyListFilters();
                 saveFilters();
                 return;
@@ -595,6 +627,7 @@ public class C_MainMenu {
         f.put("description", descriptionFilter.name());
         f.put("hasTasks", hasTasksFilter.name());
         f.put("overdue", overdueFilter.name());
+        f.put("onlyMine", onlyMyLists ? "true" : "false");
         return f;
     }
 
@@ -609,6 +642,7 @@ public class C_MainMenu {
         descriptionFilter = Helpers.parseEnum(EmptyFilter.class, f.get("description"), EmptyFilter.ALL);
         hasTasksFilter = Helpers.parseEnum(YesNoFilter.class, f.get("hasTasks"), YesNoFilter.ALL);
         overdueFilter = Helpers.parseEnum(YesNoFilter.class, f.get("overdue"), YesNoFilter.ALL);
+        onlyMyLists = "true".equals(f.get("onlyMine"));
     }
 
     private List<String> ensurePinnedColumnOrder(List<String> ids) {

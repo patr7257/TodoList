@@ -7,10 +7,12 @@ import dk.dtu.SceneNavigator;
 import dk.dtu.SettingsDialog;
 import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
+import dk.dtu.methods.Filters;
 import dk.dtu.methods.Helpers;
 import dk.dtu.methods.Lists;
 import dk.dtu.methods.Tasks;
 import dk.dtu.methods.Users;
+import dk.dtu.net.ApiSession;
 import dk.dtu.shared.TaskStatus;
 import dk.dtu.ui.Icons;
 import dk.dtu.ui.Tables;
@@ -60,6 +62,8 @@ public class D_TodoListView {
     private Integer yearFilter = null;
     private Integer priorityFilter = null;
     private TaskStatus statusFilter = null;
+    private boolean onlyMyTasks = false;
+    private CheckBox onlyMyTasksCheck;
 
     private EmptyFilter titleFilter = EmptyFilter.ALL;
     private EmptyFilter dueDateFilter = EmptyFilter.ALL;
@@ -129,7 +133,17 @@ public class D_TodoListView {
         autoFitButton.getStyleClass().addAll(atlantafx.base.theme.Styles.FLAT, "autofit-button");
         autoFitButton.setOnAction(e -> dk.dtu.ui.Tables.autoFitColumns(table));
 
-        javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(24, addTaskLink, autoFitButton);
+        // Always-visible "Only my tasks" filter, one click, persisted per user
+        // alongside the rest of this view's filters.
+        onlyMyTasksCheck = new CheckBox("Only my tasks");
+        onlyMyTasksCheck.setSelected(onlyMyTasks);
+        onlyMyTasksCheck.setOnAction(e -> {
+            onlyMyTasks = onlyMyTasksCheck.isSelected();
+            applyTaskFilters();
+            saveFilters();
+        });
+
+        javafx.scene.layout.HBox footer = new javafx.scene.layout.HBox(24, addTaskLink, autoFitButton, onlyMyTasksCheck);
         footer.setAlignment(Pos.CENTER);
 
         Region spacer = new Region();
@@ -217,6 +231,7 @@ public class D_TodoListView {
         f.put("dueDate", dueDateFilter.name());
         f.put("location", locationFilter.name());
         f.put("description", descriptionFilter.name());
+        f.put("onlyMine", onlyMyTasks ? "true" : "false");
         return f;
     }
 
@@ -230,6 +245,7 @@ public class D_TodoListView {
         dueDateFilter = Helpers.parseEnum(EmptyFilter.class, f.get("dueDate"), EmptyFilter.ALL);
         locationFilter = Helpers.parseEnum(EmptyFilter.class, f.get("location"), EmptyFilter.ALL);
         descriptionFilter = Helpers.parseEnum(EmptyFilter.class, f.get("description"), EmptyFilter.ALL);
+        onlyMyTasks = "true".equals(f.get("onlyMine"));
     }
 
     // Right-click row menu: "Rename task" for THAT entry.
@@ -297,8 +313,11 @@ public class D_TodoListView {
 
     private void applyTaskFilters() {
         List<Helpers.TaskEntry> filtered = new ArrayList<>();
+        String currentUserId = currentUserIdOrNull();
         for (Helpers.TaskEntry e : allTasks) {
             if (e == null) continue;
+
+            if (onlyMyTasks && !Filters.matchesOnlyMine(e.assigneeId, currentUserId)) continue;
 
             if (!matchesEmptyFilter(e.title, titleFilter)) continue;
 
@@ -337,6 +356,12 @@ public class D_TodoListView {
             case NOT_EMPTY -> !empty;
             default -> true;
         };
+    }
+
+    /** The signed-in user's real id, or null when not yet known (state not landed). */
+    private static String currentUserIdOrNull() {
+        dk.dtu.net.ApiModels.CurrentUser user = ApiSession.get().currentUser();
+        return user != null ? user.id() : null;
     }
 
     // -----------------------------
@@ -442,6 +467,10 @@ public class D_TodoListView {
                 dueDateFilter = EmptyFilter.ALL;
                 locationFilter = EmptyFilter.ALL;
                 descriptionFilter = EmptyFilter.ALL;
+                // Clear must also untick the always-visible checkbox, or the
+                // control and the persisted/applied state disagree.
+                onlyMyTasks = false;
+                if (onlyMyTasksCheck != null) onlyMyTasksCheck.setSelected(false);
                 applyTaskFilters();
                 saveFilters();
                 return;
