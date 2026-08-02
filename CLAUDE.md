@@ -32,22 +32,33 @@ onto the HTTP API described here. The jSpace server module has been retired
   Built with Javalin (HTTP), JDBI + HikariCP over Postgres, and Gson for JSON.
   Packages to a self-contained shaded fat jar (`todolist-api.jar`).
   - `dk.dtu.api.web`: `ApiServer` and the controllers (`AuthController`,
-    `ListsController`, `ItemsController`, `StateController`), plus `Backend`,
-    `RateLimiter`, and JSON/error helpers.
+    `ListsController`, `ItemsController`, `StateController`,
+    `CountersController`), plus `Backend`, `RateLimiter`, and JSON/error
+    helpers (`Views` for lists/items, `CounterViews` for counters).
   - `dk.dtu.api.auth`: token auth (`AuthFilter`, `AuthService`, `Token`,
     `Scrypt`).
   - `dk.dtu.api.db`: `DataSources` (Hikari pool) and `Migrations`.
-  - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps.
+  - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps, plus
+    `CountersService` / `CounterRow` for the fun counters (deliberately its own
+    service: `TodoService` mirrors the website's queries, counters have no
+    website counterpart).
 - `client/` (`todolist-client`): JavaFX desktop client. Main class
   `dk.dtu.ClientApp`.
   - `dk.dtu.net`: the HTTP transport. `TodoApiClient` (raw HTTP + JSON),
     `ApiSession` (process-wide session: client, bearer token, signed-in user,
     user set), `StatePoller` (polls the API state endpoint to refresh the view),
     `ApiModels`, `ApiException`.
-  - `dk.dtu.scenes`: `A_WelcomeScreen`, `B_LoginScreen`, `C_MainMenu`,
-    `D_TodoListView` (letter-prefixed to show screen flow order).
+  - `dk.dtu.scenes`: `A_WelcomeScreen`, `B_LoginScreen`, `B2_Dashboard`,
+    `C_MainMenu`, `D_TodoListView` (letter-prefixed to show screen flow order).
+    `B2_Dashboard` is the post-login landing page and sits between login and the
+    lists view; it is named `B2_` rather than renumbering `C_`/`D_`, which would
+    have churned two large scene files for nothing.
   - `dk.dtu.methods`: `Lists`, `Tasks`, `Users`, `Helpers`, the client-side
-    operations that call the API via `ApiSession` / `TodoApiClient`.
+    operations that call the API via `ApiSession` / `TodoApiClient`, plus
+    `Counters` (counter CRUD), `Dashboard` (pure stat derivation, "now" injected
+    so it is unit-testable) and `Filters` (the "only mine" predicate, which fails
+    OPEN when no signed-in user is resolvable so an empty table never
+    masquerades as lost data).
   - `dk.dtu.collumns`: JavaFX `TableView` column/cell classes for the lists and
     tasks tables (note the module name keeps this spelling).
   - `dk.dtu.update`: on-launch and Settings-tab auto-update.
@@ -75,11 +86,20 @@ module and fails ("parameters 'mainClass' ... are missing"). Run
 `mvn -q install -DskipTests` first so each module's dependencies resolve, then:
 
 Start the API. It reads `DATABASE_URL` (Postgres connection string) and
-`TODO_SESSION_SECRET` from the environment; for local dev the `api` module can
-start an embedded Postgres when no external database is configured:
+`TODO_SESSION_SECRET` from the environment.
+
+`mvn -pl api exec:java` does NOT start an embedded Postgres. The embedded
+Postgres in this repo (`io.zonky.test`) is a TEST-scope dependency used only by
+the api module's integration tests. With no `DATABASE_URL` the server still
+starts, logs a warning, and every data route answers 503. So local work needs a
+real database, and pointing one at production Neon is not an option because
+startup runs Flyway and would apply unmerged migrations there.
+
+Use the throwaway Docker Postgres instead (see "Local dev database" below):
 
 ```powershell
-mvn -pl api exec:java
+.\scripts\dev-db.ps1
+$env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
 
 Start the client (separate terminal):
@@ -98,11 +118,59 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
 
 - `shared`: `TaskStatusTest`.
 - `api`: HTTP/service tests for the api module (`TodoApiIntegrationTest`,
-  `ScryptTest`, `TokenTest`, `CompletionTest`, `DataSourcesTest`).
+  `CountersIntegrationTest`, `web/ViewsTest`, `ScryptTest`, `TokenTest`,
+  `CompletionTest`, `DataSourcesTest`). The two integration tests each start
+  their own `EmbeddedPostgres` and now also drive a real Javalin instance on an
+  ephemeral port, so routes and auth are asserted rather than assumed.
+  `ViewsTest` pins the EXACT key set and order of the state payload's list
+  object: that is the regression guard for the separate website client.
 - `client`: `HelpersTest`, `ListsTest`, `TasksTest`, `ViewPrefsTest`,
-  `net/StatePollerTest`, and `net/TodoApiClientTest`.
+  `FiltersTest`, `DashboardStatsTest`, `CountersTest`, `net/StatePollerTest`,
+  `net/TodoApiClientTest`, `net/CounterClientTest`. No JavaFX is instantiated in
+  tests; scene logic is extracted into pure helpers so it can be tested at all.
 
 Run all tests from the repo root with `mvn test`.
+
+## Local dev database
+
+`mvn -pl api exec:java` needs a real `DATABASE_URL` (see "Build and run"). Two
+committed helpers exist so nobody improvises, and above all so nobody points a
+local API at production Neon (startup runs Flyway, which would apply unmerged
+migrations to production):
+
+- `scripts/dev-db.ps1` / `.sh` plus `scripts/dev-db-fixture.sql`: start, stop
+  (`-Stop`) or reset (`-Reset`) a throwaway Docker Postgres on port 5433, waiting
+  for readiness with a bounded poll. `-Fixture` loads users and lists whose
+  free-text `owner` values deliberately cover the exact, differently cased,
+  whitespace padded, ambiguous (two users share a name), unmatched and null
+  cases, so the `owner_id` backfill can be exercised without production data.
+  `-Fixture` needs the API to have started once, because Flyway lives in the API.
+- `scripts/neon-branch.ps1` / `.sh`: create or delete a disposable Neon branch, a
+  copy-on-write clone of production, to rehearse a migration against real data.
+  Prompts once for a Neon API key, never stores it, refuses to delete the default
+  branch.
+
+## Migrations
+
+Flyway, from `dk.dtu.api.db.Migrations`, files in
+`api/src/main/resources/db/migration`. Current head is `V5`.
+
+- `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
+  already held the V1 schema when Flyway was introduced.
+- **`outOfOrder` is at its default `false`, and this has teeth.** If a higher
+  version reaches production before a lower one, `flyway.migrate()` throws at
+  boot, the Dokploy container crash-loops, and the live API is down for the
+  desktop clients AND the website. This was proven, not assumed: applying V5
+  before V3 on a scratch database fails with
+  `FlywayValidateException: Detected resolved migration not applied to database: 3`.
+  Consequence: when two branches each add a migration, pre-assign the numbers and
+  land them in ONE merge, or renumber the second branch's own file before it
+  merges. Never hand-edit `flyway_schema_history`.
+- Every migration must be additive and idempotent (`ADD COLUMN IF NOT EXISTS`,
+  `CREATE TABLE IF NOT EXISTS`, backfills guarded by `WHERE ... IS NULL`), and
+  must never DROP, rename or retype anything. After a migration has been applied
+  to production, NEVER edit it: a checksum mismatch crash-loops the container.
+  Corrections ship as a new version.
 
 ## Packaging installers
 
@@ -181,6 +249,24 @@ spec draft and the "Questions for Patrick" checklist live in issue #44; run a de
 session against that issue before writing any code. This supersedes the Activity Tinder
 note in `patr7257/BoredAPIActivityWheel`.
 
+## MANDATORY: UI work covers BOTH clients
+
+Any UI change to the TodoList product ships for the JavaFX desktop client AND for
+the web edition (which is also the phone experience, via the installable PWA).
+Do not deliver desktop-only UI and file the web side as a follow-up unless Patrick
+explicitly says desktop only.
+
+The two front ends live in DIFFERENT repos: the desktop client is `client/` here,
+the web edition is the `/todo` route in `patr7257/PatrickRobelWeb`. So a UI change
+usually means two issues on two boards (this repo's board is GitHub Project #7,
+the website's is #2) and two pull requests. Plan for that up front.
+
+Backend work is shared and done ONCE in `api/`, then consumed by both. Keep
+behaviour rules identical across clients or the two UIs will disagree about the
+same data: the overdue rule (due date before today AND status not `DONE`) and the
+completion math (average of per-status percentages over ALL items, not an average
+of per-list averages) are the two that have already caused divergence.
+
 ## Notable conventions
 
 - Package root is `dk.dtu` for all three modules (`dk.dtu.shared.*` for the
@@ -207,6 +293,26 @@ note in `patr7257/BoredAPIActivityWheel`.
   reordering) auto-persists via `dk.dtu.ViewPrefs` (Java Preferences, keyed by
   the signed-in user, local to this machine) and restores on open. New
   view-affecting UI state should go through `ViewPrefs`, not ad-hoc storage.
+  Namespacing matters: the "only mine" toggles live as the key `onlyMine` INSIDE
+  the existing per-view `filters` map of view ids `lists` and `tasks`, and any
+  dashboard state uses `dashboard`-prefixed keys. A save must `load` the view
+  first and overwrite only its own slice, or it clobbers column widths and sort.
+- **`GET /api/todo/state` is APPEND-ONLY.** The separate website client parses
+  that exact payload, so keys may be added at the end of an object but never
+  removed, renamed, retyped or reordered. `api/src/test/java/dk/dtu/api/web/ViewsTest.java`
+  pins the list object's key set and order as the regression guard. A new
+  resource family gets its OWN endpoint instead of being bolted into `/state`,
+  which is why the fun counters live at `/api/todo/counters`.
+- `lists.owner_id uuid REFERENCES users(id)` is the real owner; the legacy
+  free-text `lists.owner` column is KEPT and kept in sync as a denormalized
+  display name. Two reasons, both load-bearing: the website may read that column
+  directly, and because every merge publishes a client installer separately from
+  the API redeploy, a freshly auto-updated client can briefly talk to an older
+  API, where an `ownerId`-only patch would produce an empty column set and a 400.
+  `users.name` is NOT unique, so the backfill resolves only unambiguous matches
+  and deliberately leaves the rest NULL to be re-picked by hand.
+- Counter bumps are relative in SQL (`value = value + :delta`), not a
+  read-modify-write, so two people clicking at once both land.
 - Every dialog must be prepared via `DarkModeManager.prepareDialog(dialog,
   owner)`: it sets the owner window + `WINDOW_MODAL` (fixes the macOS "app
   slides away" bug) and attaches brand + dark-mode styling. Never show a bare
