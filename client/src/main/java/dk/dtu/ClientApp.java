@@ -42,7 +42,10 @@ public class ClientApp extends Application {
             ApiSession.get().configure(savedToken.get());
             navigator.setCurrentUser(ServerPrefs.savedEmail().orElse("User"));
             navigator.connectToServer();
-            navigator.showMainMenu();
+            // The dashboard is the front page for both a fresh login and a
+            // saved-token relaunch (issue #46); it also clears history so an
+            // immediate Back press cannot return to a (nonexistent) prior screen.
+            navigator.showDashboardAfterLogin();
         } else {
             navigator.showWelcome();
         }

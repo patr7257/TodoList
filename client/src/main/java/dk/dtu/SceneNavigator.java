@@ -5,6 +5,7 @@ import dk.dtu.net.ApiSession;
 import dk.dtu.net.StatePoller;
 import dk.dtu.shared.Config;
 import dk.dtu.scenes.A_WelcomeScreen;
+import dk.dtu.scenes.B2_Dashboard;
 import dk.dtu.scenes.B_LoginScreen;
 import dk.dtu.scenes.C_MainMenu;
 import dk.dtu.scenes.D_TodoListView;
@@ -45,6 +46,7 @@ public class SceneNavigator {
     // References to current scene for auto-refresh
     private C_MainMenu currentMainMenu;
     private D_TodoListView currentTodoListView;
+    private B2_Dashboard currentDashboard;
 
     // Sidebar and dark mode
     private Sidebar sidebar;
@@ -56,13 +58,14 @@ public class SceneNavigator {
     private HBox updateBanner;
     private boolean updateCheckStarted;
 
-    private enum ViewType { WELCOME, LOGIN, MAIN_MENU, TODO_LIST }
+    private enum ViewType { WELCOME, LOGIN, MAIN_MENU, TODO_LIST, DASHBOARD }
 
     private record NavState(ViewType type, String listId, String listName) {
         static NavState welcome() { return new NavState(ViewType.WELCOME, null, null); }
         static NavState login() { return new NavState(ViewType.LOGIN, null, null); }
         static NavState mainMenu() { return new NavState(ViewType.MAIN_MENU, null, null); }
         static NavState todoList(String listId, String listName) { return new NavState(ViewType.TODO_LIST, listId, listName); }
+        static NavState dashboard() { return new NavState(ViewType.DASHBOARD, null, null); }
     }
 
     private final Deque<NavState> backStack = new ArrayDeque<>();
@@ -154,6 +157,7 @@ public class SceneNavigator {
                 renderMainMenu(msg);
             }
             case TODO_LIST -> renderTodoList(next.listId, next.listName);
+            case DASHBOARD -> renderDashboard();
         }
     }
 
@@ -228,6 +232,8 @@ public class SceneNavigator {
             currentMainMenu.autoRefreshLists();
         } else if (currentTodoListView != null) {
             currentTodoListView.autoRefreshTasks();
+        } else if (currentDashboard != null) {
+            currentDashboard.autoRefresh();
         }
         // TODO: add more scene types here as needed
     }
@@ -313,6 +319,7 @@ public class SceneNavigator {
                 String listName = currentState.listName;
                 yield (listName == null || listName.isBlank()) ? "Todo List" : ("Todo List - " + listName);
             }
+            case DASHBOARD -> "Dashboard";
         };
 
         stage.setTitle(buildWindowTitle(viewTitle));
@@ -404,6 +411,7 @@ public class SceneNavigator {
     private void renderWelcome() {
         currentMainMenu = null;
         currentTodoListView = null;
+        currentDashboard = null;
         sidebar.setColumnFilterButtonAction(null);
         sidebar.setListFilterButtonAction(null);
         Scene scene = new A_WelcomeScreen(this).createScene();
@@ -427,6 +435,7 @@ public class SceneNavigator {
         ServerPrefs.clearAuth();
         currentMainMenu = null;
         currentTodoListView = null;
+        currentDashboard = null;
         sidebar.setColumnFilterButtonAction(null);
         sidebar.setListFilterButtonAction(null);
         Scene scene = new B_LoginScreen(this).createScene();
@@ -441,6 +450,7 @@ public class SceneNavigator {
     private void renderMainMenu(String loginMessage) {
         currentMainMenu = loginMessage == null ? new C_MainMenu(this) : new C_MainMenu(this, loginMessage);
         currentTodoListView = null;
+        currentDashboard = null;
         sidebar.setColumnFilterButtonAction(() -> {
             if (currentMainMenu != null) {
                 currentMainMenu.openColumnsDialog();
@@ -468,6 +478,7 @@ public class SceneNavigator {
     private void renderTodoList(String listId, String listName) {
         currentMainMenu = null;
         currentTodoListView = new D_TodoListView(this, listId, listName);
+        currentDashboard = null;
         sidebar.setColumnFilterButtonAction(() -> {
             if (currentTodoListView != null) {
                 currentTodoListView.openColumnsDialog();
@@ -480,6 +491,35 @@ public class SceneNavigator {
         });
         Scene scene = currentTodoListView.createScene();
         setScene(scene, buildWindowTitle(listName == null ? "Todo List" : ("Todo List - " + listName)));
+    }
+
+    // Dashboard: the new front page that loads right after login, before the
+    // lists view (issue #46).
+    public void showDashboard() {
+        navigateTo(NavState.dashboard(), true);
+    }
+
+    /**
+     * Lands on the dashboard right after a successful login or a saved-token
+     * relaunch, clearing the back/forward history first: without this, the
+     * back stack still holds the login screen (or nothing yet), and pressing
+     * Back would either re-render login (effectively logging the user out) or
+     * do nothing confusing. The dashboard becomes the true "no history" root.
+     */
+    public void showDashboardAfterLogin() {
+        backStack.clear();
+        forwardStack.clear();
+        navigateTo(NavState.dashboard(), false);
+    }
+
+    private void renderDashboard() {
+        currentMainMenu = null;
+        currentTodoListView = null;
+        sidebar.setColumnFilterButtonAction(null);
+        sidebar.setListFilterButtonAction(null);
+        currentDashboard = new B2_Dashboard(this);
+        Scene scene = currentDashboard.createScene();
+        setScene(scene, buildWindowTitle("Dashboard"));
     }
 
     public void setCurrentUser(String username) {

@@ -22,6 +22,7 @@ public final class ApiServer {
         StateController state = new StateController(backend);
         ListsController lists = new ListsController(backend);
         ItemsController items = new ItemsController(backend);
+        CountersController counters = new CountersController(backend);
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new GsonJsonMapper());
@@ -39,6 +40,10 @@ public final class ApiServer {
         app.post("/api/todo/items", items::create);
         app.patch("/api/todo/items/{id}", items::update);
         app.delete("/api/todo/items/{id}", items::delete);
+        app.get("/api/todo/counters", counters::list);
+        app.post("/api/todo/counters", counters::create);
+        app.patch("/api/todo/counters/{id}", counters::update);
+        app.delete("/api/todo/counters/{id}", counters::delete);
 
         app.exception(HttpError.class, (e, ctx) -> ctx.status(e.status()).json(error(e.getMessage())));
         app.exception(Exception.class, (e, ctx) -> {

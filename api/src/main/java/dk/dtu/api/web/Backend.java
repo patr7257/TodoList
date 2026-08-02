@@ -3,13 +3,15 @@ package dk.dtu.api.web;
 import dk.dtu.api.ApiConfig;
 import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
+import dk.dtu.api.domain.CountersService;
 import dk.dtu.api.domain.TodoService;
 
 /**
  * Holds the wired-up services and shared collaborators for the controllers.
- * When the database is not configured, {@link #todo()} and {@link #auth()} are
- * null and controllers answer 503, mirroring the website's lazy getDb() that
- * returns null and makes every data route respond "backend not configured".
+ * When the database is not configured, {@link #todo()}, {@link #auth()} and
+ * {@link #counters()} are null and controllers answer 503, mirroring the
+ * website's lazy getDb() that returns null and makes every data route respond
+ * "backend not configured".
  */
 public final class Backend {
 
@@ -18,14 +20,21 @@ public final class Backend {
     private final AuthService auth;
     private final Token token;
     private final RateLimiter loginRateLimiter;
+    private final CountersService counters;
 
     public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
                    RateLimiter loginRateLimiter) {
+        this(config, todo, auth, token, loginRateLimiter, null);
+    }
+
+    public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
+                   RateLimiter loginRateLimiter, CountersService counters) {
         this.config = config;
         this.todo = todo;
         this.auth = auth;
         this.token = token;
         this.loginRateLimiter = loginRateLimiter;
+        this.counters = counters;
     }
 
     public boolean databaseConfigured() {
@@ -50,5 +59,9 @@ public final class Backend {
 
     public RateLimiter loginRateLimiter() {
         return loginRateLimiter;
+    }
+
+    public CountersService counters() {
+        return counters;
     }
 }
