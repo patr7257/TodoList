@@ -115,7 +115,7 @@ public final class Dashboard {
         int completionPercent = (totalTasks == 0) ? 0 : Math.round((float) completionSum / totalTasks);
 
         return new DashboardStats(
-                safeLists.size(), totalTasks, doneTasks, completionPercent,
+                countNonNullLists(safeLists), totalTasks, doneTasks, completionPercent,
                 overdue, myOpen, addedRecently, mix);
     }
 
@@ -215,14 +215,38 @@ public final class Dashboard {
         }
     }
 
+    /**
+     * Flattens every list's items into one collection, skipping null lists AND
+     * null items within a list's items collection. Callers rely on {@code
+     * .size()} of the returned list being a meaningful, already-filtered count
+     * (it is the divisor behind {@code completionPercent} and the value behind
+     * {@code totalTasks}), so nulls must never survive into it: a null slipping
+     * through here would inflate both of those past what the per-item loop
+     * actually summed.
+     */
     private static List<ItemDto> flattenItems(List<ListDto> lists) {
         List<ItemDto> out = new ArrayList<>();
         for (ListDto l : lists) {
             if (l == null || l.items() == null) {
                 continue;
             }
-            out.addAll(l.items());
+            for (ItemDto it : l.items()) {
+                if (it != null) {
+                    out.add(it);
+                }
+            }
         }
         return out;
+    }
+
+    /** Count of non-null lists; a null entry in the lists array must not inflate totalLists. */
+    private static int countNonNullLists(List<ListDto> lists) {
+        int count = 0;
+        for (ListDto l : lists) {
+            if (l != null) {
+                count++;
+            }
+        }
+        return count;
     }
 }
