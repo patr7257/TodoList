@@ -1,5 +1,7 @@
 package dk.dtu.ui;
 
+import java.util.List;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
@@ -29,6 +31,39 @@ public final class Icons {
         icon.setIconSize(size);
         icon.getStyleClass().add("app-icon");
         return icon;
+    }
+
+    // --- Fun counters ------------------------------------------------------
+
+    /**
+     * Ikonli Feather is the only icon pack bundled; it has no plane, ship, or
+     * walking glyph, so these are the fixed substitutes for the fun counters
+     * (Total Flights, Total Ships, Tour de Brede). Any icon picker for a
+     * counter must offer only literals from this whitelist.
+     */
+    public static final List<String> COUNTER_ICON_CHOICES = List.of("fth-send", "fth-anchor", "fth-compass");
+
+    /** Neutral fallback glyph used when a counter's icon is missing or unrecognized. */
+    private static final String FALLBACK_ICON = "fth-hash";
+
+    /**
+     * Build an icon from an arbitrary, possibly hand-edited, blank, or unknown
+     * literal. {@code new FontIcon(literal)} throws for a literal Ikonli does
+     * not recognize; this NEVER throws, falling back to a neutral glyph
+     * instead, so a bad {@code icon} column value can never blank a tile or
+     * crash the dashboard (the one screen every login must land on safely).
+     */
+    public static FontIcon safe(String literal, int size) {
+        String candidate = (literal == null || literal.isBlank()) ? FALLBACK_ICON : literal.trim();
+        try {
+            return of(candidate, size);
+        } catch (Exception e) {
+            try {
+                return of(FALLBACK_ICON, size);
+            } catch (Exception fallbackFailed) {
+                return null; // extremely defensive; callers must null-check the graphic
+            }
+        }
     }
 
     // --- Sidebar ---------------------------------------------------------------
