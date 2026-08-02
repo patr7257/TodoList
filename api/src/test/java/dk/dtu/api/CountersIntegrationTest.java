@@ -177,6 +177,8 @@ class CountersIntegrationTest {
     @Test
     @Order(5)
     void createReturnsCounterWrappedWithDefaultsAndExactKeyOrder() throws Exception {
+        int maxSortBefore = counters.allOrdered().stream().mapToInt(CounterRow::sort).max().orElse(-1);
+
         HttpResponse<String> res = call("POST", "", "{\"label\":\"Marathons\"}", bearerToken);
         assertEquals(200, res.statusCode());
         assertKeyOrder(res.body(), "counter", "id", "label", "description", "value", "icon", "sort",
@@ -187,10 +189,33 @@ class CountersIntegrationTest {
         assertEquals(0, c.get("value").getAsInt());
         assertTrue(c.get("description").isJsonNull());
         assertTrue(c.get("icon").isJsonNull());
+        // A new counter must be appended after every existing one (max(sort)+1),
+        // never fall back to the column DEFAULT 0 and collide with a seeded
+        // counter's sort. Not a hardcoded number: earlier @Order tests add rows,
+        // so only "strictly greater than whatever existed before" is asserted.
+        assertTrue(c.get("sort").getAsInt() > maxSortBefore,
+                "new counter's sort (" + c.get("sort").getAsInt() + ") must be greater than every existing sort (" + maxSortBefore + ")");
     }
 
     @Test
     @Order(6)
+    void createIgnoresAnyClientSuppliedSortAndAppendsAtTheEnd() throws Exception {
+        // "sort" is deliberately not part of the create contract: a client
+        // cannot pick where its new counter lands. Sending one anyway (even a
+        // deliberately colliding/low value like 0) must be silently ignored,
+        // not honoured and not a 400: the server-computed max(sort)+1 always wins.
+        int maxSortBefore = counters.allOrdered().stream().mapToInt(CounterRow::sort).max().orElse(-1);
+
+        HttpResponse<String> res = call("POST", "", "{\"label\":\"Sort spoof\",\"sort\":0}", bearerToken);
+        assertEquals(200, res.statusCode(), "an unrecognized/ignored 'sort' key must not cause a 400");
+
+        JsonObject c = JsonParser.parseString(res.body()).getAsJsonObject().getAsJsonObject("counter");
+        assertTrue(c.get("sort").getAsInt() > maxSortBefore,
+                "a client-supplied sort must be ignored; the server-computed value must still win");
+    }
+
+    @Test
+    @Order(7)
     void createRejectsMissingOrBlankOrOverlongLabel() throws Exception {
         assertEquals(400, call("POST", "", "{}", bearerToken).statusCode());
         assertEquals(400, call("POST", "", "{\"label\":\"   \"}", bearerToken).statusCode());
@@ -200,7 +225,7 @@ class CountersIntegrationTest {
     // -- PATCH: fields + null clears -------------------------------------------
 
     @Test
-    @Order(7)
+    @Order(8)
     void patchUpdatesFieldsAndExplicitNullClearsDescriptionAndIcon() throws Exception {
         String id = createCounter("Board games", "game nights", 3, "fth-anchor");
 
@@ -218,7 +243,7 @@ class CountersIntegrationTest {
     }
 
     @Test
-    @Order(8)
+    @Order(9)
     void patchWithNoRecognizedFieldsIsBadRequest() throws Exception {
         String id = createCounter("Empty patch target", null, 0, null);
         assertEquals(400, call("PATCH", "/" + id, "{}", bearerToken).statusCode());
@@ -228,7 +253,7 @@ class CountersIntegrationTest {
     // -- PATCH: delta bump ------------------------------------------------------
 
     @Test
-    @Order(9)
+    @Order(10)
     void deltaBumpsAreRelativeInSql() throws Exception {
         String id = createCounter("Bump target", null, 10, null);
 
@@ -242,14 +267,14 @@ class CountersIntegrationTest {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     void deltaTogetherWithValueIsBadRequest() throws Exception {
         String id = createCounter("Delta plus value", null, 0, null);
         assertEquals(400, call("PATCH", "/" + id, "{\"delta\":1,\"value\":5}", bearerToken).statusCode());
     }
 
     @Test
-    @Order(11)
+    @Order(12)
     void deltaOfZeroIsBadRequest() throws Exception {
         String id = createCounter("Delta zero", null, 0, null);
         assertEquals(400, call("PATCH", "/" + id, "{\"delta\":0}", bearerToken).statusCode());
@@ -258,7 +283,7 @@ class CountersIntegrationTest {
     // -- unknown id -------------------------------------------------------------
 
     @Test
-    @Order(12)
+    @Order(13)
     void unknownOrNonUuidIdIs404WithNoExceptionLeaking() throws Exception {
         HttpResponse<String> unknownUuid = call("PATCH", "/00000000-0000-0000-0000-000000000000",
                 "{\"label\":\"x\"}", bearerToken);
@@ -274,7 +299,7 @@ class CountersIntegrationTest {
     // -- DELETE -------------------------------------------------------------
 
     @Test
-    @Order(13)
+    @Order(14)
     void deleteReturnsOkAndTheCounterIsGone() throws Exception {
         String id = createCounter("To delete", null, 0, null);
 
@@ -289,7 +314,7 @@ class CountersIntegrationTest {
     // -- 503 when the backend is not configured --------------------------------
 
     @Test
-    @Order(14)
+    @Order(15)
     void answersServiceUnavailableWhenDatabaseNotConfigured() throws Exception {
         Backend noDbBackend = new Backend(
                 ApiConfig.of(0, null, "some-secret", 1000, 60), null, null,

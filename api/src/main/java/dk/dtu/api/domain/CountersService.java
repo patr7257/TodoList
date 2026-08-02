@@ -50,12 +50,20 @@ public final class CountersService {
      * Inserts a new counter. {@code description} and {@code icon} may be null;
      * {@code value} defaults are the caller's responsibility (the controller
      * defaults an absent value to 0). {@code createdBy} may be null.
+     *
+     * <p>{@code sort} is always computed here as {@code max(sort) + 1} over the
+     * existing rows (0 on an empty table), never left to the column's {@code
+     * DEFAULT 0}: a new counter must land after every existing one, not collide
+     * with (and lose a tiebreak against) the first seeded counter's sort 0.
+     * There is no client-supplied {@code sort} on create; reordering is done
+     * exclusively via PATCH, one row at a time (see {@link #update}).
      */
     public CounterRow insert(String label, String description, int value, String icon, String createdBy) {
         return jdbi.withHandle(h -> {
             Update u = h.createUpdate(
-                    "INSERT INTO fun_counters (label, description, value, icon, created_by) "
-                    + "VALUES (:label, :description, :value, :icon, CAST(:createdBy AS uuid)) RETURNING *");
+                    "INSERT INTO fun_counters (label, description, value, icon, sort, created_by) "
+                    + "VALUES (:label, :description, :value, :icon, "
+                    + "COALESCE((SELECT MAX(sort) + 1 FROM fun_counters), 0), CAST(:createdBy AS uuid)) RETURNING *");
             u.bind("label", label);
             bindNullable(u, "description", description, Types.VARCHAR);
             u.bind("value", value);
