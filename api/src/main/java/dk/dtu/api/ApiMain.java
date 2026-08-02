@@ -8,6 +8,7 @@ import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
+import dk.dtu.api.domain.CountersService;
 import dk.dtu.api.domain.TodoService;
 import dk.dtu.api.web.ApiServer;
 import dk.dtu.api.web.Backend;
@@ -73,6 +74,7 @@ public final class ApiMain {
         Jdbi jdbi = Jdbi.create(dataSource);
         TodoService todo = new TodoService(jdbi);
         AuthService auth = new AuthService(todo, token);
-        return new Backend(config, todo, auth, token, loginLimiter);
+        CountersService counters = new CountersService(jdbi);
+        return new Backend(config, todo, auth, token, loginLimiter, counters);
     }
 }

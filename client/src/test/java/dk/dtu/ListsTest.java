@@ -51,9 +51,16 @@ public class ListsTest {
     // The desktop-superset setters guard their inputs before any network call.
 
     @Test
-    public void testSetListOwnerRejectsBlankOwner() {
+    public void testSetListOwnerIdRejectsBlankListId() {
         assertThrows(IllegalArgumentException.class, () -> {
-            Lists.setListOwner("list1", "   ");
+            Lists.setListOwnerId("   ", "u1");
+        });
+    }
+
+    @Test
+    public void testSetListOwnerIdRejectsNullListId() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            Lists.setListOwnerId(null, "u1");
         });
     }
 
@@ -78,10 +85,4 @@ public class ListsTest {
         });
     }
 
-    @Test
-    public void testClearListOwnerRejectsNullId() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Lists.clearListOwner(null);
-        });
-    }
 }

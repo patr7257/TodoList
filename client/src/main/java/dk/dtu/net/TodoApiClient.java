@@ -2,6 +2,7 @@ package dk.dtu.net;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -15,7 +16,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -202,6 +205,67 @@ public final class TodoApiClient {
     /** DELETE /items/{id}. */
     public void deleteItem(String id) throws Exception {
         send("DELETE", "/items/" + enc(id), null, true);
+    }
+
+    // -- counters (shared, manually maintained "fun counters") -----------------
+
+    /** GET /counters, ordered by (sort, created_at) same as the API. */
+    public List<CounterDto> getCounters() throws Exception {
+        String json = send("GET", "/counters", null, true);
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        JsonArray arr = obj.getAsJsonArray("counters");
+        List<CounterDto> out = new ArrayList<>();
+        if (arr != null) {
+            for (int i = 0; i < arr.size(); i++) {
+                out.add(GSON.fromJson(arr.get(i), CounterDto.class));
+            }
+        }
+        return out;
+    }
+
+    /** POST /counters. {@code description}/{@code icon} may be null; {@code value} may be null (defaults to 0). */
+    public CounterDto createCounter(String label, String description, Integer value, String icon) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("label", label);
+        if (description != null) {
+            body.put("description", description);
+        }
+        if (value != null) {
+            body.put("value", value);
+        }
+        if (icon != null) {
+            body.put("icon", icon);
+        }
+        String json = send("POST", "/counters", GSON_NULLS.toJson(body), true);
+        return unwrapCounter(json);
+    }
+
+    /**
+     * PATCH /counters/{id} with an arbitrary field map (label, description,
+     * value, icon, sort, or a relative delta). Nulls are preserved so a null
+     * value clears description/icon. Only include the keys you intend to change.
+     */
+    public CounterDto updateCounter(String id, Map<String, Object> patch) throws Exception {
+        String json = send("PATCH", "/counters/" + enc(id), GSON_NULLS.toJson(patch), true);
+        return unwrapCounter(json);
+    }
+
+    /** Relative bump: PATCH /counters/{id} with {@code {"delta": <delta>}}. */
+    public CounterDto bumpCounter(String id, int delta) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("delta", delta);
+        String json = send("PATCH", "/counters/" + enc(id), GSON.toJson(body), true);
+        return unwrapCounter(json);
+    }
+
+    /** DELETE /counters/{id}. */
+    public void deleteCounter(String id) throws Exception {
+        send("DELETE", "/counters/" + enc(id), null, true);
+    }
+
+    private CounterDto unwrapCounter(String json) {
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        return GSON.fromJson(obj.get("counter"), CounterDto.class);
     }
 
     // -- plumbing --------------------------------------------------------------

@@ -68,12 +68,13 @@ public class TodoApiClientTest {
         } else if (path.endsWith("/state")) {
             body = "{\"user\":{\"id\":\"u1\",\"name\":\"Alice\",\"email\":\"a@x.dk\"},"
                     + "\"users\":[{\"id\":\"u1\",\"name\":\"Alice\"},{\"id\":\"u2\",\"name\":\"Bob\"}],"
-                    + "\"lists\":[{\"id\":\"l1\",\"name\":\"Inbox\",\"sort\":0,\"owner\":null,"
+                    + "\"lists\":[{\"id\":\"l1\",\"name\":\"Inbox\",\"sort\":0,\"owner\":\"Alice\","
                     + "\"priority\":null,\"year\":null,\"location\":null,\"description\":null,"
                     + "\"taskColumnsJson\":null,\"completionPercentage\":50,"
                     + "\"items\":[{\"id\":\"i1\",\"listId\":\"l1\",\"text\":\"Buy milk\",\"description\":null,"
                     + "\"done\":false,\"status\":\"NOT_STARTED\",\"priority\":null,\"dueAt\":null,"
-                    + "\"location\":null,\"assigneeId\":\"u2\",\"sort\":0,\"year\":null,\"assigneeName\":\"Bob\"}]}]}";
+                    + "\"location\":null,\"assigneeId\":\"u2\",\"sort\":0,\"year\":null,\"assigneeName\":\"Bob\"}],"
+                    + "\"ownerId\":\"u1\",\"ownerName\":\"Alice\"}]}";
         } else if (path.endsWith("/items") && ex.getRequestMethod().equals("POST")) {
             body = "{\"item\":{\"id\":\"i9\",\"listId\":\"l1\",\"text\":\"New\",\"status\":\"NOT_STARTED\","
                     + "\"done\":false,\"sort\":0,\"assigneeName\":null}}";
@@ -124,6 +125,8 @@ public class TodoApiClientTest {
         ItemDto item = list.items().get(0);
         assertEquals("Buy milk", item.text());
         assertEquals("Bob", item.assigneeName());
+        assertEquals("u1", list.ownerId(), "the real owner-id reference must parse");
+        assertEquals("Alice", list.ownerName(), "the resolved owner display name must parse");
     }
 
     @Test
@@ -171,6 +174,35 @@ public class TodoApiClientTest {
         assertEquals(3, list.priority());
         assertEquals(2027, list.year());
         assertEquals("Aarhus", list.location());
+    }
+
+    @Test
+    void updateListPatchSendsOwnerIdKeyAlongsideTheResolvedOwnerName() throws Exception {
+        // The generic patch map is how the client writes ownerId (issue #45):
+        // TodoApiClient itself needs no new method, updateList(Map) already
+        // serializes whatever keys are given, ownerId included.
+        TodoApiClient client = new TodoApiClient(baseUrl, "tok");
+        java.util.Map<String, Object> patch = new java.util.LinkedHashMap<>();
+        patch.put("ownerId", "u2");
+        patch.put("owner", "Bob");
+        client.updateList("l1", patch);
+
+        assertEquals("PATCH", lastMethod.get());
+        assertTrue(lastBody.get().contains("\"ownerId\":\"u2\""));
+        assertTrue(lastBody.get().contains("\"owner\":\"Bob\""));
+    }
+
+    @Test
+    void updateListPatchSerializesNullOwnerIdToClearIt() throws Exception {
+        TodoApiClient client = new TodoApiClient(baseUrl, "tok");
+        java.util.Map<String, Object> patch = new java.util.LinkedHashMap<>();
+        patch.put("ownerId", null);
+        patch.put("owner", null);
+        client.updateList("l1", patch);
+
+        assertTrue(lastBody.get().contains("\"ownerId\":null"),
+                "a null ownerId must be serialized (to clear it), not dropped");
+        assertTrue(lastBody.get().contains("\"owner\":null"));
     }
 
     @Test

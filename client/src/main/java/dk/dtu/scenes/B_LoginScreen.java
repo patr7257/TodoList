@@ -110,7 +110,10 @@ public class B_LoginScreen {
                     signInButton.setText("Sign in");
                     navigator.setCurrentUser(name);
                     navigator.connectToServer(); // start the state poller
-                    navigator.showMainMenuWithMessage("Logged in as " + name);
+                    // The dashboard is the new front page after login (issue #46),
+                    // landing before the lists view; it also clears back/forward
+                    // history so an immediate Back press cannot return to Login.
+                    navigator.showDashboardAfterLogin();
                 });
             } catch (Exception ex) {
                 ex.printStackTrace();

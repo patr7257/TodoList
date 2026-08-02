@@ -107,14 +107,17 @@ public class Sidebar extends VBox {
             alert.setHeaderText("Choose an action");
             alert.setContentText("What would you like to do?");
             
+            ButtonType frontpageButton = new ButtonType("Frontpage");
             ButtonType mainMenuButton = new ButtonType("Back to Main Menu");
             ButtonType logoutButton = new ButtonType("Logout");
             ButtonType cancelButton = ButtonType.CANCEL;
-            
-            alert.getButtonTypes().setAll(mainMenuButton, logoutButton, cancelButton);
-            
+
+            alert.getButtonTypes().setAll(frontpageButton, mainMenuButton, logoutButton, cancelButton);
+
             alert.showAndWait().ifPresent(response -> {
-                if (response == mainMenuButton) {
+                if (response == frontpageButton) {
+                    navigator.showDashboard();
+                } else if (response == mainMenuButton) {
                     navigator.showMainMenu();
                 } else if (response == logoutButton) {
                     navigator.setCurrentUser(null);

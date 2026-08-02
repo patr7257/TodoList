@@ -98,17 +98,22 @@ public class Lists {
         ApiSession.get().client().updateList(listId, newName.trim(), null);
     }
 
-    public static void setListOwner(String listId, String owner) throws Exception {
+    /**
+     * Sets (non-null {@code ownerId}) or clears (null {@code ownerId}) a
+     * list's real owner reference. Always sends the resolved legacy
+     * {@code owner} display name in the SAME request alongside
+     * {@code ownerId}: a freshly auto-updated client can briefly talk to a
+     * pre-#45 API (installers and the API release independently on every
+     * merge to main), where an ownerId-only patch would produce an empty
+     * column set and a 400.
+     */
+    public static void setListOwnerId(String listId, String ownerId) throws Exception {
         requireId(listId);
-        if (owner == null || owner.isBlank()) {
-            throw new IllegalArgumentException("Owner cannot be empty");
-        }
-        patchList(listId, "owner", owner.trim());
-    }
-
-    public static void clearListOwner(String listId) throws Exception {
-        requireId(listId);
-        patchList(listId, "owner", null); // sent as JSON null to clear the owner
+        String ownerName = (ownerId == null || ownerId.isBlank()) ? null : ApiSession.get().nameForId(ownerId);
+        Map<String, Object> patch = new LinkedHashMap<>();
+        patch.put("ownerId", (ownerId == null || ownerId.isBlank()) ? null : ownerId);
+        patch.put("owner", ownerName);
+        ApiSession.get().client().updateList(listId, patch);
     }
 
     /** Per-list visible-column choice. Stored locally per user (view preference). */
@@ -117,12 +122,27 @@ public class Lists {
         ViewPrefs.putString(COLUMN_VIEW_PREFIX + listId, taskColumnsJson != null ? taskColumnsJson : "");
     }
 
-    public static void createTodoList(String listName, String owner) throws Exception {
+    /**
+     * Creates a list, optionally owned by a real user id (never a display
+     * name -- see the "Also fix" note on C_MainMenu's create-list dialog). The
+     * resolved owner name is sent on the create call itself; when an owner is
+     * given, a follow-up PATCH then also sets {@code ownerId} (see
+     * {@link #setListOwnerId}, which sends both keys together for the same
+     * cross-version-compatibility reason). {@code createList(name, owner)}
+     * only accepts the legacy free-text field, so this is the smallest change
+     * that gets a real owner reference onto a newly created list.
+     */
+    public static void createTodoList(String listName, String ownerId) throws Exception {
         if (listName == null || listName.isBlank()) {
             throw new IllegalArgumentException("List name cannot be empty");
         }
-        String ownerOrNull = (owner == null || owner.isBlank()) ? null : owner.trim();
-        ApiSession.get().client().createList(listName.trim(), ownerOrNull);
+        String ownerIdOrNull = (ownerId == null || ownerId.isBlank()) ? null : ownerId.trim();
+        String ownerName = ownerIdOrNull != null ? ApiSession.get().nameForId(ownerIdOrNull) : null;
+
+        ListDto created = ApiSession.get().client().createList(listName.trim(), ownerName);
+        if (ownerIdOrNull != null && created != null && created.id() != null) {
+            setListOwnerId(created.id(), ownerIdOrNull);
+        }
     }
 
     public static void deleteTodoList(String listId) throws Exception {

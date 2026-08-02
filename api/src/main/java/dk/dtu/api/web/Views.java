@@ -44,8 +44,24 @@ public final class Views {
         return m;
     }
 
-    /** Full list row (matches the website's insert/update returning() shape). */
+    /**
+     * Full list row (matches the website's insert/update returning() shape),
+     * with {@code ownerName} left null (no id-to-name map available). Used by
+     * the mutation controllers, whose response does not resolve the name.
+     */
     public static Map<String, Object> list(ListRow l) {
+        return list(l, null);
+    }
+
+    /**
+     * Full list row, resolving {@code ownerName} from {@code ownerNames} (an
+     * id-to-name map of all users, the same one used for assignee names). The
+     * key order is fixed: id, name, sort, createdAt, owner, priority, year,
+     * location, description, taskColumnsJson, ownerId, ownerName -- append any
+     * future field AFTER these, never insert/reorder/remove (GET /state is
+     * append-only, consumed verbatim by a separate website).
+     */
+    public static Map<String, Object> list(ListRow l, Map<String, String> ownerNames) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", l.id());
         m.put("name", l.name());
@@ -58,6 +74,10 @@ public final class Views {
         m.put("location", l.location());
         m.put("description", l.description());
         m.put("taskColumnsJson", l.taskColumnsJson());
+        // real user reference (V3) + its resolved display name (additive)
+        m.put("ownerId", l.ownerId());
+        String ownerName = (ownerNames == null || l.ownerId() == null) ? null : ownerNames.get(l.ownerId());
+        m.put("ownerName", ownerName);
         return m;
     }
 
@@ -92,7 +112,9 @@ public final class Views {
      */
     public static Map<String, Object> listWithItems(ListRow l, List<ItemRow> items,
                                                      Map<String, String> assigneeNames) {
-        Map<String, Object> m = list(l);
+        // Same id-to-name map resolves both the item assignee names and the
+        // list's ownerName (both keys are user ids).
+        Map<String, Object> m = list(l, assigneeNames);
         m.put("completionPercentage", Completion.forItems(items));
         List<Map<String, Object>> itemViews = new ArrayList<>(items.size());
         for (ItemRow it : items) {

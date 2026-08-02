@@ -561,3 +561,169 @@
 .autofit-button .app-icon {
     -fx-icon-color: -color-accent-fg;
 }
+
+/* ===========================================================================
+ * Dashboard front page (issue #46): 6 live stat tiles + the shared "fun
+ * counters". Deliberately reuses the existing card recipe (.login-box) and
+ * the existing -status-*/-band-* tokens instead of introducing new colors, so
+ * it reads as the same family as the rest of the app.
+ * ========================================================================= */
+
+.dashboard-root {
+    -fx-background-color: -color-bg-default;
+}
+
+.dashboard-scroll,
+.dashboard-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.dashboard-scroll > .scroll-bar:vertical,
+.dashboard-scroll > .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.dashboard-title {
+    -fx-font-family: "Georgia", "Times New Roman";
+    -fx-font-size: 30px;
+    -fx-font-weight: 500;
+    -fx-text-fill: -color-fg-default;
+}
+
+.dashboard-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.dashboard-section-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-fg-subtle;
+}
+
+.dashboard-open-lists-button {
+    -fx-font-size: 15px;
+}
+
+.dashboard-stat-grid,
+.dashboard-counter-grid {
+    -fx-alignment: top-center;
+}
+
+/* -- Stat tiles (StatTile.java) --------------------------------------------- */
+
+.stat-tile {
+    -fx-cursor: default;
+}
+
+.stat-tile-clickable {
+    -fx-cursor: hand;
+}
+
+.stat-tile-icon-row {
+    -fx-padding: 0 0 2 0;
+}
+
+.stat-tile-value {
+    -fx-font-family: "Georgia", "Times New Roman";
+    -fx-font-size: 30px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-fg-default;
+}
+
+.stat-tile-caption {
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* -- Completion progress ring (ProgressRing.java) --------------------------- */
+
+.progress-ring-track {
+    -fx-stroke: -color-border-muted;
+    -fx-fill: transparent;
+}
+
+.progress-ring-fill {
+    -fx-stroke: -band-none;
+    -fx-fill: transparent;
+}
+
+.progress-ring.completion-high .progress-ring-fill { -fx-stroke: -band-high; }
+.progress-ring.completion-mid  .progress-ring-fill { -fx-stroke: -band-mid;  }
+.progress-ring.completion-low  .progress-ring-fill { -fx-stroke: -band-low;  }
+.progress-ring.completion-none .progress-ring-fill { -fx-stroke: -band-none; }
+
+.progress-ring-label {
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-fg-default;
+}
+
+/* -- Status mix bar (StatusMixBar.java) ------------------------------------- */
+
+.status-mix-bar {
+    -fx-background-color: -color-border-muted;
+    -fx-background-radius: 99;
+}
+
+.status-mix-segment {
+    -fx-background-radius: 99;
+}
+
+.status-mix-empty {
+    -fx-background-color: -color-border-muted;
+    -fx-background-radius: 99;
+}
+
+.status-mix-NOT_STARTED { -fx-background-color: -status-todo; }
+.status-mix-IN_PROGRESS { -fx-background-color: -status-prog; }
+.status-mix-DELAYED     { -fx-background-color: -status-late; }
+.status-mix-NEED_HELP   { -fx-background-color: -status-help; }
+.status-mix-DONE        { -fx-background-color: -status-done; }
+
+/* -- Fun counter tiles (CounterTile.java) ------------------------------------ */
+
+.counter-tile {
+    -fx-cursor: open-hand;
+}
+
+.counter-tile.drag-over {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2;
+    -fx-border-radius: 16;
+    -fx-background-color: -color-accent-subtle;
+}
+
+.counter-tile-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-fg-default;
+}
+
+.counter-tile-value {
+    -fx-font-family: "Georgia", "Times New Roman";
+    -fx-font-size: 26px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -color-accent-fg;
+}
+
+.counter-tile-description {
+    -fx-font-size: 12px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.counter-tile-actions {
+    -fx-padding: 0 0 4 0;
+}
+
+.counter-tile-action-button,
+.counter-tile-bump-button {
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.counter-tile-action-button:hover,
+.counter-tile-bump-button:hover {
+    -fx-background-color: -color-accent-subtle;
+}
