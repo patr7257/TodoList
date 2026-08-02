@@ -74,6 +74,11 @@ public final class CountersController {
 
         String icon = body.has("icon") ? readNullableText(body, "icon", MAX_ICON_LENGTH) : null;
 
+        // "sort" is deliberately NOT part of the create contract: it is not read
+        // from the body even if present (an explicit choice, not an oversight),
+        // so a client cannot make a new counter collide with an existing sort.
+        // CountersService.insert always computes it as max(sort)+1. Reordering
+        // is done exclusively via PATCH .../{id}, one row at a time.
         String uid = ctx.attribute(AuthFilter.UID_ATTRIBUTE);
         CounterRow created = counters.insert(label.trim(), description, value, icon, uid);
 
