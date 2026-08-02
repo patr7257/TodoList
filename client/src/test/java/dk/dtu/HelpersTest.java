@@ -21,14 +21,14 @@ public class HelpersTest {
 
     @Test
     public void testListEntryToString() {
-        Helpers.ListEntry e = new Helpers.ListEntry("123", "Inbox", "", "", 5, 0, 0, "", "", 0, 0, 0);
+        Helpers.ListEntry e = new Helpers.ListEntry("123", "Inbox", "", "", 5, 0, 0, "", "", 0, 0, 0, null);
         assertEquals("123 - Inbox", e.toString());
     }
 
     @Test
     public void testTaskEntryToStringWithOwnerAndDueDate() {
         Helpers.TaskEntry t = new Helpers.TaskEntry(
-            "L1", "T1", "Buy milk", "alice", "OPEN", "2026-02-01", 5, 0, 0, "", ""
+            "L1", "T1", "Buy milk", "alice", "OPEN", "2026-02-01", 5, 0, 0, "", "", "u1"
         );
 
         String s = t.toString();
@@ -41,7 +41,7 @@ public class HelpersTest {
     @Test
     public void testTaskEntryToStringWithoutOwnerAndDueDate() {
         Helpers.TaskEntry t = new Helpers.TaskEntry(
-            "L1", "T1", "Buy milk", "   ", "OPEN", "", 5, 0, 0, "", ""
+            "L1", "T1", "Buy milk", "   ", "OPEN", "", 5, 0, 0, "", "", null
         );
         String s = t.toString();
         assertTrue(s.contains("Buy milk"));
@@ -104,12 +104,49 @@ public class HelpersTest {
                 null, yesterday, null, null, 2, null, null, null, null, null);
 
         ListDto list = new ListDto("l1", "Inbox", 0, null, null, null, null, null, null,
-                null, 33, List.of(overdue, future, doneLate));
+                null, 33, List.of(overdue, future, doneLate), null, null);
 
         Helpers.ListEntry e = Helpers.toListEntry(list);
         assertEquals("Inbox", e.name);
         assertEquals(33, e.completionPercentage);
         assertEquals(3, e.taskCount);
         assertEquals(1, e.overdueTaskCount, "only the not-done, past-due item is overdue");
+    }
+
+    // -- owner display precedence (ownerName wins over legacy owner text) ------
+
+    @Test
+    public void testToListEntryPrefersOwnerNameOverLegacyOwnerText() {
+        ListDto list = new ListDto("l1", "Inbox", 0, null, "Stale Legacy Text", null, null, null, null,
+                null, null, List.of(), "u1", "Resolved Name");
+        Helpers.ListEntry e = Helpers.toListEntry(list);
+        assertEquals("Resolved Name", e.owner);
+        assertEquals("u1", e.ownerId);
+    }
+
+    @Test
+    public void testToListEntryFallsBackToLegacyOwnerWhenOwnerNameIsNullOrBlank() {
+        ListDto withNullName = new ListDto("l1", "Inbox", 0, null, "Alice", null, null, null, null,
+                null, null, List.of(), "u1", null);
+        assertEquals("Alice", Helpers.toListEntry(withNullName).owner);
+
+        ListDto withBlankName = new ListDto("l1", "Inbox", 0, null, "Alice", null, null, null, null,
+                null, null, List.of(), "u1", "   ");
+        assertEquals("Alice", Helpers.toListEntry(withBlankName).owner);
+    }
+
+    @Test
+    public void testToListEntryCarriesOwnerIdThrough() {
+        ListDto list = new ListDto("l1", "Inbox", 0, null, null, null, null, null, null,
+                null, null, List.of(), "owner-123", "Someone");
+        assertEquals("owner-123", Helpers.toListEntry(list).ownerId);
+    }
+
+    @Test
+    public void testToTaskEntryCarriesAssigneeIdThrough() {
+        ItemDto it = new ItemDto("i1", "l1", "Buy milk", "desc", false, "IN_PROGRESS",
+                null, null, "Kitchen", "u2", 3, "u1",
+                null, null, null, "Bob");
+        assertEquals("u2", Helpers.toTaskEntry(it).assigneeId);
     }
 }

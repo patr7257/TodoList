@@ -66,7 +66,7 @@ public final class TodoService {
     }
 
     public ListRow insertList(String name) {
-        return insertList(name, null);
+        return insertList(name, null, null);
     }
 
     /**
@@ -74,10 +74,22 @@ public final class TodoService {
      * owner leaves the column NULL, matching a website-created list.
      */
     public ListRow insertList(String name, String owner) {
+        return insertList(name, owner, null);
+    }
+
+    /**
+     * Inserts a list with an optional legacy owner name and an optional real
+     * {@code ownerId} (a V3 column, references {@code users.id}). Callers are
+     * expected to have already resolved/validated ownerId (see
+     * {@link #findUserById(String)}) before calling this.
+     */
+    public ListRow insertList(String name, String owner, String ownerId) {
         return jdbi.withHandle(h -> {
-            Update u = h.createUpdate("INSERT INTO lists (name, owner) VALUES (:name, :owner) RETURNING *");
+            Update u = h.createUpdate(
+                    "INSERT INTO lists (name, owner, owner_id) VALUES (:name, :owner, CAST(:ownerId AS uuid)) RETURNING *");
             u.bind("name", name);
             bindNullable(u, "owner", owner, Types.VARCHAR);
+            bindNullable(u, "ownerId", ownerId, Types.VARCHAR);
             return u.executeAndReturnGeneratedKeys().map((rs, ctx) -> mapList(rs)).one();
         });
     }
@@ -222,7 +234,8 @@ public final class TodoService {
                 nullableInt(rs, "year"),
                 rs.getString("location"),
                 rs.getString("description"),
-                rs.getString("task_columns_json"));
+                rs.getString("task_columns_json"),
+                rs.getString("owner_id"));
     }
 
     private ItemRow mapItem(ResultSet rs) throws SQLException {

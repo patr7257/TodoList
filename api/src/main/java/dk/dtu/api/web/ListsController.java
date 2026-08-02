@@ -6,10 +6,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import dk.dtu.api.domain.ColumnValue;
 import dk.dtu.api.domain.ListRow;
 import dk.dtu.api.domain.TodoService;
+import dk.dtu.api.domain.UserRow;
 
 import io.javalin.http.Context;
 
@@ -23,6 +25,13 @@ import io.javalin.http.Context;
  * list columns: {@code owner}, {@code priority}, {@code year}, {@code location}
  * and {@code description} on PATCH (all nullable, so the desktop can clear a
  * field by sending JSON null), and an optional {@code owner} on create.
+ *
+ * <p>{@code ownerId} (the V3 real user reference) is accepted on both create
+ * and PATCH: a non-null value must parse as a UUID and reference an existing
+ * user (else 400, never a 500 from a bare FK violation), and also writes the
+ * denormalized {@code owner} name in the same statement; a null value clears
+ * both. If a request carries both {@code ownerId} and legacy {@code owner},
+ * {@code ownerId} wins and {@code owner} is ignored.
  */
 public final class ListsController {
 
@@ -52,7 +61,20 @@ public final class ListsController {
         // owner is optional on create (a desktop-superset column, may be null).
         String owner = body.has("owner") ? readNullableText(body, "owner", MAX_OWNER_LENGTH) : null;
 
-        ListRow created = todo.insertList(name.trim(), owner);
+        // ownerId, when present, wins over legacy owner: resolve it to a real
+        // user (400 on an unknown/malformed id) and denormalize its name.
+        String ownerId = null;
+        if (body.has("ownerId")) {
+            ownerId = readNullableUuid(body, "ownerId");
+            if (ownerId == null) {
+                owner = null;
+            } else {
+                UserRow ownerUser = todo.findUserById(ownerId).orElseThrow(HttpError::badBody);
+                owner = ownerUser.name();
+            }
+        }
+
+        ListRow created = todo.insertList(name.trim(), owner, ownerId);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("list", Views.list(created));
         ctx.json(out);
@@ -81,7 +103,19 @@ public final class ListsController {
             }
             sets.add(new ColumnValue("sort", ":sort", body.asInt("sort"), Types.INTEGER));
         }
-        if (body.has("owner")) {
+        if (body.has("ownerId")) {
+            // ownerId wins over a legacy "owner" key present in the same body.
+            String ownerId = readNullableUuid(body, "ownerId");
+            String ownerName;
+            if (ownerId == null) {
+                ownerName = null;
+            } else {
+                UserRow ownerUser = todo.findUserById(ownerId).orElseThrow(HttpError::badBody);
+                ownerName = ownerUser.name();
+            }
+            sets.add(new ColumnValue("owner_id", "CAST(:owner_id AS uuid)", ownerId, Types.VARCHAR));
+            sets.add(new ColumnValue("owner", ":owner", ownerName, Types.VARCHAR));
+        } else if (body.has("owner")) {
             String owner = readNullableText(body, "owner", MAX_OWNER_LENGTH);
             sets.add(new ColumnValue("owner", ":owner", owner, Types.VARCHAR));
         }
@@ -125,6 +159,28 @@ public final class ListsController {
             throw HttpError.badBody();
         }
         return body.asInt(key);
+    }
+
+    /**
+     * null on JSON null, a syntactically valid UUID string on a string that
+     * parses as one, else 400. Existence against {@code users} is checked
+     * separately by the caller (a bare FK violation would otherwise surface
+     * as an unrelated 500).
+     */
+    private static String readNullableUuid(Body body, String key) {
+        if (body.isNull(key)) {
+            return null;
+        }
+        if (!body.isString(key)) {
+            throw HttpError.badBody();
+        }
+        String value = body.asString(key);
+        try {
+            UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            throw HttpError.badBody();
+        }
+        return value;
     }
 
     /** null on JSON null, trimmed string (empty -> null) up to max, else 400. */
