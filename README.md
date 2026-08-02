@@ -26,11 +26,14 @@ mvn -q install -DskipTests
 ```
 
 1) Start the API. It needs `DATABASE_URL` (a Postgres connection string) and
-   `TODO_SESSION_SECRET` in the environment; the `api` module can start an
-   embedded Postgres for local dev when no external database is configured:
+   `TODO_SESSION_SECRET` in the environment. It does NOT start a database for
+   you: the embedded Postgres here is test-scope only, so without
+   `DATABASE_URL` every data route answers 503. Start a throwaway local
+   Postgres first, then the API:
 
 ```powershell
-mvn -pl api exec:java
+.\scripts\dev-db.ps1
+$env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
 
 2) Start the client (in a separate terminal):
