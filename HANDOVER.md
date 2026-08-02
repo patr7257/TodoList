@@ -1,22 +1,24 @@
 # HANDOVER
 
 ## Date, branch, PR, CI
-- 2026-08-03. Branch: `main`. PR #48 (issues #45 + #46) squash-merged as `6c8c35e`; the auto-release for that merge published a new client installer and Dokploy redeployed the API. This handover rides in the follow-up docs-only PR (which skips the release by design).
-- Worktrees `TodoList-45` and `TodoList-46` and the branches `feat/list-owner-fk`, `feat/dashboard-front-page`, `feat/owner-fk-and-dashboard` still exist, deliberately: branch and worktree deletion needs an explicit go-ahead from Patrick.
+- 2026-08-03. Branch: `main`, clean. Everything from this session is merged and live.
+- **TodoList**: PR #48 (issues #45 + #46) squash-merged as `6c8c35e`, which auto-released **v2.0.4** (all four assets, both permanent `releases/latest/download` URLs verified HTTP 200) and triggered the Dokploy API redeploy. PR #49 (docs) merged as `a33d52b` and correctly SKIPPED the release (`version: success`, both build jobs `skipped`, no v2.0.5).
+- **PatrickRobelWeb**: PR #166 (issue #165) squash-merged as `fe59929`, Vercel production deploy succeeded.
+- All worktrees removed and all feature branches deleted, local and remote, in both repos except where noted under Environment state.
 
 ## TLDR of session outcome
 Two features shipped, both halves of a two-client product only half covered:
 
 - **#45**: `lists.owner` was free text while `items.assignee_id` was already a real FK. It now has `lists.owner_id uuid REFERENCES users(id)` (`V3`) with an idempotent, ambiguity-safe backfill (`V4`). The legacy `owner` text column is KEPT and dual-written as a display name. `POST/PATCH /api/todo/lists` accept `ownerId` (validated to an existing user, so a bogus id is a 400 rather than a 500 from an FK violation). The desktop owner ComboBox now compares and writes by user id instead of round-tripping a display name, and there are new always-visible "Only my lists" / "Only my tasks" checkboxes persisted per user.
 - **#46**: a new `B2_Dashboard` front page loads after login before the lists view, with six live stats derived client-side from the existing state payload, plus a new shared `fun_counters` table (`V5`) and a full CRUD resource at `/api/todo/counters` with relative bumps, reorder and a tile UI.
-- **#43** (multi-agent battle-test) ran for real as part of this: two `implementer` agents in isolated worktrees, then a headless `integration-verifier`. Metrics and verdict are in the retro comment on #43.
-- **#47** opened for the desktop-only gap, and the actual web implementation is tracked in `patr7257/PatrickRobelWeb#162`.
+- **The web edition shipped too**, so both clients now have the feature: `/todo` on the website is the dashboard, the lists app moved to `/todo/lists`, and counters have full CRUD through new passthrough proxy routes (`patr7257/PatrickRobelWeb#165`). Verified live: `/todo` and `/todo/lists` gate to login, and `GET /api/todo/counters` returns 401 from the upstream Java API, which proves the proxy reaches the real API.
+- **#43** (multi-agent battle-test) ran for real as part of this: two `implementer` agents in isolated worktrees, then a headless `integration-verifier`. Metrics, verdict and the agent-definition gaps are in the retro comment on #43, with a cross-repo summary on `patr7257/RoboRally02162#27`. Issue closed.
+- **#47** remains open as the desktop-side tracker for the web parity work now that it has shipped; close it or repurpose it.
 
 ## Prioritized next steps
-1. **Finish the web edition** (`patr7257/PatrickRobelWeb#162`, branch `feat/todo-web-dashboard`, worktree `../PatrickRobelWeb-162`): dashboard at `/todo` with the lists app moved to `/todo/lists`, the same six stats, and counter CRUD through new proxy routes. The API side needs nothing.
-2. **Click-test the desktop UI once.** The headless verifier explicitly could not cover the owner ComboBox, the two "only mine" checkboxes, or the dashboard tiles rendering. Unit tests and static review cover the logic; a human click-through is still the only evidence for the UI itself.
+1. **Click-test both UIs once.** Verification was deliberately headless after an incident (see gotchas), so nothing exercised the desktop owner ComboBox, the two "only mine" checkboxes, or the dashboard tiles rendering, and the web side was verified through the accessibility tree plus screenshots rather than by a human. Unit tests and static review cover the logic; your eyes are still the only evidence for the UI.
 3. Consider **TestFX** (test-scope, headless via Monocle) so desktop UI can be verified without a human and without touching the desktop. Nothing automated can drive the JavaFX GUI today.
-4. Follow-ups worth issues: `ItemsController.readAssignee` still accepts any non-empty string as `assigneeId`, so a bogus id becomes a 500 (the same bug `ownerId` just fixed); and `ClientApp` copies the saved `ServerPrefs` URL into the `todolist.api.url` system property before `Config` is read, so `TODOLIST_API_URL` can never win once a URL has been saved, which is how a local test silently talks to production.
+4. Follow-ups worth issues: `ItemsController.readAssignee` still accepts any non-empty string as `assigneeId`, so a bogus id becomes a 500 (the same bug `ownerId` just fixed); `ClientApp` copies the saved `ServerPrefs` URL into the `todolist.api.url` system property before `Config` is read, so `TODOLIST_API_URL` can never win once a URL has been saved, which is how a local test silently talks to production; and on the web side, dashboard list rows link to `/todo/lists` without preselecting the clicked list (needs a `?list=` read in `todo-app.tsx`).
 
 ## Verbatim resume commands (PowerShell)
 Start a throwaway local Postgres (the API does NOT start one, see the Migrations section in CLAUDE.md):
@@ -48,13 +50,18 @@ cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1 -Stop
 - **Never pipe a build through `tail`.** `mvn -B clean verify | tail -60` reported exit 0 while the build was `BUILD FAILURE`; only reading the output caught it.
 - **Never drive the GUI with synthetic input.** An agent used `AppActivate` + `SendKeys` to log into the JavaFX client; Windows refused the foreground activation, and the keystrokes went into the YouTube video Patrick was watching, toggling captions, theater mode, mute, pause and seek. Use `PrintWindow` screenshots (no focus needed) or a headless path, and note that a forced `SetWindowPos` resize does not trigger a JavaFX re-layout, so a resized capture can show clipping that is an artifact rather than a bug.
 - Screenshots had been silently accumulating in `screenshots/` from earlier sessions (24 files, gitignored so never committed). Removed; keep captures in temp.
+- **Vercel blocks a preview deploy when the commit's git AUTHOR email is not a Vercel project member.** A commit authored `patr7257 <pr@zrm.dk>` failed the `Vercel` status with "Git author przrm must have access to the project on Vercel to create deployments", because that ZRM email maps to the `przrm` GitHub account. Every working commit on `PatrickRobelWeb` uses `Patrick Røbel <patr7257@gmail.com>`, which is that repo's configured identity. Fix is to re-author (`git commit --amend --author=...`) and force-push; better, never override the repo's own git config when committing.
+- **`gh issue create` does not support `--json`.** Using it makes the command fail, and a `|| gh issue list ...` fallback then prints the newest EXISTING issue, which reads exactly like success. That is how work briefly got attached to an unrelated pre-existing issue this session. Always capture the URL `gh issue create` prints and verify the number belongs to the issue you meant.
 
 ## Open decisions waiting on Patrick
-- Whether to delete the three merged feature branches and the two worktrees (`TodoList-45`, `TodoList-46`). Not done without an explicit instruction.
-- Whether to add TestFX for headless desktop UI tests.
+- Whether to add TestFX (test scope, headless via Monocle) so desktop UI can be verified without a human and without touching the desktop. Right now the JavaFX GUI has no automated coverage at all.
+- Whether to close or repurpose #47 now that the web parity work has shipped.
+- Whether to delete the merged remote branch `feat/todo-web-dashboard` in `PatrickRobelWeb` (remote deletion is always an explicit ask).
 
 ## Environment state
-- Nothing of ours is running against the desktop: no JavaFX client, no API on 8080, ports 8080 and 3000 free.
-- The throwaway Docker Postgres container `todolist-dev-db` (port 5433) may still be up; `.\scripts\dev-db.ps1 -Stop` removes it. Note its data has drifted from the fixture across sessions, so re-run with `-Reset -Fixture` if you need the exact backfill cases.
-- Docker Desktop was started manually by Patrick this session, so the new user-level `docker-desktop` skill deliberately leaves it running (it only stops what Claude started).
+- Nothing of ours is running: no JavaFX client, no API on 8080, no dev server. Ports 3000, 3001, 5173, 8080 and 5433 all free.
+- The throwaway Docker Postgres container was removed; its named volume `todolist-dev-db-data` was kept. Its data had drifted from the fixture during the session, so start with `.\scripts\dev-db.ps1 -Reset` then `-Fixture` if you need the exact backfill cases.
+- Docker Desktop was started manually by Patrick, so the user-level `docker-desktop` skill deliberately leaves it running: it only stops what Claude started, tracked by a per-session marker.
+- TodoList: `main` only, no worktrees, all feature branches deleted local and remote.
 - `.claude/.codev-ack` is locally modified as usual (one appended line per session).
+- New this session at user level, not in this repo: a `docker-desktop` skill plus a `SessionEnd` hook that stops Docker Desktop only when Claude started it, and MANDATORY rules in the global `CLAUDE.md` banning synthetic keyboard and mouse input and preferring accessibility-tree navigation over screenshots.
