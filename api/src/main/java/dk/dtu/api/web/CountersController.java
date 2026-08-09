@@ -18,8 +18,8 @@ import io.javalin.http.Context;
  * GET /api/todo/counters, POST /api/todo/counters, and PATCH|DELETE
  * /api/todo/counters/{id}: the shared, manually maintained "fun counters"
  * (Total Flights, Total Ships, Tour de Brede walks, ...). Auto-protected by
- * the global {@link AuthFilter} (it exempts only paths ending {@code /login}
- * and {@code /logout}).
+ * the global {@link AuthFilter} (its allowlist covers only login, logout and
+ * the public share reader).
  *
  * <p>PATCH also accepts a relative {@code delta} bump alongside any of the
  * normal fields (but not together with {@code value}): {@code SET value =

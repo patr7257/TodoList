@@ -23,6 +23,8 @@ public final class ApiServer {
         ListsController lists = new ListsController(backend);
         ItemsController items = new ItemsController(backend);
         CountersController counters = new CountersController(backend);
+        ListSharesController listShares = new ListSharesController(backend);
+        ShareController share = new ShareController(backend);
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new GsonJsonMapper());
@@ -44,6 +46,12 @@ public final class ApiServer {
         app.post("/api/todo/counters", counters::create);
         app.patch("/api/todo/counters/{id}", counters::update);
         app.delete("/api/todo/counters/{id}", counters::delete);
+        // Authenticated share management (plural "shares", nested under a list).
+        app.get("/api/todo/lists/{id}/shares", listShares::list);
+        app.post("/api/todo/lists/{id}/shares", listShares::create);
+        app.delete("/api/todo/lists/{id}/shares/{shareId}", listShares::delete);
+        // The one public route (singular "share"), exempted in AuthFilter.
+        app.get("/api/todo/share/{token}", share::get);
 
         app.exception(HttpError.class, (e, ctx) -> ctx.status(e.status()).json(error(e.getMessage())));
         app.exception(Exception.class, (e, ctx) -> {
