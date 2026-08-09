@@ -1,27 +1,55 @@
 # HANDOVER
 
 ## Date, branch, PR, CI
-- 2026-08-03. Branch: `main`, clean. Everything from this session is merged and live.
-- **TodoList**: PR #48 (issues #45 + #46) squash-merged as `6c8c35e`, which auto-released **v2.0.4** (all four assets, both permanent `releases/latest/download` URLs verified HTTP 200) and triggered the Dokploy API redeploy. PR #49 (docs) merged as `a33d52b` and correctly SKIPPED the release (`version: success`, both build jobs `skipped`, no v2.0.5).
-- **PatrickRobelWeb**: PR #166 (issue #165) squash-merged as `fe59929`, Vercel production deploy succeeded.
-- All worktrees removed and all feature branches deleted, local and remote, in both repos except where noted under Environment state.
+
+- 2026-08-09. Branch: `docs/session-close-2026-08-09` (this file's own PR). Everything
+  else from this session is merged and live on `main` at `fe3b88d`.
+- **TodoList**: #53 (`52b9f67`), #54 (`9b66997`), #55 (`82c6fa8`), #60 (`fe3b88d`), all
+  squash-merged with CI green. Latest release **v2.0.8**, all four assets present and
+  both permanent `releases/latest/download` URLs verified HTTP 200.
+- **PatrickRobelWeb**: #171 (`6a79332`) and #172 (`a800323`), both merged, both Vercel
+  production deploys succeeded.
+- Follow-ups live in **#61**, not only in closed-issue comments.
 
 ## TLDR of session outcome
-Two features shipped, both halves of a two-client product only half covered:
 
-- **#45**: `lists.owner` was free text while `items.assignee_id` was already a real FK. It now has `lists.owner_id uuid REFERENCES users(id)` (`V3`) with an idempotent, ambiguity-safe backfill (`V4`). The legacy `owner` text column is KEPT and dual-written as a display name. `POST/PATCH /api/todo/lists` accept `ownerId` (validated to an existing user, so a bogus id is a 400 rather than a 500 from an FK violation). The desktop owner ComboBox now compares and writes by user id instead of round-tripping a display name, and there are new always-visible "Only my lists" / "Only my tasks" checkboxes persisted per user.
-- **#46**: a new `B2_Dashboard` front page loads after login before the lists view, with six live stats derived client-side from the existing state payload, plus a new shared `fun_counters` table (`V5`) and a full CRUD resource at `/api/todo/counters` with relative bumps, reorder and a tile UI.
-- **The web edition shipped too**, so both clients now have the feature: `/todo` on the website is the dashboard, the lists app moved to `/todo/lists`, and counters have full CRUD through new passthrough proxy routes (`patr7257/PatrickRobelWeb#165`). Verified live: `/todo` and `/todo/lists` gate to login, and `GET /api/todo/counters` returns 401 from the upstream Java API, which proves the proxy reaches the real API.
-- **#43** (multi-agent battle-test) ran for real as part of this: two `implementer` agents in isolated worktrees, then a headless `integration-verifier`. Metrics, verdict and the agent-definition gaps are in the retro comment on #43, with a cross-repo summary on `patr7257/RoboRally02162#27`. Issue closed.
-- **#47** remains open as the desktop-side tracker for the web parity work now that it has shipped; close it or repurpose it.
+The entire open backlog was cleared. Every issue that existed at session start is closed.
+
+- **#47** closed as already shipped last session. Its two genuinely unfinished leftovers
+  were filed on the website board as `PatrickRobelWeb#169` and `#170`.
+- **#52 public share links** shipped across all three surfaces. A list can be handed to
+  someone outside the app as a live read-only link at `patrickrobel.dk/s/<token>`. New
+  `list_shares` table (V6), one public API route, three authenticated management routes,
+  a share dialog in the desktop client and a share sheet in the web edition.
+- **#51 passkeys plus magic link** shipped. Sign-in moved off email and password onto
+  passkeys plus a ZeptoMail magic link. The website is now the **issuer** of the
+  `todo_session` token, not just a verifier, so the JavaFX client can obtain a working
+  API token from a browser ceremony it cannot run itself (RFC 8252 with PKCE, token
+  returned over a `127.0.0.1` loopback listener). Released as v2.0.8.
+- **#44 TodoTinder** designed, not built, which is what the issue itself instructs. All
+  nine questions answered, the spec is a comment on #44, and it is split into #56 to #59.
+- Six PRs, seven implementation subagents, two repos, six production merges.
 
 ## Prioritized next steps
-1. **Click-test both UIs once.** Verification was deliberately headless after an incident (see gotchas), so nothing exercised the desktop owner ComboBox, the two "only mine" checkboxes, or the dashboard tiles rendering, and the web side was verified through the accessibility tree plus screenshots rather than by a human. Unit tests and static review cover the logic; your eyes are still the only evidence for the UI.
-3. Consider **TestFX** (test-scope, headless via Monocle) so desktop UI can be verified without a human and without touching the desktop. Nothing automated can drive the JavaFX GUI today.
-4. Follow-ups worth issues: `ItemsController.readAssignee` still accepts any non-empty string as `assigneeId`, so a bogus id becomes a 500 (the same bug `ownerId` just fixed); `ClientApp` copies the saved `ServerPrefs` URL into the `todolist.api.url` system property before `Config` is read, so `TODOLIST_API_URL` can never win once a URL has been saved, which is how a local test silently talks to production; and on the web side, dashboard list rows link to `/todo/lists` without preselecting the clicked list (needs a `?list=` read in `todo-app.tsx`).
+
+1. **Sign in on the desktop client after updating to v2.0.8.** This is the ONE path
+   nobody has exercised against the live website. It is thoroughly unit tested (the real
+   loopback listener is driven over HTTP including wrong-state, missing-state and
+   double-callback cases) but has never talked to production. Your currently installed
+   client keeps using its saved token until you update, so there is no rush, but do not
+   rely on it until you have seen it work.
+2. **Create a share link and open it.** Never done on live data this session, because
+   `TODO_SESSION_SECRET` is not in the local environment so no token could be minted.
+   The happy path is covered by `SharesIntegrationTest` against a real Postgres and a
+   real Javalin, but a live click is still the only proof.
+3. **Work through #61**, which holds every follow-up this session created or inherited.
+   The highest-value one is retiring password login, and it has a strict order.
+4. **Start TodoTinder from #56**, which is the foundation the other three build on.
 
 ## Verbatim resume commands (PowerShell)
-Start a throwaway local Postgres (the API does NOT start one, see the Migrations section in CLAUDE.md):
+
+Start a throwaway local Postgres (the API does NOT start one, see the Migrations section
+in CLAUDE.md):
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1
 ```
@@ -29,13 +57,17 @@ Run the API against it:
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; $env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
-Run the desktop client (defaults to the live API; the connect dialog sets and remembers a different base URL):
+Run the desktop client from source:
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q install -DskipTests; mvn -pl client javafx:run
 ```
-Load the owner-backfill fixture into the local database (needs the API to have started once, so Flyway has created the schema):
+Run the full test suite:
 ```
-cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1 -Fixture
+cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -B clean verify
+```
+Run the website locally (passkeys work against localhost, rpID falls back to `localhost` in dev):
+```
+cd "C:\Users\pr\repos\1-Personal\PatrickRobelWeb\website"; pnpm dev
 ```
 Tear the local database down:
 ```
@@ -43,25 +75,63 @@ cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1 -Stop
 ```
 
 ## Gotchas discovered this session
-- **`mvn -pl api exec:java` does NOT start an embedded Postgres.** CLAUDE.md, README.md and the previous HANDOVER.md all claimed it did. The embedded Postgres is test-scope only; with no `DATABASE_URL` the API starts and every data route answers 503. All three docs are corrected in this PR.
-- **Flyway runs with `outOfOrder=false`, and that is a production-outage hazard**, not a style note. Applying V5 before V3 on a scratch database fails with `FlywayValidateException: Detected resolved migration not applied to database: 3`, which at boot means the Dokploy container crash-loops. Two parallel branches adding migrations must have their versions pre-assigned and land in ONE merge.
-- **A test that cannot compile in the worktree that owns it is not coverage, it is a promissory note.** #46's `DashboardStatsTest` needed #45's `ListDto` fields, so it never ran in its own worktree, and on the first merged run it immediately caught a real bug: `Dashboard.flattenItems` counted null items, inflating both the task total and the completion divisor. `totalLists` had the same flaw.
-- **A live smoke catches what tests do not.** `CountersService.insert` never set `sort`, so every new counter got the column default 0 instead of `max+1`. Its own test asserted key order and defaults but never `sort`.
-- **Never pipe a build through `tail`.** `mvn -B clean verify | tail -60` reported exit 0 while the build was `BUILD FAILURE`; only reading the output caught it.
-- **Never drive the GUI with synthetic input.** An agent used `AppActivate` + `SendKeys` to log into the JavaFX client; Windows refused the foreground activation, and the keystrokes went into the YouTube video Patrick was watching, toggling captions, theater mode, mute, pause and seek. Use `PrintWindow` screenshots (no focus needed) or a headless path, and note that a forced `SetWindowPos` resize does not trigger a JavaFX re-layout, so a resized capture can show clipping that is an artifact rather than a bug.
-- Screenshots had been silently accumulating in `screenshots/` from earlier sessions (24 files, gitignored so never committed). Removed; keep captures in temp.
-- **Vercel blocks a preview deploy when the commit's git AUTHOR email is not a Vercel project member.** A commit authored `patr7257 <pr@zrm.dk>` failed the `Vercel` status with "Git author przrm must have access to the project on Vercel to create deployments", because that ZRM email maps to the `przrm` GitHub account. Every working commit on `PatrickRobelWeb` uses `Patrick Røbel <patr7257@gmail.com>`, which is that repo's configured identity. Fix is to re-author (`git commit --amend --author=...`) and force-push; better, never override the repo's own git config when committing.
-- **`gh issue create` does not support `--json`.** Using it makes the command fail, and a `|| gh issue list ...` fallback then prints the newest EXISTING issue, which reads exactly like success. That is how work briefly got attached to an unrelated pre-existing issue this session. Always capture the URL `gh issue create` prints and verify the number belongs to the issue you meant.
+
+- **`SELECT s.id, ..., l.*` across a join is a silent data bug.** The first draft of the
+  share resolver selected the share's `id` alongside `lists.*`, and both tables have `id`
+  and `created_at`. JDBC `getString("id")` returns the FIRST matching column, so the
+  mapped list id would silently have been the share id, and the follow-up items query
+  would have looked up a list that does not exist. Always alias explicitly when a join
+  selects a wildcard.
+- **`.claude/.codev-ack` is TRACKED in this repo and not gitignored**, contrary to what
+  the co-development-workflow skill states. It accumulates one line per session in the
+  working tree. A `git restore` while tidying a commit wiped three sessions' lines; they
+  had to be re-appended by hand. Never `git restore` that file, and never `Write` it.
+- **A `git diff origin/main` showing your own migration as DELETED means a stale base**,
+  not a real deletion. A branch cut before another migration merged will show that
+  migration as removed. Rebase before reading the diff or reviewing the PR.
+- **Vercel preview deployments are behind SSO**, so `curl -I` against a preview returns a
+  302 to the auth gate and the headers you see belong to Vercel's own SSO page, not to
+  your app. Response headers can only be verified against production. Note that the
+  `noindex` on the SSO page looks superficially like a passing check; ours is
+  `noindex, nofollow`, which is how the difference was caught.
+- **PKCE only protects the party that CHOSE the challenge.** The typed fallback code in
+  the desktop sign-in is therefore phishable: anyone can link a victim to
+  `/todo/login?desktop=1&challenge=<theirs>`, let them sign in for real, and ask for the
+  code back. No server-side check can distinguish that from a genuine desktop sign-in.
+  The mitigation is the anti-phishing warning inside the code panel. Do not tidy it away.
+- **Amadeus Self-Service shut down on 17 July 2026 and Kiwi Tequila went invite-only.**
+  Both free flight-price APIs the TodoTinder epic named are gone, which is why Rejsemål
+  ships curated price bands instead. Do not plan around either API.
+- **`patrickrobel.dk` 308-redirects to `www`.** Share links composed against the apex
+  work fine (browsers follow it) but there is an extra hop. `TODO_SHARE_BASE_URL`
+  defaults to the apex; change it only if the hop ever matters.
+- The two `DATABASE_URL`s (website and Java API) point at the **same** Neon database.
+  Confirmed by the website's connection seeing `flyway_schema_history`. This is load
+  bearing for #51: the website reads `users` and writes `todo_credentials` directly.
 
 ## Open decisions waiting on Patrick
-- Whether to add TestFX (test scope, headless via Monocle) so desktop UI can be verified without a human and without touching the desktop. Right now the JavaFX GUI has no automated coverage at all.
-- Whether to close or repurpose #47 now that the web parity work has shipped.
-- Whether to delete the merged remote branch `feat/todo-web-dashboard` in `PatrickRobelWeb` (remote deletion is always an explicit ask).
+
+- Delete the merged local branches? `feat/list-shares-api`,
+  `feat/passkey-credentials-migration`, `feat/share-dialog-desktop` in TodoList, and
+  `feat/todo-passkey-auth`, `feat/todo-share-web` in PatrickRobelWeb. Their remotes were
+  already deleted on merge.
+- Delete the stale remote branch `origin/feat/todo-web-dashboard` in PatrickRobelWeb?
+  Still outstanding from the 2026-08-03 session.
+- Should the `/todo` web app copy be Danish? Today the emails and the magic-link landing
+  page are Danish; the login card, passkey prompt and dashboard banner are English, to
+  match the rest of the app. Both are defensible, it is a consistency call.
+- Gitignore `.claude/.codev-ack` to match the skill's assumption, or keep it tracked and
+  document the divergence?
 
 ## Environment state
-- Nothing of ours is running: no JavaFX client, no API on 8080, no dev server. Ports 3000, 3001, 5173, 8080 and 5433 all free.
-- The throwaway Docker Postgres container was removed; its named volume `todolist-dev-db-data` was kept. Its data had drifted from the fixture during the session, so start with `.\scripts\dev-db.ps1 -Reset` then `-Fixture` if you need the exact backfill cases.
-- Docker Desktop was started manually by Patrick, so the user-level `docker-desktop` skill deliberately leaves it running: it only stops what Claude started, tracked by a per-session marker.
-- TodoList: `main` only, no worktrees, all feature branches deleted local and remote.
+
+- Nothing of ours is running. No API on 8080, no dev server, no JavaFX client. Ports
+  3000, 3001, 5173, 5174, 8080 and 5433 all free.
+- Docker Desktop is DOWN and no session marker exists, so nothing will be torn down at
+  session end.
+- No cron or scheduled jobs were created this session.
+- Keep-awake is not active; the PC sleeps per its normal power settings.
+- TodoList: `main` plus this docs branch. All worktrees removed
+  (`TodoList-52-api`, `TodoList-52-client`, `TodoList-51-client` are gone).
+- PatrickRobelWeb: on `main`, clean.
 - `.claude/.codev-ack` is locally modified as usual (one appended line per session).
-- New this session at user level, not in this repo: a `docker-desktop` skill plus a `SessionEnd` hook that stops Docker Desktop only when Claude started it, and MANDATORY rules in the global `CLAUDE.md` banning synthetic keyboard and mouse input and preferring accessibility-tree navigation over screenshots.
