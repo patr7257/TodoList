@@ -17,15 +17,20 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 /**
- * Dialog for choosing the todo API server the client connects to. The client
- * speaks HTTP, so all that is needed is the API base URL (origin), for example
- * {@code https://api.todolist.patrickrobel.dk}. Includes a best-effort "Test"
- * that pings the API without needing valid credentials.
+ * Dialog for choosing the servers the client connects to. There are two, because
+ * they are separate deployments: the todo API origin (for example
+ * {@code https://api.todolist.patrickrobel.dk}) that holds the data, and the web
+ * origin (for example {@code https://patrickrobel.dk}) that owns sign in since
+ * it went browser mediated (issue #51). Includes a best-effort "Test" that pings
+ * the API without needing valid credentials.
  */
 public final class ClientConnectDialog {
 
-    /** The chosen API origin (no trailing /api/todo). */
-    public record ApiSettings(String baseUrl) {}
+    /**
+     * The chosen origins: {@code baseUrl} is the API (no trailing /api/todo),
+     * {@code webBaseUrl} is the website that hosts the sign-in page.
+     */
+    public record ApiSettings(String baseUrl, String webBaseUrl) {}
 
     private ClientConnectDialog() {}
 
@@ -46,6 +51,18 @@ public final class ClientConnectDialog {
                 + "The default is the public production server.");
         note.getStyleClass().add("settings-note");
         note.setWrapText(true);
+
+        Label webHeading = new Label("Website base URL (sign in)");
+        webHeading.getStyleClass().add("settings-section-title");
+
+        TextField webUrlField = new TextField(Config.getWebBaseUrl());
+        webUrlField.setPromptText("https://patrickrobel.dk");
+        webUrlField.setPrefWidth(420);
+
+        Label webNote = new Label("Sign in happens in your browser on this site. "
+                + "Point it at a local dev server only if you are developing the website.");
+        webNote.getStyleClass().add("settings-note");
+        webNote.setWrapText(true);
 
         Label statusLabel = new Label("");
         statusLabel.getStyleClass().add("status-label");
@@ -81,7 +98,8 @@ public final class ClientConnectDialog {
         HBox buttonsRow = new HBox(12, testButton, connectBtn, cancelBtn);
         buttonsRow.setAlignment(Pos.CENTER_RIGHT);
 
-        VBox root = new VBox(15, heading, urlField, note, statusLabel, buttonsRow);
+        VBox root = new VBox(15, heading, urlField, note,
+                webHeading, webUrlField, webNote, statusLabel, buttonsRow);
         root.getStyleClass().add("config-panel");
         root.setPadding(new Insets(24));
         root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -98,7 +116,13 @@ public final class ClientConnectDialog {
                 statusLabel.setText("Enter a URL first.");
                 return;
             }
-            result[0] = new ApiSettings(url);
+            String webUrl = webUrlField.getText() != null ? webUrlField.getText().trim() : "";
+            if (webUrl.isBlank()) {
+                // Blank means "use the default", never an empty origin: an empty
+                // web origin would leave sign in with nowhere to go.
+                webUrl = Config.DEFAULT_WEB_BASE_URL;
+            }
+            result[0] = new ApiSettings(url, webUrl);
             stage.close();
         });
 
@@ -109,11 +133,11 @@ public final class ClientConnectDialog {
 
         stage.setOnCloseRequest(e -> result[0] = null);
 
-        Scene scene = new Scene(container, 620, 300);
+        Scene scene = new Scene(container, 620, 460);
         DarkModeManager.applyBrand(scene.getStylesheets());
         stage.setScene(scene);
         stage.setMinWidth(620);
-        stage.setMinHeight(300);
+        stage.setMinHeight(460);
 
         stage.showAndWait();
         return result[0];

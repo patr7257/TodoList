@@ -23,6 +23,7 @@ import javafx.util.Duration;
 public class A_WelcomeScreen {
 	private final SceneNavigator navigator;
 	private Label connectionStatus;
+	private Label connectionNote;
 	private Button loginButton;
 	private Button connectButton;
 
@@ -50,7 +51,11 @@ public class A_WelcomeScreen {
     connectionStatus = new Label("Checking server...");
     connectionStatus.getStyleClass().addAll("connection-status", "status-idle");
 
-    Label connectionNote = new Label("Sign in with your email and password to continue.");
+    connectionNote = new Label("Sign in opens " + Config.getWebBaseUrl()
+            + " in your browser, where you can use a passkey or a magic link.");
+    connectionNote.setWrapText(true);
+    connectionNote.setMaxWidth(520);
+    connectionNote.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
     connectionNote.getStyleClass().add("welcome-note");
 
     // Change/choose API server button
@@ -126,11 +131,16 @@ public class A_WelcomeScreen {
 
 		ClientConnectDialog.ApiSettings settings = ClientConnectDialog.show(ownerStage);
 		if (settings != null) {
-			// Point Config (system property) and the persisted prefs at the new URL,
-			// then rebuild the API client so subsequent calls hit it.
+			// Point Config (system properties) and the persisted prefs at the new
+			// URLs, then rebuild the API client so subsequent calls hit them. The
+			// web origin matters too: sign in happens there (issue #51).
 			System.setProperty("todolist.api.url", settings.baseUrl());
 			ServerPrefs.saveApiBaseUrl(settings.baseUrl());
+			System.setProperty("todolist.web.url", settings.webBaseUrl());
+			ServerPrefs.saveWebBaseUrl(settings.webBaseUrl());
 			ApiSession.get().configure(ApiSession.get().token());
+			connectionNote.setText("Sign in opens " + Config.getWebBaseUrl()
+					+ " in your browser, where you can use a passkey or a magic link.");
 			probeServer();
 		}
 	}

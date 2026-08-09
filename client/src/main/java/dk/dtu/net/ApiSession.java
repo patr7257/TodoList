@@ -76,7 +76,27 @@ public final class ApiSession {
 
     // -- auth ------------------------------------------------------------------
 
-    /** Log in and remember the token + current user. Throws on failure. */
+    /**
+     * Apply a token obtained outside this class, together with the user it
+     * belongs to. This is how browser-mediated sign in (issue #51) installs its
+     * session: the website authenticates the user and hands back a token, so
+     * there is no email/password round trip to make here.
+     *
+     * <p>Rebuilds the client at the currently configured API base URL, so it is
+     * also the right call after the base URL changed.
+     */
+    public synchronized void applyToken(String token, CurrentUser user) {
+        configure(token);
+        this.currentUser = user;
+    }
+
+    /**
+     * Log in and remember the token + current user. Throws on failure.
+     *
+     * <p>Kept deliberately after browser sign in took over the UI (issue #51):
+     * every installed client out there still signs in this way until its own
+     * auto-update lands, and retiring password login is its own later issue.
+     */
     public LoginResponse login(String email, String password) throws Exception {
         LoginResponse res = client().login(email, password);
         if (res == null || !res.ok() || res.token() == null) {
