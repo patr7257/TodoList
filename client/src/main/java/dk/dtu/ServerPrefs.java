@@ -9,6 +9,7 @@ import java.util.prefs.Preferences;
 public final class ServerPrefs {
 
     private static final String KEY_API_URL = "api.url";
+    private static final String KEY_WEB_URL = "web.url";
     private static final String KEY_AUTH_TOKEN = "auth.token";
     private static final String KEY_AUTH_EMAIL = "auth.email";
 
@@ -27,6 +28,25 @@ public final class ServerPrefs {
 
     public static Optional<String> savedApiBaseUrl() {
         String url = PREFS.get(KEY_API_URL, null);
+        return (url == null || url.isBlank()) ? Optional.empty() : Optional.of(url);
+    }
+
+    // -- web origin ------------------------------------------------------------
+    //
+    // Sign in is browser mediated (issue #51), so the client needs a second
+    // origin: the website that owns the passkey / magic-link pages. Kept
+    // alongside api.url rather than derived from it, because the two are
+    // genuinely separate deployments.
+
+    public static void saveWebBaseUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return;
+        }
+        PREFS.put(KEY_WEB_URL, url.trim());
+    }
+
+    public static Optional<String> savedWebBaseUrl() {
+        String url = PREFS.get(KEY_WEB_URL, null);
         return (url == null || url.isBlank()) ? Optional.empty() : Optional.of(url);
     }
 

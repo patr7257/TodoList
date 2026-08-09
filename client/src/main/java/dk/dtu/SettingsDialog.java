@@ -58,8 +58,9 @@ public class SettingsDialog extends Dialog<ButtonType> {
         Tab userTab = new Tab("User Management", createUserManagementPane());
         Tab displayTab = new Tab("Display Options", createDisplayOptionsPane());
         Tab updatesTab = new Tab("Updates", createUpdatesPane());
+        Tab accountTab = new Tab("Account", createAccountPane());
 
-        tabPane.getTabs().addAll(userTab, displayTab, updatesTab);
+        tabPane.getTabs().addAll(userTab, displayTab, updatesTab, accountTab);
         
         getDialogPane().setContent(tabPane);
         getDialogPane().getButtonTypes().addAll(APPLY, ButtonType.CLOSE);
@@ -348,6 +349,38 @@ public class SettingsDialog extends Dialog<ButtonType> {
         });
 
         VBox panel = new VBox(12, versionLabel, checkButton, statusBox);
+        panel.getStyleClass().add("settings-panel");
+
+        container.getChildren().addAll(title, panel);
+        return container;
+    }
+
+    /**
+     * Account pane: passkeys are browser and platform mediated, so the desktop
+     * app cannot manage them itself (issue #51). It just sends the user to the
+     * website that owns them.
+     */
+    private VBox createAccountPane() {
+        VBox container = new VBox(16);
+        container.setPadding(new Insets(20));
+
+        Label title = new Label("Account and sign in");
+        title.getStyleClass().add("settings-section-title");
+
+        String webOrigin = dk.dtu.auth.BrowserSignIn.normalizeOrigin(
+                dk.dtu.shared.Config.getWebBaseUrl());
+
+        Label note = new Label("Sign in, passkeys and magic links all live on " + webOrigin
+                + ". Opening the page below lets you add or remove a passkey; "
+                + "this app never sees your credentials.");
+        note.setWrapText(true);
+        note.getStyleClass().add("settings-note");
+
+        Button managePasskeys = new Button("Manage passkeys");
+        managePasskeys.getStyleClass().add(Styles.ACCENT);
+        managePasskeys.setOnAction(e -> dk.dtu.auth.Browsers.open(webOrigin + "/todo"));
+
+        VBox panel = new VBox(12, note, managePasskeys);
         panel.getStyleClass().add("settings-panel");
 
         container.getChildren().addAll(title, panel);

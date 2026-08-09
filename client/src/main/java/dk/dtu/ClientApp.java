@@ -26,6 +26,11 @@ public class ClientApp extends Application {
             ServerPrefs.savedApiBaseUrl().ifPresent(url -> System.setProperty("todolist.api.url", url));
         }
 
+        // Same for the website origin that owns sign in (issue #51).
+        if (System.getProperty("todolist.web.url") == null) {
+            ServerPrefs.savedWebBaseUrl().ifPresent(url -> System.setProperty("todolist.web.url", url));
+        }
+
         // Set initial window size
         primaryStage.setWidth(970);
         primaryStage.setHeight(600);

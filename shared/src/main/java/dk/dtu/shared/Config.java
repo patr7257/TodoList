@@ -26,6 +26,24 @@ public final class Config {
         return (url == null || url.isBlank()) ? DEFAULT_API_BASE_URL : url.trim();
     }
 
+    // WEB ORIGIN CONFIGURATION (client only)
+    // Sign in is browser mediated (issue #51): the desktop client opens a page on
+    // the website, which owns the passkey and magic-link stack, and exchanges the
+    // returned code for a session token. Same override pattern as the API URL, so
+    // the client can be pointed at a local "next dev" during development:
+    // - System property:      -Dtodolist.web.url=<baseUrl>
+    // - Environment variable:  TODOLIST_WEB_URL
+    // The value is the origin only, with no trailing path.
+    public static final String DEFAULT_WEB_BASE_URL = "https://patrickrobel.dk";
+
+    public static String getWebBaseUrl() {
+        String url = System.getProperty("todolist.web.url");
+        if (url == null || url.isBlank()) {
+            url = System.getenv("TODOLIST_WEB_URL");
+        }
+        return (url == null || url.isBlank()) ? DEFAULT_WEB_BASE_URL : url.trim();
+    }
+
     // Connection error handling (client-side)
     public static void setConnectionErrorHandler(Consumer<Exception> handler) {
         connectionErrorHandler = handler;
