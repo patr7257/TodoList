@@ -33,15 +33,21 @@ onto the HTTP API described here. The jSpace server module has been retired
   Packages to a self-contained shaded fat jar (`todolist-api.jar`).
   - `dk.dtu.api.web`: `ApiServer` and the controllers (`AuthController`,
     `ListsController`, `ItemsController`, `StateController`,
-    `CountersController`), plus `Backend`, `RateLimiter`, and JSON/error
-    helpers (`Views` for lists/items, `CounterViews` for counters).
+    `CountersController`, `ListSharesController` for authenticated share
+    management and `ShareController` for the one public route), plus `Backend`,
+    `RateLimiter`, `ClientIp` (shared rate-limit key resolution), and JSON/error
+    helpers (`Views` for lists/items, `CounterViews` for counters,
+    `ShareViews` for shares, which deliberately never calls `Views`).
   - `dk.dtu.api.auth`: token auth (`AuthFilter`, `AuthService`, `Token`,
     `Scrypt`).
   - `dk.dtu.api.db`: `DataSources` (Hikari pool) and `Migrations`.
   - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps, plus
-    `CountersService` / `CounterRow` for the fun counters (deliberately its own
-    service: `TodoService` mirrors the website's queries, counters have no
-    website counterpart).
+    `CountersService` / `CounterRow` for the fun counters and
+    `SharesService` / `ShareRow` / `ShareTokens` for the public share links
+    (both deliberately their own services: `TodoService` mirrors the website's
+    queries and is the hottest file in the repo, while counters have no website
+    counterpart and shares own an unauthenticated read path that must not be
+    coupled to it).
 - `client/` (`todolist-client`): JavaFX desktop client. Main class
   `dk.dtu.ClientApp`.
   - `dk.dtu.net`: the HTTP transport. `TodoApiClient` (raw HTTP + JSON),
@@ -118,12 +124,16 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
 
 - `shared`: `TaskStatusTest`.
 - `api`: HTTP/service tests for the api module (`TodoApiIntegrationTest`,
-  `CountersIntegrationTest`, `web/ViewsTest`, `ScryptTest`, `TokenTest`,
-  `CompletionTest`, `DataSourcesTest`). The two integration tests each start
-  their own `EmbeddedPostgres` and now also drive a real Javalin instance on an
+  `CountersIntegrationTest`, `SharesIntegrationTest`, `web/ViewsTest`,
+  `web/ShareViewsTest`, `domain/ShareTokensTest`, `ScryptTest`, `TokenTest`,
+  `CompletionTest`, `DataSourcesTest`). The three integration tests each start
+  their own `EmbeddedPostgres` and also drive a real Javalin instance on an
   ephemeral port, so routes and auth are asserted rather than assumed.
   `ViewsTest` pins the EXACT key set and order of the state payload's list
   object: that is the regression guard for the separate website client.
+  `ShareViewsTest` plus `SharesIntegrationTest` do the same for the public
+  share payload, and additionally assert what is ABSENT from it, which is the
+  contract that matters for the API's only unauthenticated output.
 - `client`: `HelpersTest`, `ListsTest`, `TasksTest`, `ViewPrefsTest`,
   `FiltersTest`, `DashboardStatsTest`, `CountersTest`, `net/StatePollerTest`,
   `net/TodoApiClientTest`, `net/CounterClientTest`. No JavaFX is instantiated in
@@ -153,7 +163,17 @@ migrations to production):
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V5`.
+`api/src/main/resources/db/migration`. Current head is `V6`.
+
+**Version register.** Because `outOfOrder` is false (see below), migration
+numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
+
+| Version | Issue | What |
+|---|---|---|
+| V1 to V4 | earlier | baseline, desktop superset, `lists.owner_id`, its backfill |
+| V5 | #46 | `fun_counters` |
+| V6 | #52 | `list_shares` (public share links) |
+| V7 | #51 | auth refactor (RESERVED, not written yet) |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
@@ -229,6 +249,13 @@ Traefik reverse proxy with Let's Encrypt TLS at
 `TODO_SESSION_SECRET` are provided as Dokploy service environment variables;
 `API_HTTP_PORT` defaults to 8080 inside the container.
 
+`TODO_SHARE_BASE_URL` (default `https://patrickrobel.dk`, trailing slashes
+stripped) is the origin a public share link is browsed at. The API composes the
+full share URL as `<base>/s/<token>` and hands it to clients ready made, so set
+it to whatever origin actually serves the `/s/:token` page. The public share
+route also has its own limiter, `API_SHARE_RATE_LIMIT_MAX` (default 60) per
+`API_SHARE_RATE_LIMIT_WINDOW_SECONDS` (default 60), keyed on client IP.
+
 ## Auto-update
 
 The client checks for updates on launch (a dismissible banner) and via a Settings
@@ -303,6 +330,29 @@ of per-list averages) are the two that have already caused divergence.
   pins the list object's key set and order as the regression guard. A new
   resource family gets its OWN endpoint instead of being bolted into `/state`,
   which is why the fun counters live at `/api/todo/counters`.
+- **Public share links (#52) live at `/api/todo/share/{token}`, and that is the
+  ONLY unauthenticated route in the API.** Management is separate and
+  authenticated: `GET`/`POST /api/todo/lists/{id}/shares` and
+  `DELETE /api/todo/lists/{id}/shares/{shareId}`. The singular/plural split is
+  load-bearing, not cosmetic: `dk.dtu.api.auth.AuthFilter` holds an explicit
+  allowlist (exact `/api/todo/login`, exact `/api/todo/logout`, prefix
+  `/api/todo/share/`), and `share` singular appears in exactly one path in the
+  whole API, so the prefix cannot open a management route. Never add a second
+  route under `/api/todo/share/`.
+- **The public share payload must NEVER be built by reusing `Views`.**
+  `dk.dtu.api.web.ShareViews` writes every field out by hand precisely so that
+  the next field appended to `/state` does not silently become world readable.
+  Nothing there may expose a `users.id` value, `location` (it can be a home
+  address), item `priority` (on a wishlist it ranks the presents), or the list
+  id. `ShareViewsTest` and `SharesIntegrationTest` pin both the exact key order
+  and the absence of every forbidden key and value.
+- **The share `url` is composed only by the API**, as
+  `TODO_SHARE_BASE_URL + "/s/" + token` in `ShareViews.share`. Neither client
+  builds a share URL from a token, which makes it structurally impossible for
+  the desktop app and the website to show different links for the same share.
+  Share tokens come from `dk.dtu.api.domain.ShareTokens` (24 SecureRandom bytes,
+  URL-safe base64 without padding: 32 chars, 192 bits). Every share failure
+  (unknown, malformed, revoked, expired) answers a byte-identical 404.
 - `lists.owner_id uuid REFERENCES users(id)` is the real owner; the legacy
   free-text `lists.owner` column is KEPT and kept in sync as a denormalized
   display name. Two reasons, both load-bearing: the website may read that column

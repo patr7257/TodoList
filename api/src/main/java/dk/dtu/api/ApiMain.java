@@ -9,6 +9,7 @@ import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.CountersService;
+import dk.dtu.api.domain.SharesService;
 import dk.dtu.api.domain.TodoService;
 import dk.dtu.api.web.ApiServer;
 import dk.dtu.api.web.Backend;
@@ -75,6 +76,12 @@ public final class ApiMain {
         TodoService todo = new TodoService(jdbi);
         AuthService auth = new AuthService(todo, token);
         CountersService counters = new CountersService(jdbi);
-        return new Backend(config, todo, auth, token, loginLimiter, counters);
+        SharesService shares = new SharesService(jdbi);
+        // The public share route gets its OWN limiter: it is unauthenticated and
+        // far chattier than login, so sharing the login bucket would either
+        // throttle readers or loosen the login limit. Neither is acceptable.
+        RateLimiter shareLimiter = new RateLimiter(
+                config.shareRateLimitMax(), config.shareRateLimitWindowSeconds());
+        return new Backend(config, todo, auth, token, loginLimiter, counters, shares, shareLimiter);
     }
 }

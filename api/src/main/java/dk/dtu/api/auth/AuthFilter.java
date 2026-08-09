@@ -11,7 +11,8 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Javalin before-handler that enforces a valid session on every route except
- * login and logout. The session token is read from an {@code Authorization:
+ * the explicit allowlist below (login, logout, and the public share reader).
+ * The session token is read from an {@code Authorization:
  * Bearer <token>} header or, for drop-in compatibility with the website, from a
  * {@code todo_session} cookie. On success the verified user id is stashed as the
  * {@code uid} request attribute; otherwise a 401 is raised.
@@ -25,6 +26,26 @@ public final class AuthFilter implements Handler {
     public static final String COOKIE_NAME = "todo_session";
     public static final String UID_ATTRIBUTE = "uid";
 
+    /**
+     * The complete set of unauthenticated paths, matched EXACTLY (login,
+     * logout) or by prefix (the public share reader).
+     *
+     * <p>This used to be {@code path.endsWith("/login") || path.endsWith(
+     * "/logout")}, which was fine while those were the only two exemptions and
+     * brittle the moment a third arrived: a suffix match opens any future route
+     * whose path happens to end that way, anywhere in the tree.
+     *
+     * <p>The prefix {@code /api/todo/share/} is safe because the singular /
+     * plural split is load-bearing, not cosmetic. {@code share} singular appears
+     * in exactly ONE path in the whole API and that path is the public one;
+     * managing shares lives under {@code /api/todo/lists/{id}/shares}, plural,
+     * which this prefix cannot match. Keep it that way: never add a second
+     * route under {@code /api/todo/share/}.
+     */
+    private static final String LOGIN_PATH = "/api/todo/login";
+    private static final String LOGOUT_PATH = "/api/todo/logout";
+    private static final String PUBLIC_SHARE_PREFIX = "/api/todo/share/";
+
     private final Backend backend;
 
     public AuthFilter(Backend backend) {
@@ -33,8 +54,7 @@ public final class AuthFilter implements Handler {
 
     @Override
     public void handle(@NotNull Context ctx) {
-        String path = ctx.path();
-        if (path.endsWith("/login") || path.endsWith("/logout")) {
+        if (isPublic(ctx.path())) {
             return;
         }
         if (!backend.databaseConfigured()) {
@@ -47,6 +67,16 @@ public final class AuthFilter implements Handler {
             throw HttpError.unauthorized();
         }
         ctx.attribute(UID_ATTRIBUTE, uid.get());
+    }
+
+    /** Exact match for login/logout, prefix match for the public share reader. */
+    static boolean isPublic(String path) {
+        if (path == null) {
+            return false;
+        }
+        return LOGIN_PATH.equals(path)
+                || LOGOUT_PATH.equals(path)
+                || path.startsWith(PUBLIC_SHARE_PREFIX);
     }
 
     private String bearerOrCookie(Context ctx) {

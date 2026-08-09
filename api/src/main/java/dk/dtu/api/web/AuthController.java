@@ -54,7 +54,7 @@ public final class AuthController {
             throw HttpError.badBody();
         }
 
-        String rateKey = clientIp(ctx) + ":todo-login";
+        String rateKey = ClientIp.of(ctx) + ":todo-login";
         if (!backend.loginRateLimiter().allow(rateKey)) {
             throw new HttpError(429, "too many attempts, try again later");
         }
@@ -96,20 +96,5 @@ public final class AuthController {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("ok", true);
         ctx.json(out);
-    }
-
-    private static String clientIp(Context ctx) {
-        String forwarded = ctx.header("x-forwarded-for");
-        if (forwarded != null) {
-            String first = forwarded.split(",")[0].trim();
-            if (!first.isEmpty()) {
-                return first;
-            }
-        }
-        String real = ctx.header("x-real-ip");
-        if (real != null && !real.isBlank()) {
-            return real.trim();
-        }
-        return ctx.ip();
     }
 }
