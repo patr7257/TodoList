@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import dk.dtu.DarkModeManager;
 import dk.dtu.SceneNavigator;
 import dk.dtu.SettingsDialog;
+import dk.dtu.ShareDialog;
 import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
 import dk.dtu.methods.Filters;
@@ -96,6 +97,16 @@ public class D_TodoListView {
         VBox titleSection = new VBox(5, title, info);
         titleSection.setAlignment(Pos.TOP_CENTER);
 
+        // Discoverable share entry point, next to the row context menu action
+        // in C_MainMenu (a context menu alone is undiscoverable).
+        Button shareButton = new Button("Share");
+        shareButton.setGraphic(Icons.share());
+        shareButton.getStyleClass().addAll(atlantafx.base.theme.Styles.FLAT, "share-list-button");
+        shareButton.setOnAction(e -> new ShareDialog(DarkModeManager.windowOf(shareButton), listId, listName).showAndWait());
+
+        StackPane headerPane = new StackPane(titleSection, shareButton);
+        StackPane.setAlignment(shareButton, Pos.TOP_RIGHT);
+
         allTaskColumns = getAllTaskColumns();
 
         VBox.setVgrow(tableContainer, javafx.scene.layout.Priority.ALWAYS);
@@ -149,7 +160,7 @@ public class D_TodoListView {
         Region spacer = new Region();
         spacer.setMinHeight(8);
 
-        VBox root = new VBox(titleSection, spacer, tableContainer, footer);
+        VBox root = new VBox(headerPane, spacer, tableContainer, footer);
         root.setSpacing(10);
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);

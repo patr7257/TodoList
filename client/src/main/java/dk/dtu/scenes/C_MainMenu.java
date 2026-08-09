@@ -2,6 +2,7 @@ package dk.dtu.scenes;
 
 import dk.dtu.DarkModeManager;
 import dk.dtu.SceneNavigator;
+import dk.dtu.ShareDialog;
 import dk.dtu.ViewPrefs;
 import dk.dtu.collumns.*;
 import dk.dtu.methods.Filters;
@@ -144,13 +145,20 @@ public class C_MainMenu {
         return new Scene(root, 900, 600);
     }
 
-    /** Row context menu: a single "Rename list" action bound to the given entry. */
+    /** Row context menu: "Rename list" and "Share list..." actions bound to the given entry. */
     private ContextMenu buildRowMenu(Helpers.ListEntry item) {
         ContextMenu menu = new ContextMenu();
         MenuItem renameItem = new MenuItem("Rename list");
         renameItem.setOnAction(evt -> renameSelectedList(item));
-        menu.getItems().add(renameItem);
+        MenuItem shareItem = new MenuItem("Share list...");
+        shareItem.setOnAction(evt -> openShareDialog(item));
+        menu.getItems().addAll(renameItem, shareItem);
         return menu;
+    }
+
+    private void openShareDialog(Helpers.ListEntry item) {
+        if (item == null) return;
+        new ShareDialog(DarkModeManager.windowOf(table), item.id, item.name).showAndWait();
     }
 
     private void renameSelectedList(Helpers.ListEntry item) {

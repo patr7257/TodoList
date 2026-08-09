@@ -268,6 +268,42 @@ public final class TodoApiClient {
         return GSON.fromJson(obj.get("counter"), CounterDto.class);
     }
 
+    // -- shares (public per-list share links, issue #52) ------------------------
+
+    /** GET /lists/{listId}/shares: active links only, in the order the API returns them. */
+    public List<ShareDto> getShares(String listId) throws Exception {
+        String json = send("GET", "/lists/" + enc(listId) + "/shares", null, true);
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        JsonArray arr = obj.getAsJsonArray("shares");
+        List<ShareDto> out = new ArrayList<>();
+        if (arr != null) {
+            for (int i = 0; i < arr.size(); i++) {
+                out.add(GSON.fromJson(arr.get(i), ShareDto.class));
+            }
+        }
+        return out;
+    }
+
+    /** POST /lists/{listId}/shares. {@code label} may be null (omitted from the body). */
+    public ShareDto createShare(String listId, String label) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (label != null) {
+            body.put("label", label);
+        }
+        String json = send("POST", "/lists/" + enc(listId) + "/shares", GSON_NULLS.toJson(body), true);
+        return unwrapShare(json);
+    }
+
+    /** DELETE /lists/{listId}/shares/{shareId}. */
+    public void revokeShare(String listId, String shareId) throws Exception {
+        send("DELETE", "/lists/" + enc(listId) + "/shares/" + enc(shareId), null, true);
+    }
+
+    private ShareDto unwrapShare(String json) {
+        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+        return GSON.fromJson(obj.get("share"), ShareDto.class);
+    }
+
     // -- plumbing --------------------------------------------------------------
 
     private ListDto unwrapList(String json) {
