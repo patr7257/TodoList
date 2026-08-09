@@ -53,18 +53,22 @@ onto the HTTP API described here. The jSpace server module has been retired
   - `dk.dtu.net`: the HTTP transport. `TodoApiClient` (raw HTTP + JSON),
     `ApiSession` (process-wide session: client, bearer token, signed-in user,
     user set), `StatePoller` (polls the API state endpoint to refresh the view),
-    `ApiModels`, `ApiException`.
+    `WebAuthClient` (the sign-in code exchange, which talks to the WEBSITE and
+    not to the API), `ApiModels`, `CounterDto`, `ShareDto`, `ApiException`.
   - `dk.dtu.scenes`: `A_WelcomeScreen`, `B_LoginScreen`, `B2_Dashboard`,
     `C_MainMenu`, `D_TodoListView` (letter-prefixed to show screen flow order).
     `B2_Dashboard` is the post-login landing page and sits between login and the
     lists view; it is named `B2_` rather than renumbering `C_`/`D_`, which would
     have churned two large scene files for nothing.
+  - `dk.dtu.auth`: browser-mediated sign in (`Pkce`, `BrowserSignIn`,
+    `Browsers`). See the Sign in section below; this is NOT a password form.
   - `dk.dtu.methods`: `Lists`, `Tasks`, `Users`, `Helpers`, the client-side
     operations that call the API via `ApiSession` / `TodoApiClient`, plus
-    `Counters` (counter CRUD), `Dashboard` (pure stat derivation, "now" injected
-    so it is unit-testable) and `Filters` (the "only mine" predicate, which fails
-    OPEN when no signed-in user is resolvable so an empty table never
-    masquerades as lost data).
+    `Counters` (counter CRUD), `Shares` (share-link CRUD plus the pure helpers
+    the web edition duplicates verbatim), `Dashboard` (pure stat derivation,
+    "now" injected so it is unit-testable) and `Filters` (the "only mine"
+    predicate, which fails OPEN when no signed-in user is resolvable so an empty
+    table never masquerades as lost data).
   - `dk.dtu.collumns`: JavaFX `TableView` column/cell classes for the lists and
     tasks tables (note the module name keeps this spelling).
   - `dk.dtu.update`: on-launch and Settings-tab auto-update.
@@ -114,9 +118,12 @@ Start the client (separate terminal):
 mvn -pl client javafx:run
 ```
 
-Point the client at an API base URL via the in-app connect dialog; it also
-remembers the last one used, persisted via `ServerPrefs` (Java Preferences,
-registry key `HKCU:\Software\JavaSoft\Prefs\dk\dtu`).
+The client needs TWO origins, not one: the API base URL and the **web origin**
+sign in happens on (see the Sign in section). Both are set in the in-app connect
+dialog and remembered via `ServerPrefs` (Java Preferences, registry key
+`HKCU:\Software\JavaSoft\Prefs\dk\dtu`), as `api.url` and `web.url`, with
+defaults in `dk.dtu.shared.Config`. Pointing the client at a local `next dev` is
+impossible without setting the web origin, which is why it is not optional.
 
 ## Tests
 
@@ -135,9 +142,16 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
   share payload, and additionally assert what is ABSENT from it, which is the
   contract that matters for the API's only unauthenticated output.
 - `client`: `HelpersTest`, `ListsTest`, `TasksTest`, `ViewPrefsTest`,
-  `FiltersTest`, `DashboardStatsTest`, `CountersTest`, `net/StatePollerTest`,
-  `net/TodoApiClientTest`, `net/CounterClientTest`. No JavaFX is instantiated in
-  tests; scene logic is extracted into pure helpers so it can be tested at all.
+  `FiltersTest`, `DashboardStatsTest`, `CountersTest`, `SharesTest`,
+  `auth/PkceTest`, `auth/BrowserSignInTest`, `net/StatePollerTest`,
+  `net/TodoApiClientTest`, `net/CounterClientTest`, `net/ShareClientTest`,
+  `net/WebAuthClientTest`. No JavaFX is instantiated in tests; scene logic is
+  extracted into pure helpers so it can be tested at all. `BrowserSignInTest` is
+  the exception that proves the rule: it starts the REAL loopback listener and
+  drives it with `HttpClient` (wrong state, missing state, double callback,
+  `/favicon.ico`), because that server is plain JDK code with no JavaFX in it.
+  It never opens a browser: binding and opening are deliberately separate calls
+  so no test can ever touch the desktop.
 
 Run all tests from the repo root with `mvn test`.
 
@@ -213,7 +227,10 @@ CI (two workflows):
 
 - The jlinked runtime must include every JDK module the app touches, not just
   the JavaFX ones (`java.logging` for Ikonli/JNA, `java.naming`, `java.sql`,
-  `java.net.http`, `jdk.jfr`, etc.). The list is SINGLE-SOURCED in
+  `java.net.http`, `jdk.jfr`, `jdk.httpserver` for the sign-in loopback listener,
+  etc.). Note the trap `jdk.httpserver` illustrates: it lived in TEST scope for
+  a long time, so jdeps never flagged it, and it only became required the day
+  `dk.dtu.auth.BrowserSignIn` moved it into main code. The list is SINGLE-SOURCED in
   `scripts/installer-modules.txt`, read by both workflow jobs, by
   `build-installers.ps1`, and by the guard
   (`scripts/check-installer-modules.ps1`, jdeps-based, runs in PR CI and before
@@ -238,6 +255,40 @@ Release conventions (do not break these):
 - `--win-upgrade-uuid` (client `c70294f3-...`) and `--mac-package-identifier`
   (`com.patr7257.todolist.client`) are PERMANENT; changing one orphans installed
   copies. App icon is `client/src/main/resources/Icons/appicon.{ico,png}`.
+
+## Sign in (passkeys + magic link, issue #51)
+
+**There is no password form anywhere in the product any more.** Sign in happens
+on the website and both clients consume the result.
+
+- The web edition (`/todo` in `patr7257/PatrickRobelWeb`) offers a passkey
+  (`@simplewebauthn`, discoverable credentials, so login is usernameless) or a
+  magic link mailed via ZeptoMail. It also **mints** the `todo_session` token,
+  in the byte-identical HMAC format `dk.dtu.api.auth.Token` uses. `TokenTest.java`
+  here and `session.test.ts` there pin the SAME hand-computed vector from their
+  own side; that pair is the only thing standing between "the website mints" and
+  "the Java API accepts", because a mismatch shows up solely as a 401 in the
+  merged system.
+- The JavaFX client cannot do WebAuthn, so it opens the system browser and gets
+  the token back on a `127.0.0.1` loopback listener. This is RFC 8252 with PKCE.
+  The URL carries a **port number, never a `redirect_uri`**, so open redirect is
+  not a category that exists here. The browser only ever carries a one-time code;
+  the token is fetched by the client itself over HTTPS. PKCE is pinned against
+  **RFC 7636 Appendix B** in both repos.
+- `port` may be legitimately **absent** when the client cannot bind a listener.
+  Absent means "no loopback, the typed code is the whole flow"; present but
+  invalid is still rejected. Those are different and are handled separately.
+- **The typed fallback code is phishable and PKCE does not fix it**, because PKCE
+  only protects the party that chose the challenge. The mitigation is the
+  anti-phishing warning inside the code panel, in both languages. Do not remove it.
+- **Password login still exists in the API, deliberately unused.** Clients
+  installed before v2.0.8 rely on it. The kill switch is `UPDATE users SET
+  pw_hash = NULL` (V7 made the column nullable and `Scrypt.verify` returns false
+  for a null hash, so it is a clean 401 not a 500). Deleting the code is tracked
+  in #61, and `Token.sign` calls `Scrypt.bytesToHex`, so that helper moves first.
+- Revocation is still "rotate `TODO_SESSION_SECRET` in Dokploy AND Vercel, then
+  redeploy both". It logs everyone out everywhere. Per-user revocation would be a
+  breaking wire-format change that `TokenTest` pins on purpose.
 
 ## Hosting the API
 
