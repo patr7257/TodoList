@@ -97,7 +97,12 @@ class TodoApiIntegrationTest {
         app = ApiServer.create(backend);
         app.start(0);
         baseUrl = "http://127.0.0.1:" + app.port();
-        bearerToken = auth.login(USER_EMAIL, USER_PASSWORD).orElseThrow().token();
+        // Minted directly rather than obtained by logging in with a password, the
+        // way CountersIntegrationTest already does it. Password login is on its
+        // way out (issue #51 moves sign-in to passkeys plus magic link), and this
+        // suite should not stop working the day it is finally deleted. The
+        // password path still has its own dedicated test below.
+        bearerToken = auth.token().issue(seedUserId);
     }
 
     @AfterAll
@@ -180,6 +185,67 @@ class TodoApiIntegrationTest {
 
         assertTrue(auth.login(USER_EMAIL, "wrong").isEmpty(), "wrong password -> no login");
         assertTrue(auth.login("nobody@example.com", USER_PASSWORD).isEmpty(), "unknown user -> no login");
+    }
+
+    @Test
+    void v7AddsPasskeyCredentialsAndMakesPasswordHashOptional() {
+        Jdbi jdbi = Jdbi.create(pg.getPostgresDatabase());
+
+        List<String> credCols = jdbi.withHandle(h -> h
+                .createQuery("SELECT column_name FROM information_schema.columns "
+                        + "WHERE table_name = 'todo_credentials'")
+                .mapTo(String.class)
+                .list());
+        assertTrue(credCols.containsAll(List.of(
+                "id", "user_id", "public_key", "counter", "transports", "device_name",
+                "created_at", "last_used_at")),
+                "V7 should create todo_credentials with the website's expected columns, got " + credCols);
+
+        // The website's WebAuthn code looks credentials up by the authenticator's
+        // own credential id, so that column has to be the primary key rather than
+        // a generated uuid.
+        String pkColumn = jdbi.withHandle(h -> h
+                .createQuery("""
+                        SELECT kcu.column_name
+                        FROM information_schema.table_constraints tc
+                        JOIN information_schema.key_column_usage kcu
+                          ON kcu.constraint_name = tc.constraint_name
+                        WHERE tc.table_name = 'todo_credentials'
+                          AND tc.constraint_type = 'PRIMARY KEY'
+                        """)
+                .mapTo(String.class)
+                .one());
+        assertEquals("id", pkColumn, "todo_credentials primary key should be the credential id");
+
+        // The kill switch for password login depends on this being nullable: a
+        // passkey-only account has no password, and UPDATE users SET pw_hash =
+        // NULL must be a legal way to turn password sign-in off.
+        String nullable = jdbi.withHandle(h -> h
+                .createQuery("SELECT is_nullable FROM information_schema.columns "
+                        + "WHERE table_name = 'users' AND column_name = 'pw_hash'")
+                .mapTo(String.class)
+                .one());
+        assertEquals("YES", nullable, "V7 should relax users.pw_hash to nullable");
+    }
+
+    @Test
+    void passwordLoginForAUserWithNullPasswordHashIsRejectedNotAnError() {
+        Jdbi jdbi = Jdbi.create(pg.getPostgresDatabase());
+        String email = "passkey-only@example.com";
+        jdbi.useHandle(h -> h
+                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
+                .bind("e", email)
+                .bind("n", "Passkey Only")
+                .execute());
+
+        // This is what nulling pw_hash has to do: refuse the login cleanly. If it
+        // ever threw instead, the kill switch would take the login route down
+        // with a 500 rather than turning password auth off, and #51's rollback
+        // plan would be worthless.
+        assertTrue(auth.login(email, "anything").isEmpty(),
+                "a user with no password hash must fail to log in rather than error");
+        assertTrue(auth.login(email, "").isEmpty(),
+                "an empty password against a null hash must also just fail");
     }
 
     @Test

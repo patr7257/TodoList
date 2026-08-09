@@ -163,7 +163,7 @@ migrations to production):
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V6`.
+`api/src/main/resources/db/migration`. Current head is `V7`.
 
 **Version register.** Because `outOfOrder` is false (see below), migration
 numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
@@ -173,7 +173,7 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V1 to V4 | earlier | baseline, desktop superset, `lists.owner_id`, its backfill |
 | V5 | #46 | `fun_counters` |
 | V6 | #52 | `list_shares` (public share links) |
-| V7 | #51 | auth refactor (RESERVED, not written yet) |
+| V7 | #51 | `todo_credentials` (passkeys) + `users.pw_hash` made nullable |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
