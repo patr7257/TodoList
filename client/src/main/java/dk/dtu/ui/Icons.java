@@ -83,4 +83,8 @@ public final class Icons {
 
     // --- Branding / misc -------------------------------------------------------
     public static FontIcon checklist(int size) { return of("fth-check-square", size); }
+
+    // --- Sharing (issue #52) -----------------------------------------------
+    public static FontIcon share() { return of("fth-share-2", ROW); }
+    public static FontIcon copy()  { return of("fth-copy", ROW); }
 }
