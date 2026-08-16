@@ -25,6 +25,7 @@ public final class ApiServer {
         CountersController counters = new CountersController(backend);
         ListSharesController listShares = new ListSharesController(backend);
         ShareController share = new ShareController(backend);
+        TinderController tinder = new TinderController(backend);
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new GsonJsonMapper());
@@ -50,6 +51,14 @@ public final class ApiServer {
         app.get("/api/todo/lists/{id}/shares", listShares::list);
         app.post("/api/todo/lists/{id}/shares", listShares::create);
         app.delete("/api/todo/lists/{id}/shares/{shareId}", listShares::delete);
+        // TodoTinder (#56, #59). {deck} is the deck KEY, never a uuid. Every one
+        // of these is authenticated by the default path through AuthFilter, and
+        // deliberately none of them lives under /api/todo/share/.
+        app.get("/api/todo/tinder/decks", tinder::decks);
+        app.get("/api/todo/tinder/decks/{deck}/cards", tinder::cards);
+        app.post("/api/todo/tinder/decks/{deck}/swipes", tinder::swipe);
+        app.post("/api/todo/tinder/decks/{deck}/entries", tinder::importEntries);
+        app.get("/api/todo/tinder/matches", tinder::matches);
         // The one public route (singular "share"), exempted in AuthFilter.
         app.get("/api/todo/share/{token}", share::get);
 

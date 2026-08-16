@@ -32,6 +32,19 @@ public final class ApiConfig {
     public static final int DEFAULT_SHARE_RATE_LIMIT_MAX = 60;
     public static final int DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS = 60;
 
+    /**
+     * Where THIS API is reachable from outside the container. Distinct from
+     * {@link #DEFAULT_SHARE_BASE_URL}, which is the website: a share link is
+     * browsed on patrickrobel.dk while an API call goes to the API host, and
+     * conflating the two would produce a share URL nobody can open or a refill
+     * prompt that posts into the website.
+     *
+     * <p>Needed because the TodoTinder refill prompt (issue #59) has to name an
+     * absolute endpoint: it is pasted into a Claude session that has no idea
+     * where this API lives, and a relative path there would be useless.
+     */
+    public static final String DEFAULT_PUBLIC_BASE_URL = "https://api.todolist.patrickrobel.dk";
+
     private final int httpPort;
     private final String databaseUrl;
     private final String sessionSecret;
@@ -40,10 +53,12 @@ public final class ApiConfig {
     private final String shareBaseUrl;
     private final int shareRateLimitMax;
     private final int shareRateLimitWindowSeconds;
+    private final String publicBaseUrl;
 
     private ApiConfig(int httpPort, String databaseUrl, String sessionSecret,
                       int rateLimitMax, int rateLimitWindowSeconds,
-                      String shareBaseUrl, int shareRateLimitMax, int shareRateLimitWindowSeconds) {
+                      String shareBaseUrl, int shareRateLimitMax, int shareRateLimitWindowSeconds,
+                      String publicBaseUrl) {
         this.httpPort = httpPort;
         this.databaseUrl = databaseUrl;
         this.sessionSecret = sessionSecret;
@@ -52,6 +67,7 @@ public final class ApiConfig {
         this.shareBaseUrl = shareBaseUrl;
         this.shareRateLimitMax = shareRateLimitMax;
         this.shareRateLimitWindowSeconds = shareRateLimitWindowSeconds;
+        this.publicBaseUrl = publicBaseUrl;
     }
 
     /** Builds the config from system properties / environment variables. */
@@ -65,7 +81,10 @@ public final class ApiConfig {
         int shareMax = intValue("API_SHARE_RATE_LIMIT_MAX", DEFAULT_SHARE_RATE_LIMIT_MAX);
         int shareWindow = intValue("API_SHARE_RATE_LIMIT_WINDOW_SECONDS",
                 DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS);
-        return new ApiConfig(port, db, secret, rlMax, rlWindow, shareBase, shareMax, shareWindow);
+        String publicBase = normalizeBaseUrl(stringValue("API_PUBLIC_BASE_URL", DEFAULT_PUBLIC_BASE_URL),
+                DEFAULT_PUBLIC_BASE_URL);
+        return new ApiConfig(port, db, secret, rlMax, rlWindow, shareBase, shareMax, shareWindow,
+                publicBase);
     }
 
     /**
@@ -87,9 +106,23 @@ public final class ApiConfig {
                                int rateLimitMax, int rateLimitWindowSeconds,
                                String shareBaseUrl, int shareRateLimitMax,
                                int shareRateLimitWindowSeconds) {
+        return of(httpPort, databaseUrl, sessionSecret, rateLimitMax, rateLimitWindowSeconds,
+                shareBaseUrl, shareRateLimitMax, shareRateLimitWindowSeconds,
+                DEFAULT_PUBLIC_BASE_URL);
+    }
+
+    /**
+     * Explicit constructor for tests that also need to pin the API's own public
+     * base URL (the one the tinder refill prompt names).
+     */
+    public static ApiConfig of(int httpPort, String databaseUrl, String sessionSecret,
+                               int rateLimitMax, int rateLimitWindowSeconds,
+                               String shareBaseUrl, int shareRateLimitMax,
+                               int shareRateLimitWindowSeconds, String publicBaseUrl) {
         return new ApiConfig(httpPort, normalizeJdbcUrl(databaseUrl), sessionSecret,
                 rateLimitMax, rateLimitWindowSeconds, normalizeBaseUrl(shareBaseUrl),
-                shareRateLimitMax, shareRateLimitWindowSeconds);
+                shareRateLimitMax, shareRateLimitWindowSeconds,
+                normalizeBaseUrl(publicBaseUrl, DEFAULT_PUBLIC_BASE_URL));
     }
 
     /**
@@ -99,14 +132,24 @@ public final class ApiConfig {
      * link nobody can open.
      */
     public static String normalizeBaseUrl(String raw) {
+        return normalizeBaseUrl(raw, DEFAULT_SHARE_BASE_URL);
+    }
+
+    /**
+     * The same normalisation against an explicit fallback, because there are now
+     * two different origins to normalise (the website a share is browsed on, and
+     * this API itself) and defaulting the API's origin to the website's would
+     * produce a refill prompt that posts to the wrong host.
+     */
+    public static String normalizeBaseUrl(String raw, String fallback) {
         if (raw == null || raw.isBlank()) {
-            return DEFAULT_SHARE_BASE_URL;
+            return fallback;
         }
         String url = raw.trim();
         while (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
-        return url.isEmpty() ? DEFAULT_SHARE_BASE_URL : url;
+        return url.isEmpty() ? fallback : url;
     }
 
     /**
@@ -175,6 +218,11 @@ public final class ApiConfig {
 
     public int shareRateLimitWindowSeconds() {
         return shareRateLimitWindowSeconds;
+    }
+
+    /** Origin this API is reachable at from outside, with no trailing slash. */
+    public String publicBaseUrl() {
+        return publicBaseUrl;
     }
 
     private static String stringValue(String key, String fallback) {
