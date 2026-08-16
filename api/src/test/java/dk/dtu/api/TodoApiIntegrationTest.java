@@ -578,4 +578,57 @@ class TodoApiIntegrationTest {
                 "{\"name\":\"HTTP create bad owner\",\"ownerId\":\"not-a-uuid\"}");
         assertEquals(400, res.statusCode());
     }
+
+    /**
+     * The items-side twin of the ownerId tests above (issue #61). The item
+     * assignee reader used to accept ANY non-empty string, so a bogus id got as
+     * far as the INSERT and came back as a 500 from a raw foreign-key
+     * violation. Lists had already been fixed; items had not.
+     */
+    @Test
+    void createItemWithMalformedOrUnknownAssigneeIdReturns400NeverA500() throws Exception {
+        ListRow list = todo.insertList("HTTP bad assignee create test");
+
+        String malformedBody = "{\"listId\":\"" + list.id() + "\",\"text\":\"x\","
+                + "\"description\":null,\"location\":null,\"assigneeId\":\"not-a-uuid\"}";
+        assertEquals(400, httpPost("/items", malformedBody).statusCode(),
+                "a malformed assigneeId must be a 400, not a 500");
+
+        String unknownBody = "{\"listId\":\"" + list.id() + "\",\"text\":\"x\","
+                + "\"description\":null,\"location\":null,\"assigneeId\":\"" + UUID.randomUUID() + "\"}";
+        assertEquals(400, httpPost("/items", unknownBody).statusCode(),
+                "an assigneeId with no matching user must be a 400 (validated before the FK), not a 500");
+
+        // An explicit null is still the valid way to say "unassigned".
+        String nullBody = "{\"listId\":\"" + list.id() + "\",\"text\":\"unassigned\","
+                + "\"description\":null,\"location\":null,\"assigneeId\":null}";
+        assertEquals(200, httpPost("/items", nullBody).statusCode());
+
+        todo.deleteList(list.id());
+    }
+
+    @Test
+    void patchItemWithMalformedOrUnknownAssigneeIdReturns400NeverA500() throws Exception {
+        ListRow list = todo.insertList("HTTP bad assignee patch test");
+        ItemRow item = todo.insertItem(new NewItem(list.id(), "assign me", null,
+                "NOT_STARTED", null, null, null, null, null));
+
+        assertEquals(400, httpPatch("/items/" + item.id(), "{\"assigneeId\":\"not-a-uuid\"}").statusCode(),
+                "a malformed assigneeId must be a 400, not a 500");
+        assertEquals(400, httpPatch("/items/" + item.id(),
+                        "{\"assigneeId\":\"" + UUID.randomUUID() + "\"}").statusCode(),
+                "an unknown assigneeId must be a 400, not a 500");
+
+        // A real user still assigns, so the stricter reader did not close the
+        // door on the only case that matters.
+        Jdbi jdbi = Jdbi.create(pg.getPostgresDatabase());
+        String realUserId = insertTestUser(jdbi, "Assignee Real", "assignee-patch-http");
+        HttpResponse<String> ok = httpPatch("/items/" + item.id(),
+                "{\"assigneeId\":\"" + realUserId + "\"}");
+        assertEquals(200, ok.statusCode(), ok.body());
+        assertEquals(realUserId, JsonParser.parseString(ok.body()).getAsJsonObject()
+                .getAsJsonObject("item").get("assigneeId").getAsString());
+
+        todo.deleteList(list.id());
+    }
 }

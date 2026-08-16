@@ -142,12 +142,18 @@ public final class SharesService {
      * not a uuid), so the controller can answer 404 instead of letting a
      * foreign-key violation surface as a 500.
      *
-     * <p>{@code label} and {@code createdBy} may be null. Expiry is deliberately
-     * not settable yet: the column exists and is honoured on read, but nothing
-     * writes it, so there is exactly one way for a link to stop working today
-     * (revocation) and the read path already handles both.
+     * <p>{@code label} and {@code createdBy} may be null. So may
+     * {@code expiresInDays}, which means "never expires" and is the default.
+     *
+     * <p>The caller passes a NUMBER OF DAYS, not a timestamp, and the deadline
+     * is computed as {@code now() + interval} inside the INSERT. That is
+     * deliberate: the read path in {@link #resolveActive(String)} compares
+     * {@code expires_at} against the database's {@code now()}, so deriving the
+     * deadline from any other clock (a browser's, a phone's, the API
+     * container's) would let the two disagree. One clock decides both when a
+     * link dies and whether it is dead.
      */
-    public Optional<ShareRow> create(String listId, String label, String createdBy) {
+    public Optional<ShareRow> create(String listId, String label, String createdBy, Integer expiresInDays) {
         if (!TodoService.isUuid(listId)) {
             return Optional.empty();
         }
@@ -162,15 +168,34 @@ public final class SharesService {
         }
 
         return jdbi.withHandle(h -> {
+            // The expiry expression is chosen from a fixed pair of literals
+            // rather than interpolated, so no caller-supplied text ever reaches
+            // the SQL string; the day count itself is a bound parameter.
+            String expiresExpr = expiresInDays == null
+                    ? "NULL"
+                    : "now() + make_interval(days => :expiresInDays)";
             Update u = h.createUpdate(
-                    "INSERT INTO list_shares (list_id, token, label, created_by) "
-                    + "VALUES (CAST(:listId AS uuid), :token, :label, CAST(:createdBy AS uuid)) RETURNING *");
+                    "INSERT INTO list_shares (list_id, token, label, created_by, expires_at) "
+                    + "VALUES (CAST(:listId AS uuid), :token, :label, CAST(:createdBy AS uuid), "
+                    + expiresExpr + ") RETURNING *");
             u.bind("listId", listId);
             u.bind("token", ShareTokens.generate());
             bindNullable(u, "label", label, Types.VARCHAR);
             bindNullable(u, "createdBy", createdBy, Types.VARCHAR);
+            if (expiresInDays != null) {
+                u.bind("expiresInDays", expiresInDays.intValue());
+            }
             return u.executeAndReturnGeneratedKeys().map((rs, ctx) -> mapShare(rs)).findFirst();
         });
+    }
+
+    /**
+     * Backwards-compatible overload: a share that never expires. Kept so the
+     * three-argument call reads as an explicit "no expiry" rather than a
+     * trailing null nobody can interpret at the call site.
+     */
+    public Optional<ShareRow> create(String listId, String label, String createdBy) {
+        return create(listId, label, createdBy, null);
     }
 
     /**
