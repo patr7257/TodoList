@@ -2,54 +2,60 @@
 
 ## Date, branch, PR, CI
 
-- 2026-08-09. Branch: `docs/session-close-2026-08-09` (this file's own PR). Everything
-  else from this session is merged and live on `main` at `fe3b88d`.
-- **TodoList**: #53 (`52b9f67`), #54 (`9b66997`), #55 (`82c6fa8`), #60 (`fe3b88d`), all
-  squash-merged with CI green. Latest release **v2.0.8**, all four assets present and
-  both permanent `releases/latest/download` URLs verified HTTP 200.
-- **PatrickRobelWeb**: #171 (`6a79332`) and #172 (`a800323`), both merged, both Vercel
-  production deploys succeeded.
-- Follow-ups live in **#61**, not only in closed-issue comments.
+- 2026-08-16. Branch: `docs/session-close-2026-08-16` (this file's own PR).
+  Everything else from this session is merged and live.
+- **TodoList**: #69 (#66), #70 (#61), #71 (#56 + #59), #72 (#61), #73 (#57), all
+  squash-merged with CI green. `main` is at the #73 merge plus this docs branch.
+- **PatrickRobelWeb**: #173 (the `/todo` UX batch) and #174 (TodoTinder), both
+  merged, both Vercel production deploys verified live.
+- **Every issue that existed at session start is closed.** The only open issue in
+  either repo's TodoList scope is **#74**, which this session filed on purpose.
 
 ## TLDR of session outcome
 
-The entire open backlog was cleared. Every issue that existed at session start is closed.
+The desktop client is gone, TodoTinder is built and live, and the whole `/todo`
+UX backlog shipped. Product changes now only ever have to be made once.
 
-- **#47** closed as already shipped last session. Its two genuinely unfinished leftovers
-  were filed on the website board as `PatrickRobelWeb#169` and `#170`.
-- **#52 public share links** shipped across all three surfaces. A list can be handed to
-  someone outside the app as a live read-only link at `patrickrobel.dk/s/<token>`. New
-  `list_shares` table (V6), one public API route, three authenticated management routes,
-  a share dialog in the desktop client and a share sheet in the web edition.
-- **#51 passkeys plus magic link** shipped. Sign-in moved off email and password onto
-  passkeys plus a ZeptoMail magic link. The website is now the **issuer** of the
-  `todo_session` token, not just a verifier, so the JavaFX client can obtain a working
-  API token from a browser ceremony it cannot run itself (RFC 8252 with PKCE, token
-  returned over a `127.0.0.1` loopback listener). Released as v2.0.8.
-- **#44 TodoTinder** designed, not built, which is what the issue itself instructs. All
-  nine questions answered, the spec is a comment on #44, and it is split into #56 to #59.
-- Six PRs, seven implementation subagents, two repos, six production merges.
+- **#66 desktop client retired.** `client/`, `build-installers.ps1`, the release
+  workflow, the jlink module list and its guard, and `dk.dtu.shared.Config` are
+  all deleted. The repo is `api` + `shared`. v2.0.8 stays on the Releases page,
+  so an installed copy keeps working against the unchanged API and simply stops
+  receiving updates.
+- **TodoTinder (#44) is finished and live** at `https://patrickrobel.dk/tinder`:
+  V8 schema, swipe/match/import API, four curated decks totalling 440 entries,
+  and an installable swipe PWA. The epic and all four sub-issues are closed.
+- **The `/todo` UX backlog shipped**: #63, #64, #65, #67, #68 here plus
+  PatrickRobelWeb #169 and #170.
+- **Password login is gone** from the API. `SeedUser` deliberately survived.
+- Six implementation subagents, eight PRs, two repos, seven production merges.
+
+**Five bugs were found that CI could not have caught**, three of them in code
+that was already typechecking, unit-testing and building green. They are in the
+gotchas section below, because each is a repeatable class of mistake.
 
 ## Prioritized next steps
 
-1. **Sign in on the desktop client after updating to v2.0.8.** This is the ONE path
-   nobody has exercised against the live website. It is thoroughly unit tested (the real
-   loopback listener is driven over HTTP including wrong-state, missing-state and
-   double-callback cases) but has never talked to production. Your currently installed
-   client keeps using its saved token until you update, so there is no rush, but do not
-   rely on it until you have seen it work.
-2. **Create a share link and open it.** Never done on live data this session, because
-   `TODO_SESSION_SECRET` is not in the local environment so no token could be minted.
-   The happy path is covered by `SharesIntegrationTest` against a real Postgres and a
-   real Javalin, but a live click is still the only proof.
-3. **Work through #61**, which holds every follow-up this session created or inherited.
-   The highest-value one is retiring password login, and it has a strict order.
-4. **Start TodoTinder from #56**, which is the foundation the other three build on.
+1. **Open `https://patrickrobel.dk/tinder` on your phone and install it.** It was
+   verified end to end headlessly against a live API, but never on a real phone,
+   and the swipe gesture's feel (an 8px tap slop and a 96px commit distance) is
+   the kind of thing only a thumb can judge.
+2. **Decide whether `/todo` should link to `/tinder`.** Nothing links into it
+   today; it is reachable only by URL or as an installed app. That was left out
+   on purpose rather than forgotten.
+3. **Read the four decks and prune them.** 440 entries were authored to a brief
+   and verified structurally (exact counts, no duplicates, correct Danish), but
+   nobody has read them all for taste. `scripts/data/tinder-*.json`, then re-run
+   the seed script; it is idempotent.
+4. **Seed the four target lists in production before using TodoTinder for real.**
+   The decks point at lists named `Aktiviteter`, `Rejsemål`, `Indkøb` and
+   `Date nights`, resolved BY NAME. If they do not exist in production the seed
+   reports a shortfall and exits non-zero rather than half-seeding.
+5. **Work #74** (per-user session revocation) when it matters. It is a breaking
+   wire-format change pinned from both repos, so it needs a coordinated deploy.
 
 ## Verbatim resume commands (PowerShell)
 
-Start a throwaway local Postgres (the API does NOT start one, see the Migrations section
-in CLAUDE.md):
+Start a throwaway local Postgres (the API does NOT start one):
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1
 ```
@@ -57,17 +63,27 @@ Run the API against it:
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; $env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
-Run the desktop client from source:
-```
-cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -q install -DskipTests; mvn -pl client javafx:run
-```
-Run the full test suite:
+Run the full Java test suite:
 ```
 cd "C:\Users\pr\repos\1-Personal\TodoList"; mvn -B clean verify
 ```
-Run the website locally (passkeys work against localhost, rpID falls back to `localhost` in dev):
+Seed the four TodoTinder decks (dry-runs and asks before writing; borrows psql
+from a container, so nothing needs installing):
 ```
-cd "C:\Users\pr\repos\1-Personal\PatrickRobelWeb\website"; pnpm dev
+cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\seed-tinder.ps1
+```
+Create an account (passwordless; it can then sign in with a passkey or magic link):
+```
+cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\seed-user.ps1
+```
+Run the website against that local API, on a port that does not collide with the
+MW Service Tool's :3000:
+```
+cd "C:\Users\pr\repos\1-Personal\PatrickRobelWeb\website"; $env:TODO_API_BASE_URL='http://localhost:8080'; $env:TODO_SESSION_SECRET='dev-secret'; npx next dev -p 3100
+```
+Run the website tests:
+```
+cd "C:\Users\pr\repos\1-Personal\PatrickRobelWeb\website"; pnpm test
 ```
 Tear the local database down:
 ```
@@ -76,62 +92,79 @@ cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1 -Stop
 
 ## Gotchas discovered this session
 
-- **`SELECT s.id, ..., l.*` across a join is a silent data bug.** The first draft of the
-  share resolver selected the share's `id` alongside `lists.*`, and both tables have `id`
-  and `created_at`. JDBC `getString("id")` returns the FIRST matching column, so the
-  mapped list id would silently have been the share id, and the follow-up items query
-  would have looked up a list that does not exist. Always alias explicitly when a join
-  selects a wildcard.
-- **`.claude/.codev-ack` is TRACKED in this repo and not gitignored**, contrary to what
-  the co-development-workflow skill states. It accumulates one line per session in the
-  working tree. A `git restore` while tidying a commit wiped three sessions' lines; they
-  had to be re-appended by hand. Never `git restore` that file, and never `Write` it.
-- **A `git diff origin/main` showing your own migration as DELETED means a stale base**,
-  not a real deletion. A branch cut before another migration merged will show that
-  migration as removed. Rebase before reading the diff or reviewing the PR.
-- **Vercel preview deployments are behind SSO**, so `curl -I` against a preview returns a
-  302 to the auth gate and the headers you see belong to Vercel's own SSO page, not to
-  your app. Response headers can only be verified against production. Note that the
-  `noindex` on the SSO page looks superficially like a passing check; ours is
-  `noindex, nofollow`, which is how the difference was caught.
-- **PKCE only protects the party that CHOSE the challenge.** The typed fallback code in
-  the desktop sign-in is therefore phishable: anyone can link a victim to
-  `/todo/login?desktop=1&challenge=<theirs>`, let them sign in for real, and ask for the
-  code back. No server-side check can distinguish that from a genuine desktop sign-in.
-  The mitigation is the anti-phishing warning inside the code panel. Do not tidy it away.
-- **Amadeus Self-Service shut down on 17 July 2026 and Kiwi Tequila went invite-only.**
-  Both free flight-price APIs the TodoTinder epic named are gone, which is why Rejsemål
-  ships curated price bands instead. Do not plan around either API.
-- **`patrickrobel.dk` 308-redirects to `www`.** Share links composed against the apex
-  work fine (browsers follow it) but there is an extra hop. `TODO_SHARE_BASE_URL`
-  defaults to the apex; change it only if the hop ever matters.
-- The two `DATABASE_URL`s (website and Java API) point at the **same** Neon database.
-  Confirmed by the website's connection seeing `flyway_schema_history`. This is load
-  bearing for #51: the website reads `users` and writes `todo_credentials` directly.
+- **A React state updater must be PURE, and StrictMode keeps the SECOND call.**
+  The `?list=` deep link never worked because its updater flipped a "already
+  applied" ref inside itself: the first call resolved the list and set the flag,
+  the second saw the flag and returned null. Green types, green tests, feature
+  entirely dead. Mutate refs outside the updater.
+- **Two features can each be correct and still cancel each other out.** Task
+  dragging required the status filter to be `all`; the same batch made `open`
+  the default. Neither issue was wrong on its own and nothing failed, but
+  dragging was unreachable out of the box. Check new defaults against existing
+  gates.
+- **NFD folding does nothing for `æ` and `ø`.** They are atomic code points with
+  no decomposition, unlike `å`, which does decompose. So list search could not
+  find `Indkøb` when the `ø` was typed as its two-letter digraph, nor when it
+  was typed as a bare `o`. Fold the Danish letters explicitly, both ways.
+- **PowerShell encodes a pipe to a native process in the console codepage**,
+  which varies by how the script was launched. The seed script silently dropped
+  the two decks whose list names carry Danish letters, 2 of 4 decks and 140 of
+  440 entries, while printing "Seed complete. Done." Send SQL through a UTF-8
+  file with no BOM, never a pipe, and add a post-write count check: a step that
+  skips rows instead of erroring can always half-succeed.
+- **`boolean::text` is `true`, not `t`.** `t` is psql's aligned DISPLAY. A
+  readiness check comparing against `'t'` could never pass.
+- **`lists.name` is not unique**, so joining a deck to its list on the name can
+  emit two rows for one key and make `ON CONFLICT DO UPDATE` fail outright with
+  "cannot affect row a second time". Use `LATERAL ... LIMIT 1`.
+- **"Every row in `users`" is the FRAGILE form of a quorum**, not the general
+  one. Matches required all users to have swiped right; `users` is shared with
+  the website and `SeedUser` can add a row, so a third account would have
+  silently wiped every existing match. A quorum of two cannot fail that way.
+- **An end-to-end script lies in four standard ways**, all of which happened
+  here: fixed sleeps racing a dev-server route compile, a count assertion that
+  fails precisely because dedupe works, the wrong baseline for a per-user
+  number, and a selector loose enough to match a different control. Wait for
+  the thing, assert the invariant, not the delta.
+- **`\b` in a Python string is a BACKSPACE.** A patch script wrote a literal
+  U+0008 into a JS regex: invisible in review, fatal at runtime. Same hazard as
+  a literal combining character.
+- **Git Bash rewrites unix-looking paths in a command line**, so a container
+  mount `-v host:/sql` becomes `C:/Program Files/Git/sql`. Guard with
+  `MSYS_NO_PATHCONV=1` and `cygpath -m`.
+- **The `todo_session` cookie is host-only to `patrickrobel.dk`.** That single
+  fact killed the plan to serve TodoTinder from the API's own subdomain: the app
+  could not have authenticated at all. Check cookie scope before choosing an
+  origin.
+- **Curl from Git Bash mangles non-ASCII in `-d`.** Two "encoding bugs" this
+  session were the test harness, not the app. Send a UTF-8 file with
+  `--data-binary @file` before believing the product is at fault.
 
 ## Open decisions waiting on Patrick
 
-- Delete the merged local branches? `feat/list-shares-api`,
-  `feat/passkey-credentials-migration`, `feat/share-dialog-desktop` in TodoList, and
-  `feat/todo-passkey-auth`, `feat/todo-share-web` in PatrickRobelWeb. Their remotes were
-  already deleted on merge.
-- Delete the stale remote branch `origin/feat/todo-web-dashboard` in PatrickRobelWeb?
-  Still outstanding from the 2026-08-03 session.
-- Should the `/todo` web app copy be Danish? Today the emails and the magic-link landing
-  page are Danish; the login card, passkey prompt and dashboard banner are English, to
-  match the rest of the app. Both are defensible, it is a consistency call.
-- Gitignore `.claude/.codev-ack` to match the skill's assumption, or keep it tracked and
-  document the divergence?
+- Delete the merged remote branches `origin/feat/todo-ux-integration` and
+  `origin/feat/todo-tinder-pwa` in PatrickRobelWeb, and the stale
+  `origin/feat/todo-web-dashboard` still outstanding from 2026-08-03? All local
+  branches and worktrees are already gone.
+- Should `/todo` get a visible link into `/tinder`, or does the installed app
+  icon cover it?
+- The `/tinder` UI copy is Danish throughout while `/todo` is mostly English.
+  Deliberate for a Danish deck app, but it is a consistency call.
+- Should `shared/` (now one enum, `TaskStatus`) be folded into `api/` and the
+  module dropped? Nothing depends on it happening.
 
 ## Environment state
 
-- Nothing of ours is running. No API on 8080, no dev server, no JavaFX client. Ports
-  3000, 3001, 5173, 5174, 8080 and 5433 all free.
-- Docker Desktop is DOWN and no session marker exists, so nothing will be torn down at
-  session end.
-- No cron or scheduled jobs were created this session.
-- Keep-awake is not active; the PC sleeps per its normal power settings.
-- TodoList: `main` plus this docs branch. All worktrees removed
-  (`TodoList-52-api`, `TodoList-52-client`, `TodoList-51-client` are gone).
-- PatrickRobelWeb: on `main`, clean.
-- `.claude/.codev-ack` is locally modified as usual (one appended line per session).
+- **Nothing of mine is running.** The dev database, the API container and the
+  dev server are all stopped; ports 3100, 18080, 5433 and 8080 are free.
+- **Docker Desktop was left UP deliberately, and this is the one thing to know.**
+  This session started it, but `mw-postgres` (MW Service Tool, a different repo)
+  is now running on it and that project's dev server is live on **:3000**.
+  Stopping Docker would have taken its database out from under it, so the
+  ownership marker was released instead: session end will leave Docker alone.
+  Stop it yourself when the MW work is done.
+- All worktrees removed in both repos. TodoList is on
+  `docs/session-close-2026-08-16`; PatrickRobelWeb is on `main`, clean.
+- No cron jobs or scheduled tasks were created. Keep-awake is not active.
+- `.claude/.codev-ack` is now gitignored and untracked, so it no longer shows as
+  permanently modified. All six historical session lines were preserved.
