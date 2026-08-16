@@ -21,7 +21,6 @@
         <hikari.version>5.1.0</hikari.version>
         <jdbi.version>3.45.4</jdbi.version>
         <flyway.version>10.20.1</flyway.version>
-        <bouncycastle.version>1.78.1</bouncycastle.version>
         <slf4j.version>2.0.16</slf4j.version>
         <embedded.postgres.version>2.0.7</embedded.postgres.version>
         <embedded.postgres.binaries.version>16.2.0</embedded.postgres.binaries.version>
@@ -88,13 +87,6 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
             <version>${flyway.version}</version>
-        </dependency>
-
-        <!-- scrypt password verification / hashing -->
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bouncycastle.version}</version>
         </dependency>
 
         <!-- Logging (Javalin, Flyway, Hikari use slf4j) -->

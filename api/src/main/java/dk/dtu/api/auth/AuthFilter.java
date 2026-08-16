@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Javalin before-handler that enforces a valid session on every route except
- * the explicit allowlist below (login, logout, and the public share reader).
+ * the explicit allowlist below (logout and the public share reader).
  * The session token is read from an {@code Authorization:
  * Bearer <token>} header or, for drop-in compatibility with the website, from a
  * {@code todo_session} cookie. On success the verified user id is stashed as the
@@ -27,13 +27,19 @@ public final class AuthFilter implements Handler {
     public static final String UID_ATTRIBUTE = "uid";
 
     /**
-     * The complete set of unauthenticated paths, matched EXACTLY (login,
-     * logout) or by prefix (the public share reader).
+     * The complete set of unauthenticated paths, matched EXACTLY (logout) or by
+     * prefix (the public share reader). Two entries, and that is the whole list.
      *
-     * <p>This used to be {@code path.endsWith("/login") || path.endsWith(
-     * "/logout")}, which was fine while those were the only two exemptions and
-     * brittle the moment a third arrived: a suffix match opens any future route
-     * whose path happens to end that way, anywhere in the tree.
+     * <p>There used to be a third, exact {@code /api/todo/login}, for the email
+     * plus password route. Issue #61 deleted that route, so the exemption went
+     * with it: an allowlist entry that outlives its route is a hole waiting for
+     * someone to reuse the path.
+     *
+     * <p>Matching is exact or prefix and never by suffix. It was once
+     * {@code path.endsWith("/login") || path.endsWith("/logout")}, which was
+     * fine while those were the only exemptions and brittle the moment a third
+     * arrived: a suffix match opens any future route whose path happens to end
+     * that way, anywhere in the tree.
      *
      * <p>The prefix {@code /api/todo/share/} is safe because the singular /
      * plural split is load-bearing, not cosmetic. {@code share} singular appears
@@ -41,8 +47,11 @@ public final class AuthFilter implements Handler {
      * managing shares lives under {@code /api/todo/lists/{id}/shares}, plural,
      * which this prefix cannot match. Keep it that way: never add a second
      * route under {@code /api/todo/share/}.
+     *
+     * <p>Logout stays exempt because clearing an expired session must not
+     * require a valid one, and because the route only expires a cookie: it
+     * reads nothing and cannot leak anything.
      */
-    private static final String LOGIN_PATH = "/api/todo/login";
     private static final String LOGOUT_PATH = "/api/todo/logout";
     private static final String PUBLIC_SHARE_PREFIX = "/api/todo/share/";
 
@@ -69,13 +78,12 @@ public final class AuthFilter implements Handler {
         ctx.attribute(UID_ATTRIBUTE, uid.get());
     }
 
-    /** Exact match for login/logout, prefix match for the public share reader. */
+    /** Exact match for logout, prefix match for the public share reader. */
     static boolean isPublic(String path) {
         if (path == null) {
             return false;
         }
-        return LOGIN_PATH.equals(path)
-                || LOGOUT_PATH.equals(path)
+        return LOGOUT_PATH.equals(path)
                 || path.startsWith(PUBLIC_SHARE_PREFIX);
     }
 

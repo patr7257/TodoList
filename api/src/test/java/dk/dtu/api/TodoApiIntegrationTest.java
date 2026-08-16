@@ -21,8 +21,6 @@ import java.util.UUID;
 
 import javax.sql.DataSource;
 
-import dk.dtu.api.auth.AuthService;
-import dk.dtu.api.auth.Scrypt;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.ColumnValue;
@@ -34,7 +32,6 @@ import dk.dtu.api.domain.TodoService;
 import dk.dtu.api.domain.UserRow;
 import dk.dtu.api.web.ApiServer;
 import dk.dtu.api.web.Backend;
-import dk.dtu.api.web.RateLimiter;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -49,18 +46,23 @@ import org.junit.jupiter.api.TestInstance;
 
 /**
  * End-to-end tests against a real (embedded) Postgres: Flyway migrations create
- * the schema from V1 and add the superset columns in V2, a seeded user logs in
- * through the scrypt path, and a list + item round-trips through the service.
+ * the schema from V1 and add the superset columns in V2, and a list + item
+ * round-trips through the service and over HTTP.
+ *
+ * <p>Every user row here is passwordless ({@code pw_hash} NULL), which is what
+ * production rows look like now that password login is gone (issue #61) and
+ * what {@code SeedUser} writes. The suite authenticates the way the website
+ * does, by minting a {@link Token} directly, so nothing in it depends on a
+ * credential the API can no longer check.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TodoApiIntegrationTest {
 
     private static final String USER_EMAIL = "seed@example.com";
-    private static final String USER_PASSWORD = "s3cret-password";
 
     private EmbeddedPostgres pg;
     private TodoService todo;
-    private AuthService auth;
+    private Token token;
     private String seedUserId;
 
     // HTTP-level harness: a real Javalin app (dk.dtu.api.web.ApiServer, wired
@@ -80,29 +82,24 @@ class TodoApiIntegrationTest {
 
         Jdbi jdbi = Jdbi.create(ds);
         todo = new TodoService(jdbi);
-        auth = new AuthService(todo, new Token("integration-secret"));
+        token = new Token("integration-secret");
 
-        String stored = Scrypt.hash(USER_PASSWORD);
         jdbi.useHandle(h -> h
-                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, :p)")
+                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
                 .bind("e", USER_EMAIL)
                 .bind("n", "Seed User")
-                .bind("p", stored)
                 .execute());
         seedUserId = todo.findUserByEmail(USER_EMAIL).orElseThrow().id();
 
         Backend backend = new Backend(
-                ApiConfig.of(0, null, "integration-secret", 0, 600),
-                todo, auth, auth.token(), new RateLimiter(0, 600));
+                ApiConfig.of(0, null, "integration-secret"), todo, token);
         app = ApiServer.create(backend);
         app.start(0);
         baseUrl = "http://127.0.0.1:" + app.port();
-        // Minted directly rather than obtained by logging in with a password, the
-        // way CountersIntegrationTest already does it. Password login is on its
-        // way out (issue #51 moves sign-in to passkeys plus magic link), and this
-        // suite should not stop working the day it is finally deleted. The
-        // password path still has its own dedicated test below.
-        bearerToken = auth.token().issue(seedUserId);
+        // Minted directly, exactly as the website mints it. This is now the only
+        // way to obtain a session: the API has no route that turns a credential
+        // into a token any more.
+        bearerToken = token.issue(seedUserId);
     }
 
     @AfterAll
@@ -141,18 +138,54 @@ class TodoApiIntegrationTest {
 
     /** Inserts a plain test user directly (bypasses the API's own signup, which does not exist). */
     private String insertTestUser(Jdbi jdbi, String name, String emailLocalPart) {
-        String hash = Scrypt.hash("irrelevant-password");
         jdbi.useHandle(h -> h
-                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, :p)")
+                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
                 .bind("e", emailLocalPart + "@example.com")
                 .bind("n", name)
-                .bind("p", hash)
                 .execute());
         return jdbi.withHandle(h -> h
                 .createQuery("SELECT id FROM users WHERE email = :e")
                 .bind("e", emailLocalPart + "@example.com")
                 .mapTo(String.class)
                 .one());
+    }
+
+    @Test
+    void thereIsNoLoginRouteAndNoUnauthenticatedWayToObtainAToken() throws Exception {
+        // The replacement for the two password-login tests deleted in #61. It
+        // guards both halves of the retirement at once: the route is gone from
+        // ApiServer, AND /api/todo/login is gone from AuthFilter's allowlist, so
+        // the path is not merely missing, it is not exempt from auth either.
+        // Whichever of those two failed on its own, this catches it.
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/todo/login"))
+                .timeout(Duration.ofSeconds(10))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"email\":\"" + USER_EMAIL + "\",\"password\":\"anything\"}"))
+                .build();
+        HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+
+        assertTrue(res.statusCode() >= 400,
+                "POST /api/todo/login must not succeed, got " + res.statusCode() + ": " + res.body());
+        assertFalse(res.body().contains("token"),
+                "no response from this path may carry a session token: " + res.body());
+    }
+
+    @Test
+    void logoutIsStillReachableWithoutASession() throws Exception {
+        // Logout keeps its allowlist entry: clearing an expired cookie must not
+        // require a valid one. Losing that alongside login would strand anyone
+        // whose session had already lapsed.
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/todo/logout"))
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(200, res.statusCode(), "logout must stay unauthenticated: " + res.body());
+        assertTrue(res.body().contains("\"ok\""), res.body());
     }
 
     @Test
@@ -171,20 +204,6 @@ class TodoApiIntegrationTest {
                 .mapTo(String.class)
                 .list());
         assertTrue(itemCols.contains("year"), "V2 should add items.year, got " + itemCols);
-    }
-
-    @Test
-    void loginSucceedsForSeededUserAndFailsOnBadCredentials() {
-        Optional<AuthService.LoginResult> ok = auth.login(USER_EMAIL, USER_PASSWORD);
-        assertTrue(ok.isPresent(), "seeded user should log in");
-        assertEquals(USER_EMAIL, ok.get().user().email());
-        assertNotNull(ok.get().token(), "a token should be issued");
-
-        // Case-insensitive email, matching the website's normalization.
-        assertTrue(auth.login("SEED@EXAMPLE.COM", USER_PASSWORD).isPresent());
-
-        assertTrue(auth.login(USER_EMAIL, "wrong").isEmpty(), "wrong password -> no login");
-        assertTrue(auth.login("nobody@example.com", USER_PASSWORD).isEmpty(), "unknown user -> no login");
     }
 
     @Test
@@ -217,35 +236,16 @@ class TodoApiIntegrationTest {
                 .one());
         assertEquals("id", pkColumn, "todo_credentials primary key should be the credential id");
 
-        // The kill switch for password login depends on this being nullable: a
-        // passkey-only account has no password, and UPDATE users SET pw_hash =
-        // NULL must be a legal way to turn password sign-in off.
+        // Every account is passwordless now that password login is gone (issue
+        // #61), so this is no longer just a relaxation, it is the shape of the
+        // data: SeedUser inserts NULL here. The column itself stays, because an
+        // applied migration is immutable and dropping it buys nothing.
         String nullable = jdbi.withHandle(h -> h
                 .createQuery("SELECT is_nullable FROM information_schema.columns "
                         + "WHERE table_name = 'users' AND column_name = 'pw_hash'")
                 .mapTo(String.class)
                 .one());
         assertEquals("YES", nullable, "V7 should relax users.pw_hash to nullable");
-    }
-
-    @Test
-    void passwordLoginForAUserWithNullPasswordHashIsRejectedNotAnError() {
-        Jdbi jdbi = Jdbi.create(pg.getPostgresDatabase());
-        String email = "passkey-only@example.com";
-        jdbi.useHandle(h -> h
-                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
-                .bind("e", email)
-                .bind("n", "Passkey Only")
-                .execute());
-
-        // This is what nulling pw_hash has to do: refuse the login cleanly. If it
-        // ever threw instead, the kill switch would take the login route down
-        // with a 500 rather than turning password auth off, and #51's rollback
-        // plan would be worthless.
-        assertTrue(auth.login(email, "anything").isEmpty(),
-                "a user with no password hash must fail to log in rather than error");
-        assertTrue(auth.login(email, "").isEmpty(),
-                "an empty password against a null hash must also just fail");
     }
 
     @Test

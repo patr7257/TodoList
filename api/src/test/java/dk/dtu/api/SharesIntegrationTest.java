@@ -17,7 +17,6 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
-import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.ItemRow;
@@ -90,12 +89,10 @@ class SharesIntegrationTest {
         todo = new TodoService(jdbi);
         shares = new SharesService(jdbi);
         Token token = new Token("shares-integration-secret");
-        AuthService auth = new AuthService(todo, token);
         Backend backend = new Backend(
-                ApiConfig.of(0, null, "shares-integration-secret", 1000, 60,
+                ApiConfig.of(0, null, "shares-integration-secret",
                         SHARE_BASE_URL, 1000, 60),
-                todo, auth, token, new RateLimiter(1000, 60), null,
-                shares, new RateLimiter(1000, 60));
+                todo, token, null, shares, new RateLimiter(1000, 60));
 
         app = ApiServer.create(backend);
         app.start(0);
@@ -531,10 +528,9 @@ class SharesIntegrationTest {
         // test that runs after this one.
         Token token = new Token("shares-integration-secret");
         Backend tight = new Backend(
-                ApiConfig.of(0, null, "shares-integration-secret", 1000, 60,
+                ApiConfig.of(0, null, "shares-integration-secret",
                         SHARE_BASE_URL, 2, 60),
-                todo, new AuthService(todo, token), token, new RateLimiter(1000, 60), null,
-                shares, new RateLimiter(2, 60));
+                todo, token, null, shares, new RateLimiter(2, 60));
         Javalin tightApp = ApiServer.create(tight);
         try {
             tightApp.start(0);
@@ -558,8 +554,7 @@ class SharesIntegrationTest {
         // reached with null services and must answer 503 itself rather than
         // NPE into a 500.
         Backend noDb = new Backend(
-                ApiConfig.of(0, null, "some-secret", 1000, 60), null, null,
-                new Token("some-secret"), new RateLimiter(1000, 60));
+                ApiConfig.of(0, null, "some-secret"), null, new Token("some-secret"));
         Javalin noDbApp = ApiServer.create(noDb);
         try {
             noDbApp.start(0);
@@ -604,10 +599,9 @@ class SharesIntegrationTest {
 
     private String seedUser(String email, String name) {
         jdbi.useHandle(h -> h
-                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, :p)")
+                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
                 .bind("e", email)
                 .bind("n", name)
-                .bind("p", "irrelevant-hash")
                 .execute());
         return todo.findUserByEmail(email).orElseThrow().id();
     }

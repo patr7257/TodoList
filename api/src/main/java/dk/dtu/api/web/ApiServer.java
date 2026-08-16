@@ -18,7 +18,7 @@ public final class ApiServer {
     }
 
     public static Javalin create(Backend backend) {
-        AuthController auth = new AuthController(backend);
+        AuthController auth = new AuthController();
         StateController state = new StateController(backend);
         ListsController lists = new ListsController(backend);
         ItemsController items = new ItemsController(backend);
@@ -34,7 +34,6 @@ public final class ApiServer {
 
         app.before(new AuthFilter(backend));
 
-        app.post("/api/todo/login", auth::login);
         app.post("/api/todo/logout", auth::logout);
         app.get("/api/todo/state", state::get);
         app.post("/api/todo/lists", lists::create);
