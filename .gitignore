@@ -21,3 +21,8 @@ Thumbs.db
 
 # Local UI screenshots (grab-window.ps1)
 /screenshots/
+
+# Per-session co-development workflow decisions. Local only: the hook reads the
+# working-tree file, and tracking it made every checkout permanently dirty and
+# let a stray git restore wipe other sessions lines (issue #61).
+/.claude/.codev-ack

@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -440,6 +441,77 @@ class SharesIntegrationTest {
     }
 
     @Test
+    @Order(10)
+    void expiresInDaysWritesADeadlineAndOutOfRangeValuesAre400() throws Exception {
+        // Omitting the key keeps the old behaviour: a link that never expires.
+        HttpResponse<String> never = call("POST", "/api/todo/lists/" + fixtureListId + "/shares",
+                "{}", bearerToken);
+        assertEquals(200, never.statusCode(), never.body());
+        assertTrue(shareOf(never).get("expiresAt").isJsonNull(),
+                "no expiresInDays must mean no expiry, as it did before the option existed");
+
+        // An explicit JSON null means the same thing.
+        HttpResponse<String> explicitNull = call("POST", "/api/todo/lists/" + fixtureListId + "/shares",
+                "{\"expiresInDays\":null}", bearerToken);
+        assertEquals(200, explicitNull.statusCode(), explicitNull.body());
+        assertTrue(shareOf(explicitNull).get("expiresAt").isJsonNull());
+
+        // A day count writes a deadline that far ahead, computed by the
+        // DATABASE clock, which is the same clock resolveActive compares
+        // against. Assert a window rather than an instant: the test cannot know
+        // the database's now() to the millisecond, and pinning it would make
+        // this flaky for no gain.
+        HttpResponse<String> week = call("POST", "/api/todo/lists/" + fixtureListId + "/shares",
+                "{\"expiresInDays\":7}", bearerToken);
+        assertEquals(200, week.statusCode(), week.body());
+        JsonObject share = shareOf(week);
+        assertFalse(share.get("expiresAt").isJsonNull(), "7 days must write an expiry");
+        Instant expiresAt = Instant.parse(share.get("expiresAt").getAsString());
+        Instant now = Instant.now();
+        assertTrue(expiresAt.isAfter(now.plus(Duration.ofDays(6))),
+                "expiry is about a week out, got " + expiresAt);
+        assertTrue(expiresAt.isBefore(now.plus(Duration.ofDays(8))),
+                "expiry is about a week out, got " + expiresAt);
+
+        // The link works right now, because the deadline is in the future.
+        String token = share.get("token").getAsString();
+        assertEquals(200, callPublic(token).statusCode());
+
+        // Out of range and wrong-typed values are a clean 400, never a 500 and
+        // never a silently clamped value.
+        for (String bad : new String[] {"0", "-1", "366", "\"7\"", "7.5", "true"}) {
+            HttpResponse<String> res = call("POST", "/api/todo/lists/" + fixtureListId + "/shares",
+                    "{\"expiresInDays\":" + bad + "}", bearerToken);
+            assertEquals(400, res.statusCode(), "expiresInDays " + bad + " must be a 400: " + res.body());
+        }
+    }
+
+    @Test
+    @Order(10)
+    void anExpiredShareStopsResolvingAndDisappearsFromTheManagementList() throws Exception {
+        String token = createShare("expiring");
+        assertEquals(200, callPublic(token).statusCode());
+
+        // Backdate the deadline rather than waiting for one: expiry is a
+        // predicate on expires_at, so a past value exercises exactly the same
+        // branch a real timeout would.
+        jdbi.useHandle(h -> h
+                .createUpdate("UPDATE list_shares SET expires_at = now() - interval '1 minute' "
+                        + "WHERE token = :t")
+                .bind("t", token)
+                .execute());
+
+        assertEquals(404, callPublic(token).statusCode(),
+                "an expired link is a byte-identical 404, like every other share failure");
+
+        HttpResponse<String> listed = call("GET", "/api/todo/lists/" + fixtureListId + "/shares",
+                null, bearerToken);
+        assertEquals(200, listed.statusCode(), listed.body());
+        assertFalse(listed.body().contains(token),
+                "an expired link must not be listed: it would only invite copying a dead URL");
+    }
+
+    @Test
     @Order(11)
     void creatingAShareForAnUnknownOrNonUuidListIs404NotAForeignKey500() throws Exception {
         assertEquals(404, call("POST",
@@ -569,6 +641,11 @@ class SharesIntegrationTest {
                 .bind("t", token)
                 .mapTo(Integer.class)
                 .one());
+    }
+
+    /** The {@code share} object out of a create/list response body. */
+    private static JsonObject shareOf(HttpResponse<String> res) {
+        return JsonParser.parseString(res.body()).getAsJsonObject().getAsJsonObject("share");
     }
 
     private static JsonObject listOf(HttpResponse<String> res) {

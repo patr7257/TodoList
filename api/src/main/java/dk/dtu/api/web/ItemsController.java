@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import dk.dtu.api.auth.AuthFilter;
 import dk.dtu.api.domain.ColumnValue;
@@ -88,7 +89,7 @@ public final class ItemsController {
         if (!body.has("assigneeId")) {
             throw HttpError.badBody();
         }
-        String assigneeId = readAssignee(body, "assigneeId");
+        String assigneeId = readAssignee(todo, body, "assigneeId");
 
         if (!todo.listExists(listId)) {
             throw HttpError.notFound();
@@ -147,7 +148,7 @@ public final class ItemsController {
             sets.add(new ColumnValue("location", ":location", location, Types.VARCHAR));
         }
         if (body.has("assigneeId")) {
-            String assigneeId = readAssignee(body, "assigneeId");
+            String assigneeId = readAssignee(todo, body, "assigneeId");
             sets.add(new ColumnValue("assignee_id", "CAST(:assignee_id AS uuid)", assigneeId, Types.VARCHAR));
         }
         if (body.has("priority")) {
@@ -249,15 +250,33 @@ public final class ItemsController {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    /** null on JSON null, non-empty string id, else 400. */
-    private static String readAssignee(Body body, String key) {
+    /**
+     * null on JSON null, otherwise a string that both parses as a UUID and
+     * references an existing user; anything else is a 400.
+     *
+     * <p>This used to accept ANY non-empty string, which meant a bogus id got as
+     * far as the INSERT and surfaced as a 500 from a bare foreign-key violation
+     * rather than as the 400 it is. {@code ListsController} already learned this
+     * on the {@code ownerId} side; the items side is the same fix, and the two
+     * readers are deliberately shaped alike.
+     */
+    private static String readAssignee(TodoService todo, Body body, String key) {
         if (body.isNull(key)) {
             return null;
         }
-        if (!body.isString(key) || body.asString(key).isEmpty()) {
+        if (!body.isString(key)) {
             throw HttpError.badBody();
         }
-        return body.asString(key);
+        String value = body.asString(key);
+        try {
+            UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            throw HttpError.badBody();
+        }
+        // Existence is checked here, not left to the FK, so an unknown user is a
+        // 400 with the rest of the validation instead of a 500 from the driver.
+        todo.findUserById(value).orElseThrow(HttpError::badBody);
+        return value;
     }
 
     private static Instant parseDate(String value) {

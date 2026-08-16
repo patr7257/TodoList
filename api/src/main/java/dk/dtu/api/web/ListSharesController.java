@@ -21,10 +21,18 @@ import io.javalin.http.Context;
  * <p>GET returns only LIVE shares ({@code {"shares":[...]}}): a revoked or
  * expired link is not something anyone can act on, so listing it would only
  * invite someone to copy a dead URL.
+ *
+ * <p>POST accepts an optional {@code expiresInDays}. Before this existed the
+ * {@code expires_at} column was honoured on read but nothing ever wrote it, so
+ * revocation was the only way to kill a link (a leftover noted in issue #61).
  */
 public final class ListSharesController {
 
     private static final int MAX_LABEL_LENGTH = 200;
+    private static final int MIN_EXPIRY_DAYS = 1;
+    // A year. Long enough for any real use, short enough that a typo like 36500
+    // is a 400 rather than a link that outlives the account.
+    private static final int MAX_EXPIRY_DAYS = 365;
 
     private final Backend backend;
 
@@ -66,8 +74,25 @@ public final class ListSharesController {
             label = trimmed.isEmpty() ? null : trimmed;
         }
 
+        // expiresInDays: absent or JSON null means the link never expires, which
+        // is the behaviour every share had before this option existed. A number
+        // of DAYS rather than a timestamp on purpose, so the deadline is
+        // computed from the database clock that also decides whether a link is
+        // dead; see SharesService.create.
+        Integer expiresInDays = null;
+        if (body.has("expiresInDays") && !body.isNull("expiresInDays")) {
+            if (!body.isInteger("expiresInDays")) {
+                throw HttpError.badBody();
+            }
+            int days = body.asInt("expiresInDays");
+            if (days < MIN_EXPIRY_DAYS || days > MAX_EXPIRY_DAYS) {
+                throw HttpError.badBody();
+            }
+            expiresInDays = days;
+        }
+
         String uid = ctx.attribute(AuthFilter.UID_ATTRIBUTE);
-        Optional<ShareRow> created = shares.create(listId, label, uid);
+        Optional<ShareRow> created = shares.create(listId, label, uid, expiresInDays);
         if (created.isEmpty()) {
             // Unknown (or non-uuid) list id. The service checks the list up
             // front precisely so this is a clean 404 and not a foreign-key
