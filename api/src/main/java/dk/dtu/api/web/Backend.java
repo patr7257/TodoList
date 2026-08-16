@@ -5,14 +5,15 @@ import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.domain.CountersService;
 import dk.dtu.api.domain.SharesService;
+import dk.dtu.api.domain.TinderService;
 import dk.dtu.api.domain.TodoService;
 
 /**
  * Holds the wired-up services and shared collaborators for the controllers.
  * When the database is not configured, {@link #todo()}, {@link #auth()},
- * {@link #counters()} and {@link #shares()} are null and controllers answer
- * 503, mirroring the website's lazy getDb() that returns null and makes every
- * data route respond "backend not configured".
+ * {@link #counters()}, {@link #shares()} and {@link #tinder()} are null and
+ * controllers answer 503, mirroring the website's lazy getDb() that returns
+ * null and makes every data route respond "backend not configured".
  *
  * <p>The narrower constructors delegate to the widest one so adding a service
  * never forces an edit to existing call sites (tests included).
@@ -27,6 +28,7 @@ public final class Backend {
     private final CountersService counters;
     private final SharesService shares;
     private final RateLimiter shareRateLimiter;
+    private final TinderService tinder;
 
     public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
                    RateLimiter loginRateLimiter) {
@@ -41,7 +43,14 @@ public final class Backend {
     public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
                    RateLimiter loginRateLimiter, CountersService counters,
                    SharesService shares, RateLimiter shareRateLimiter) {
+        this(config, todo, auth, token, loginRateLimiter, counters, shares, shareRateLimiter, null);
+    }
+
+    public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
+                   RateLimiter loginRateLimiter, CountersService counters,
+                   SharesService shares, RateLimiter shareRateLimiter, TinderService tinder) {
         this.config = config;
+        this.tinder = tinder;
         this.todo = todo;
         this.auth = auth;
         this.token = token;
@@ -91,5 +100,9 @@ public final class Backend {
 
     public RateLimiter shareRateLimiter() {
         return shareRateLimiter;
+    }
+
+    public TinderService tinder() {
+        return tinder;
     }
 }

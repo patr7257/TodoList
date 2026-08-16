@@ -1,5 +1,6 @@
 package dk.dtu.api.web;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -88,5 +89,25 @@ public final class Body {
     public String asStringRaw(String key) {
         JsonPrimitive p = obj.getAsJsonPrimitive(key);
         return p.getAsString();
+    }
+
+    /**
+     * True when present and a JSON array.
+     *
+     * <p>Arrays and nested objects were not needed while every write route took
+     * a flat body; the tinder refill import (issue #59) takes a batch, so the
+     * two accessors below exist. They hand back the Gson node rather than a
+     * converted Java type on purpose: the batch's per-entry metadata is
+     * free-form JSON owned by the dataset, and converting it here would mean
+     * deciding a shape for data the API is specifically not supposed to
+     * interpret.
+     */
+    public boolean isArray(String key) {
+        JsonElement e = obj.get(key);
+        return e != null && e.isJsonArray();
+    }
+
+    public JsonArray asArray(String key) {
+        return obj.getAsJsonArray(key);
     }
 }

@@ -35,20 +35,26 @@ shed its JavaFX desktop client in issue #66.
   - `dk.dtu.api.web`: `ApiServer` and the controllers (`AuthController`,
     `ListsController`, `ItemsController`, `StateController`,
     `CountersController`, `ListSharesController` for authenticated share
-    management and `ShareController` for the one public route), plus `Backend`,
-    `RateLimiter`, `ClientIp` (shared rate-limit key resolution), and JSON/error
-    helpers (`Views` for lists/items, `CounterViews` for counters,
-    `ShareViews` for shares, which deliberately never calls `Views`).
+    management, `ShareController` for the one public route, and
+    `TinderController` for TodoTinder), plus `Backend`, `RateLimiter`,
+    `ClientIp` (shared rate-limit key resolution), and JSON/error helpers
+    (`Views` for lists/items, `CounterViews` for counters, `ShareViews` for
+    shares, which deliberately never calls `Views`, `TinderViews` for the
+    tinder shapes, and `TinderPrompts`, the pure composer of the refill prompt
+    a drained deck hands over).
   - `dk.dtu.api.auth`: token auth (`AuthFilter`, `AuthService`, `Token`,
     `Scrypt`).
   - `dk.dtu.api.db`: `DataSources` (Hikari pool) and `Migrations`.
   - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps, plus
     `CountersService` / `CounterRow` for the fun counters and
-    `SharesService` / `ShareRow` / `ShareTokens` for the public share links
-    (both deliberately their own services: `TodoService` mirrors the website's
-    queries and is the hottest file in the repo, while counters have no website
-    counterpart and shares own an unauthenticated read path that must not be
-    coupled to it).
+    `SharesService` / `ShareRow` / `ShareTokens` for the public share links,
+    and `TinderService` / `TinderDeckRow` / `TinderEntryRow` /
+    `TinderSwipeRow` / `TinderMatchRow` for TodoTinder (all three deliberately
+    their own services: `TodoService` mirrors the website's queries and is the
+    hottest file in the repo, while counters have no website counterpart,
+    shares own an unauthenticated read path that must not be coupled to it, and
+    tinder is a whole resource family that only borrows
+    `TodoService.insertItem` to land a right swipe).
 
 `api` depends on `todolist-shared`.
 
@@ -97,9 +103,10 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
 
 - `shared`: `TaskStatusTest`.
 - `api`: HTTP/service tests for the api module (`TodoApiIntegrationTest`,
-  `CountersIntegrationTest`, `SharesIntegrationTest`, `web/ViewsTest`,
-  `web/ShareViewsTest`, `domain/ShareTokensTest`, `ScryptTest`, `TokenTest`,
-  `CompletionTest`, `DataSourcesTest`). The three integration tests each start
+  `CountersIntegrationTest`, `SharesIntegrationTest`, `TinderIntegrationTest`,
+  `web/ViewsTest`, `web/ShareViewsTest`, `web/TinderViewsTest`,
+  `web/TinderPromptsTest`, `domain/ShareTokensTest`, `ScryptTest`, `TokenTest`,
+  `CompletionTest`, `DataSourcesTest`). The four integration tests each start
   their own `EmbeddedPostgres` and also drive a real Javalin instance on an
   ephemeral port, so routes and auth are asserted rather than assumed.
   `ViewsTest` pins the EXACT key set and order of the state payload's list
@@ -107,6 +114,12 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
   `ShareViewsTest` plus `SharesIntegrationTest` do the same for the public
   share payload, and additionally assert what is ABSENT from it, which is the
   contract that matters for the API's only unauthenticated output.
+  `TinderIntegrationTest` is ordered on purpose and the ordering is
+  load-bearing: the match rule is "every row in `users` swiped right", so it
+  creates the SECOND user part way through, in the test that first proves a
+  lone user cannot match with themselves. `TinderPromptsTest` pins the refill
+  prompt as text, including that it carries no placeholder for anyone to fill
+  in, which no integration test would notice being broken.
 
 Run all tests from the repo root with `mvn test`.
 
@@ -128,11 +141,16 @@ migrations to production):
   copy-on-write clone of production, to rehearse a migration against real data.
   Prompts once for a Neon API key, never stores it, refuses to delete the default
   branch.
+- `scripts/tinder-refill.ps1` / `.sh`: POSTs a generated batch of TodoTinder
+  cards to the import endpoint (#59). This is the one line a drained deck's
+  refill prompt hands over. It prompts for the session token, dry-runs what it
+  will send, confirms, and never leaves the token behind in the shell, which is
+  why the prompt itself can be free of secrets and placeholders.
 
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V7`.
+`api/src/main/resources/db/migration`. Current head is `V8`.
 
 **Version register.** Because `outOfOrder` is false (see below), migration
 numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
@@ -143,7 +161,7 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V5 | #46 | `fun_counters` |
 | V6 | #52 | `list_shares` (public share links) |
 | V7 | #51 | `todo_credentials` (passkeys) + `users.pw_hash` made nullable |
-| V8 | #56 | RESERVED: `tinder_decks`, `tinder_entries`, `tinder_swipes` |
+| V8 | #56 | `tinder_decks`, `tinder_entries`, `tinder_swipes` (TodoTinder) |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
@@ -216,19 +234,73 @@ it to whatever origin actually serves the `/s/:token` page. The public share
 route also has its own limiter, `API_SHARE_RATE_LIMIT_MAX` (default 60) per
 `API_SHARE_RATE_LIMIT_WINDOW_SECONDS` (default 60), keyed on client IP.
 
-## Planned: TodoTinder (issue #44)
+`API_PUBLIC_BASE_URL` (default `https://api.todolist.patrickrobel.dk`, trailing
+slashes stripped) is where THIS API is reachable from outside. It is a separate
+setting from `TODO_SHARE_BASE_URL` on purpose: one is the website a share link
+is browsed on, the other is the API host, and conflating them produces either a
+share URL nobody can open or a TodoTinder refill prompt that posts into the
+website. It exists because the refill prompt (#59) is pasted into a Claude
+session that has no idea where this API lives, so it has to name an absolute
+endpoint.
+
+## TodoTinder (epic #44)
 
 A mobile-first swipe app living in THIS repo: multiple decks (AcTindervitivities,
 VacayTinderation, SwoppingSwiper, DateNighTinders), right swipe creates an item in the
 deck's linked todo list via the existing API, gated by the existing token auth (the two
 account holders only). Grocery deck recycles staples every run; idea decks deplete per
-user and offer a copyable POST line to have a Claude session refill the deck.
+user and offer a copyable line to have a Claude session refill the deck.
 
 The design session is DONE: the settled spec is a comment on #44 and the work is
 split into #56 (V8 schema plus API), #57 (the four datasets), #58 (the swipe PWA
 served by Javalin at `tinder.todolist.patrickrobel.dk`) and #59 (refill import
-endpoint). Read those before writing code. This supersedes the Activity Tinder
-note in `patr7257/BoredAPIActivityWheel`.
+endpoint). This supersedes the Activity Tinder note in
+`patr7257/BoredAPIActivityWheel`.
+
+**#56 and #59 have landed**, as the backend below. #57 and #58 are still open,
+so nothing swipes yet: V8 seeds NO deck rows on purpose (a deck's target list
+has to be resolved against real lists, which a migration cannot do sensibly),
+and until #57 lands every deck endpoint answers an empty list rather than a
+404.
+
+Routes, all authenticated, all under `/api/todo/tinder/`, with `{deck}` always
+the deck KEY and never its uuid:
+
+| Method | Path | Body / query | Answers |
+|---|---|---|---|
+| GET | `/decks` | none | `{decks:[{key, displayName, recycleMode, datasetKey, targetListId, total, remaining, needsRefill, refillPrompt}]}` |
+| GET | `/decks/{deck}/cards` | `?limit=` (default 20, clamped at 100) | `{deck:{...}, cards:[{id, text, metadata, source}]}` |
+| POST | `/decks/{deck}/swipes` | `{entryId, direction}` | `{swipe:{entryId, direction, createdAt}, created, item, match}` |
+| POST | `/decks/{deck}/entries` | `{source?, entries:[{text, metadata?, source?}]}` | `{deck, received, inserted, skipped, total}` |
+| GET | `/matches` | none | `{matches:[{entryId, deckKey, deckDisplayName, text, metadata, matchedAt}]}` |
+
+The five rules that are easy to break and expensive to get wrong:
+
+- **`recycle_mode` is the only behavioural difference between decks**, and it
+  shows up in exactly two places: the card query (a `deplete` deck filters out
+  everything the CALLER already swiped either way, a `recycle` deck filters
+  nothing) and the swipe write. Nothing may branch on a specific deck key.
+- **A swipe is an UPSERT on `(user_id, entry_id)`, never an insert.** The spec
+  asked for that uniqueness on non-recycling decks only, which a partial index
+  cannot express (its predicate cannot reach the deck's mode across a join), so
+  the index is plain and the recycling deck upserts. `tinder_swipes` is
+  therefore a "latest swipe" table, not a swipe log; counting how often
+  something was swiped needs a new append-only table, not a relaxed index.
+- **A right swipe creates an item through `TodoService.insertItem`**, deduped
+  against any OPEN (status not `DONE`) item in the target list with the same
+  text, trimmed and case-insensitively. That guard is what lets the grocery deck
+  ask about milk every week without stacking up five items, and ticking an item
+  off correctly lets the next one be created.
+- **Matches are a QUERY over `tinder_swipes`**, never a stored flag, with a
+  "at least two rows in `users`" guard so a lone user cannot match with
+  themselves. Unswipe one side and the match is simply gone from the next
+  answer.
+- **The refill prompt is composed by the API** (`TinderPrompts`) and names the
+  deck, its metadata keys (derived from the cards actually in the deck), the
+  card count and the absolute endpoint. It hands over exactly one runnable line,
+  `scripts/tinder-refill.ps1` (`.sh` for mac/Linux), which prompts for the
+  session token. Never put a token, or an angle-bracket placeholder, into
+  anything meant to be pasted.
 
 ## MANDATORY: UI work happens in the website repo, not here
 
@@ -262,7 +334,8 @@ twice again.
   renamed, retyped or reordered. `api/src/test/java/dk/dtu/api/web/ViewsTest.java`
   pins the list object's key set and order as the regression guard. A new
   resource family gets its OWN endpoint instead of being bolted into `/state`,
-  which is why the fun counters live at `/api/todo/counters`.
+  which is why the fun counters live at `/api/todo/counters` and TodoTinder
+  lives at `/api/todo/tinder/`.
 - **Public share links (#52) live at `/api/todo/share/{token}`, and that is the
   ONLY unauthenticated route in the API.** Management is separate and
   authenticated: `GET`/`POST /api/todo/lists/{id}/shares` and

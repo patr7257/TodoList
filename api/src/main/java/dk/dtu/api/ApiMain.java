@@ -10,6 +10,7 @@ import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.CountersService;
 import dk.dtu.api.domain.SharesService;
+import dk.dtu.api.domain.TinderService;
 import dk.dtu.api.domain.TodoService;
 import dk.dtu.api.web.ApiServer;
 import dk.dtu.api.web.Backend;
@@ -77,11 +78,16 @@ public final class ApiMain {
         AuthService auth = new AuthService(todo, token);
         CountersService counters = new CountersService(jdbi);
         SharesService shares = new SharesService(jdbi);
+        // TinderService is handed the TodoService rather than building its own
+        // item SQL: a right swipe has to create an ORDINARY item, through the
+        // one method every other client's item creation already goes through.
+        TinderService tinder = new TinderService(jdbi, todo);
         // The public share route gets its OWN limiter: it is unauthenticated and
         // far chattier than login, so sharing the login bucket would either
         // throttle readers or loosen the login limit. Neither is acceptable.
         RateLimiter shareLimiter = new RateLimiter(
                 config.shareRateLimitMax(), config.shareRateLimitWindowSeconds());
-        return new Backend(config, todo, auth, token, loginLimiter, counters, shares, shareLimiter);
+        return new Backend(config, todo, auth, token, loginLimiter, counters, shares, shareLimiter,
+                tinder);
     }
 }
