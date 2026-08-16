@@ -358,18 +358,26 @@ public final class TinderService {
     // -- matches ---------------------------------------------------------------
 
     /**
-     * Every card EVERY user has swiped right on, newest match first.
+     * Every card at least TWO different people have swiped right on, newest
+     * match first.
      *
-     * <p>A query, never a stored flag: see {@link TinderMatchRow} for why. The
-     * threshold is "all rows in {@code users}", not a hardcoded two, so the
-     * feature does not quietly break if a third account is ever added.
+     * <p>A query, never a stored flag: see {@link TinderMatchRow} for why.
      *
-     * <p>The {@code voters.n >= 2} guard is the degenerate case and is not
-     * optional: with a single user in the database, "everybody swiped right"
-     * is true the moment that one person swipes, and every right swipe would
-     * instantly become a match with themselves. Both this and
-     * {@link #isMatch(String)} apply the guard, so the list and the per-swipe
-     * flag cannot disagree.
+     * <p><b>The threshold is two, deliberately, and NOT "every row in
+     * {@code users}".</b> The all-users form looks more general and is in fact
+     * the fragile one. {@code users} is shared with the website and
+     * {@code SeedUser} can add a row to it for reasons that have nothing to do
+     * with this app, and the moment a third row exists every established match
+     * silently disappears until that third person also swipes right on the same
+     * card. There is no error, no log line, just an empty Matches screen. A
+     * quorum of two cannot fail that way, and for the two account holders this
+     * is built for the two rules are identical anyway.
+     *
+     * <p>Two is also the smallest number that means anything: with a threshold
+     * of one, every right swipe would instantly be a match with yourself.
+     * {@link #isMatch(String)} applies the same rule in one statement, so the
+     * flag returned with a swipe and the Matches list a moment later cannot
+     * disagree.
      *
      * <p>Every selected column is explicitly aliased. Three tables are joined
      * here and all three have {@code id} and {@code created_at}; a bare
@@ -379,7 +387,6 @@ public final class TinderService {
     public List<TinderMatchRow> matches() {
         return jdbi.withHandle(h -> h
                 .createQuery("""
-                        WITH voters AS (SELECT COUNT(*) AS n FROM users)
                         SELECT e.id             AS entry_id,
                                e.text           AS entry_text,
                                e.metadata       AS entry_metadata,
@@ -389,10 +396,9 @@ public final class TinderService {
                         FROM tinder_entries e
                         JOIN tinder_decks d ON d.id = e.deck_id
                         JOIN tinder_swipes s ON s.entry_id = e.id AND s.direction = 'right'
-                        CROSS JOIN voters v
                         WHERE e.active AND d.active
-                        GROUP BY e.id, d.id, v.n
-                        HAVING v.n >= 2 AND COUNT(DISTINCT s.user_id) = v.n
+                        GROUP BY e.id, d.id
+                        HAVING COUNT(DISTINCT s.user_id) >= 2
                         ORDER BY MAX(s.created_at) DESC, e.id ASC
                         """)
                 .map((rs, ctx) -> new TinderMatchRow(
@@ -406,9 +412,9 @@ public final class TinderService {
     }
 
     /**
-     * Whether one card is currently a match. Same derivation and the same
-     * two-user guard as {@link #matches()}, in one statement so the flag
-     * returned with a swipe agrees with the Matches list a moment later.
+     * Whether one card is currently a match. Same two-person quorum as
+     * {@link #matches()}, in one statement so the flag returned with a swipe
+     * agrees with the Matches list a moment later.
      */
     public boolean isMatch(String entryId) {
         if (!TodoService.isUuid(entryId)) {
@@ -416,10 +422,9 @@ public final class TinderService {
         }
         return jdbi.withHandle(h -> h
                 .createQuery("""
-                        SELECT (SELECT COUNT(*) FROM users) >= 2
-                           AND (SELECT COUNT(DISTINCT s.user_id) FROM tinder_swipes s
-                                WHERE s.entry_id = CAST(:entryId AS uuid) AND s.direction = 'right')
-                               = (SELECT COUNT(*) FROM users) AS is_match
+                        SELECT (SELECT COUNT(DISTINCT s.user_id) FROM tinder_swipes s
+                                WHERE s.entry_id = CAST(:entryId AS uuid)
+                                  AND s.direction = 'right') >= 2 AS is_match
                         """)
                 .bind("entryId", entryId)
                 .mapTo(Boolean.class)

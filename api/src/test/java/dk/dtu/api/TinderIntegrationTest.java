@@ -51,12 +51,12 @@ import org.junit.jupiter.api.TestMethodOrder;
  *
  * <p>Almost every test builds its OWN deck with a unique key, so the behavioural
  * tests do not depend on each other's leftovers and could run in any order. The
- * ORDER annotations exist for one reason only, and it is the reason the class
- * is ordered at all: the match rule is "every user in the {@code users} table
- * has swiped right", so how many users exist changes the answer. The second user
- * is therefore created part way through, by the test that first proves a single
- * user cannot match with themselves. Everything from {@code @Order(20)} onwards
- * runs with exactly two users, which is the production shape.
+ * ORDER annotations exist so the match tests can walk the population up one
+ * account at a time: one user, then two, then three. The rule under test is a
+ * quorum of TWO distinct right swipes, so the third account is there to prove a
+ * property rather than to satisfy the rule: adding a person must not disturb a
+ * match that two people already made. An "every row in {@code users}" rule
+ * would fail that, silently, which is exactly why it is not the rule.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -258,6 +258,34 @@ class TinderIntegrationTest {
                 swipeBody(matchEntryId, "left"), tokenB).statusCode());
         assertEquals(0, matches(tokenA).size(),
                 "a match must disappear when one of its right swipes does");
+
+        // Put it back, so the next test starts from a real, established match.
+        swipeRight(matchDeckKey, matchEntryId, tokenB);
+        assertEquals(1, matches(tokenA).size());
+    }
+
+    /**
+     * The regression that decided the quorum rule. {@code users} is shared with
+     * the website and {@code SeedUser} can add a row to it for reasons that
+     * have nothing to do with this app. Under an "every row in users has swiped
+     * right" rule, that row alone would wipe every established match with no
+     * error and no log line, until the newcomer swiped right on each card too.
+     * A quorum of two cannot fail that way.
+     */
+    @Test
+    @Order(12)
+    void addingAThirdAccountDoesNotDisturbAMatchTwoPeopleAlreadyMade() throws Exception {
+        assertEquals(1, matches(tokenA).size(), "precondition: A and B have matched this card");
+
+        String userC = createUser("tinder-c@example.com", "Tinder C");
+        String tokenC = token.issue(userC);
+
+        assertEquals(1, matches(tokenA).size(),
+                "a third account must not silently unmake an existing match");
+        assertEquals(1, matches(tokenC).size(),
+                "and the newcomer sees the same match: it is a property of the swipes");
+        assertTrue(tinder.isMatch(matchEntryId),
+                "the per-swipe flag must agree with the list after the population changes");
     }
 
     // -- depletion vs recycling ------------------------------------------------
