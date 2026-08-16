@@ -126,9 +126,12 @@ SELECT
   d.key,
   d.target_list_name,
   CASE WHEN l.id IS NULL THEN 'MISSING target list, will be skipped' ELSE 'ok' END AS list_status,
+  (SELECT count(*) FROM lists m WHERE m.name = d.target_list_name) AS lists_with_that_name,
   CASE WHEN td.id IS NULL THEN 'insert' ELSE 'update' END AS deck_action
 FROM input_decks d
-LEFT JOIN lists l ON l.name = d.target_list_name
+LEFT JOIN LATERAL (
+  SELECT id FROM lists WHERE name = d.target_list_name ORDER BY created_at ASC, id ASC LIMIT 1
+) l ON true
 LEFT JOIN tinder_decks td ON td.key = d.key
 ORDER BY d.key;
 
@@ -164,10 +167,17 @@ esac
 cat > "$WORKDIR/apply_query.sql" <<'SQL'
 BEGIN;
 
+-- LATERAL ... LIMIT 1 rather than a plain join on the name: lists.name is NOT
+-- unique, and a duplicate name would emit two rows for one deck key, which
+-- makes ON CONFLICT DO UPDATE fail outright with "cannot affect row a second
+-- time". Oldest-first is the deterministic pick, and the dry run above prints
+-- how many lists share each name so an ambiguous one is visible before writing.
 INSERT INTO tinder_decks (key, display_name, target_list_id, recycle_mode, dataset_key, active)
 SELECT d.key, d.display_name, l.id, d.recycle_mode, d.dataset_key, true
 FROM input_decks d
-JOIN lists l ON l.name = d.target_list_name
+JOIN LATERAL (
+  SELECT id FROM lists WHERE name = d.target_list_name ORDER BY created_at ASC, id ASC LIMIT 1
+) l ON true
 ON CONFLICT (key) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   target_list_id = EXCLUDED.target_list_id,
