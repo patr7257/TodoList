@@ -1,0 +1,1811 @@
+{
+  "deck": {
+    "key": "aktiviteter",
+    "displayName": "AcTindervitivities",
+    "targetList": "Aktiviteter",
+    "recycleMode": "deplete",
+    "datasetKey": "aktiviteter"
+  },
+  "entries": [
+    {
+      "text": "Besøg Statens Museum for Kunst og find jeres yndlingsmaleri",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Udforsk Nationalmuseet og gæt hinandens alder på middelalderudstillingen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på rundvisning i Christiansborg Slot og se Folketingssalen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Ny Carlsberg Glyptotek og spis frokost i vinterhaven",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Se en installationskunst-udstilling på Louisiana i Humlebæk",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en tur gennem Designmuseum Danmark og tag noter til jeres næste boligprojekt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Thorvaldsens Museum og diskuter hvilken statue I bedst kan lide",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til Experimentarium og lav fysikforsøg sammen som børn",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Davids Samling og se den islamiske kunstsamling gratis",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå på opdagelse i Cisternerne under Frederiksberg og se lysinstallationerne",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Se en forestilling i Det Kongelige Teater og klæd jer pænt på",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Arbejdermuseet og lav mad efter en gammel dansk opskrift derhjemme bagefter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til Medicinsk Museion og se de uhyggelige gamle instrumenter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Rundetårn og gæt hvor mange trin der er før I går op",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en aftentur til Nikolaj Kunsthal og se en ny udstilling",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Post og Tele Museum og send hinanden et rigtigt brev bagefter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på byvandring i Indre By og find tre skjulte gårdhaver",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Københavns Museum og lær tre ting om jeres eget kvarter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Se en koncert i Vor Frue Kirke og lyt til orglet",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en tur i Kongens Have og find det ældste træ i parken",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Tag en cykeltur langs søerne og stop for kaffe ved Peblinge Sø",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå på opdagelse i Dyrehaven og prøv at tælle kronhjortene",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag en vintertur i Frederiksberg Have og fodr ænderne",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Gå en tur på Amager Fælled og se hvor mange fuglearter I kan spotte",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Botanisk Have og find den varmeste drivhusafdeling",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag på skovtur i Hareskoven og saml svampe (kun de I kan bestemme)",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur langs Kalvebod Fælled og se solnedgangen over vandet",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på cykeltur til Dragør og gå en tur i den gamle by",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg Utterslev Mose og lyt efter froskekvæk om foråret",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur i Valbyparken og prøv den store rutsjebane sammen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag en travetur op til Vestvolden og nyd udsigten over byen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en efterårstur i Charlottenlund Skov og saml de flotteste blade",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg Assistens Kirkegård og find H.C. Andersens gravsted",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på havnebadning i Islands Brygge Havnebad om sommeren",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv vinterbadning ved Helgoland og varm jer bagefter i saunaen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Lej en kajak og padl rundt i Københavns kanaler",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på havnerundfart og se byen fra vandsiden",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv paddleboarding ved Amager Strand en stille sommeraften",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur langs Svanemøllen Strand og saml rav efter en storm",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag færgen til Nordhavn og tilbage bare for udsigten",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv stand up paddle yoga i en af havnens flydende saunaer",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Book en tid i klatrecenter og prøv en ny rute sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til skøjtebane på Kongens Nytorv i december og hold hinanden oppe",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Lej cykler og kør en tur rundt om Bagsværd Sø",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv en pilates- eller yogatime sammen på et lokalt studie",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en bane i squashcenter og spil et par sæt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på løbetur langs havnefronten og beløn jer selv med is bagefter",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv bouldering uden reb i et lokalt klatrecenter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en tid til minigolf i Tivoli eller Faxe Ladeplads",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på skiudflugt til Lindvallen eller Sälen i vinterferien",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Prøv en spinningtime sammen og se hvem der giver op først",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Lej løbeskøjter og kør en tur langs havnefronten",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Book badminton i en hal og spil bedst af tre sæt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til bowling og indfør en sjov straf for taberen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book bord på en ny restaurant i Kødbyen I ikke har prøvet før",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på street food marked på Reffen og del fem forskellige retter",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv en ny kaffebar i Nørrebro og bedøm kaffen sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book bord til brunch søndag formiddag på en cafe i Vesterbro",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en vinsmagning i en lille vinbar i Latinerkvarteret",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en menu på en Michelin-restaurant til en særlig lejlighed",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på ostesmagning hos en lokal ostehandler",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Lav en tapasaften derhjemme med retter fra tre forskellige lande",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Prøv en ny øl på et af Nørrebros mikrobryggerier",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Book bord på en sushirestaurant og prøv noget I aldrig har smagt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til Torvehallerne og komponer en picnic af lokale råvarer",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Lav en cocktailaften derhjemme og opfind jeres egen signaturdrink",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Prøv en food tour i Indre By med en lokal guide",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Book en chokoladeworkshop og lav praliner sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Book en parbehandling på et spa i byen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag i sauna på en af havnens flydende badeanstalter",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Prøv en fælles massage-workshop og lær at massere hinanden derhjemme",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en dag på et wellnesscenter uden for byen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv floating i en flydetank og slap helt af sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag toget til Roskilde og besøg Vikingeskibsmuseet",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Kør til Helsingør og besøg Kronborg Slot",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på dagstur til Louisiana og gå en tur i skulpturparken",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Bakken og prøv den ældste rutsjebane i verden",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag til Malmø over broen for en dag og udforsk Möllevångstorget",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Kør til Møns Klint og gå ned til stranden ad de 500 trin",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag en dagstur til Frederiksborg Slot i Hillerød",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Odsherred og pluk jordbær på en selvpluk-mark",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag til Bregentved og gå en tur i det store parkanlæg",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Kør til Stevns Klint og se UNESCO-klippen ved Højerup",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Lav en filmaften med tre film fra en instruktør I begge kan lide",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Byg et puslespil sammen over en hel weekend",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Skriv breve til hinanden I først må åbne om et år",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Lav en spilaften med et nyt brætspil ingen af jer har prøvet",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Bag boller fra bunden søndag morgen og spis dem endnu varme",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Lav en fotobog sammen over jeres seneste rejse",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Plant krydderurter på altanen eller køkkenbordet sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Ryd op i gamle billeder og lav et fælles minde-slideshow",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Lav en hjemmelavet pizza-aften og eksperimenter med toppings",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Byg en pude- og tæppefort i stuen og se film hele aftenen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Lav en quiz om jeres fælles historie og se hvem der husker mest",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag et keramikkursus og lav en skål til hinanden",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en dansekursus i salsa eller bachata en hverdagsaften",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Book en fotografikursus og lær at tage bedre billeder af hinanden",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Tag et malerkursus med vin til og gå hjem med jeres eget kunstværk",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en kok til kunde-aften og lav en tre-retters menu under vejledning",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book et sushikursus og rul jeres egne maki sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag et bagekursus og lær at hæve rigtigt surdejsbrød",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en skrivekursus og skriv en kort historie om jeres forhold",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg Tivolis julemarked og drik gløgg under lysene",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag til Kulturnatten i oktober og vælg tre steder I aldrig har besøgt",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg et påskemarked og find de bedste håndlavede påskeæg",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Tag til Copenhagen Jazz Festival og find en gratis gadekoncert",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg Distortion og dans i gaderne til musikken",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag til et julemarked på Højbro Plads og køb en julegave til hinanden",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Se nytårsfyrværkeriet fra Amalienborg Slotsplads",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Besøg en halloweenudstilling i oktober og pynt jer uhyggeligt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til Tivolis sommerkarneval og prøv den vildeste forlystelse",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg et adventsmarked på landet uden for byen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag på jazzklub i Christianshavn og lyt til liveband",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en cocktailbar med skjult indgang I skal lede efter",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "dyr",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til en standupaften på et af byens spillesteder",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book billetter til en koncert i Vega og dans hele aftenen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv en karaokebar og syng en duet sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til en filmaften under stjernerne på en udendørs biograf om sommeren",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv et escape room og se om I kan slippe ud på tid",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en bane i lasertag og udfordr hinanden",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til en brætspilscafe og prøv fem nye spil på en aften",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Prøv virtual reality på en VR-arkade i byen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Book en tid i en trampolinpark og hop jer trætte sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til Tivoli om aftenen og prøv den skræmmeste forlystelse to gange",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Prøv en quizaften på den lokale pub og se hvor godt I klarer jer som hold",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på fugletur i Vestamager tidligt om morgenen med kikkert",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur langs Bryggebroen og fotografer solnedgangen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg Frilandsmuseet i Kongens Lyngby og se gamle danske gårde",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag en cykeltur til Dyrehavsbakken og spis en pølse fra en bod",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur i Ørstedsparken og find den skjulte sø",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Zoologisk Have og kår aftenens sjoveste dyr",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag en aftentur til Christianshavns Vold og se solnedgangen over voldgraven",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur på Refshaleøen og find den nyeste graffiti",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Amager Strandpark og byg en sandslot som voksne",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag en cykeltur til Kastellet og gå en tur rundt om voldene",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur til Den Lille Havfrue tidligt om morgenen uden turister",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Nyhavn og find den mest fotogene farvede husfacade",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til Frederiksberg Runddel og spis is på en varm dag",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur på Islands Brygge og se solen gå ned over havnen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en byggelegeplads-café med brætspil i Nørrebro en regnvejrsdag",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag på svampetur i Dyrehaven en oktobermorgen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur langs Lersøparken og lyt efter fuglesang om foråret",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg Grøndalsparken og prøv den udendørs fitness-bane",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag en tur til Sortedams Sø og fodr svanerne med godkendt foder",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur i Utterslev Mose og se solopgangen sammen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en julemarkedsstand på Nytorv og køb varm kakao",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 1,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag til et loppemarked på Islands Brygge en lørdag formiddag",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur gennem Meatpacking District og se street art",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg en boghandel i Latinerkvarteret og køb en bog til hinanden",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til en pladebutik i Nørrebro og find en gammel favorit på vinyl",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en tur på Vesterbrogade og prøv en ny bar hver anden måned",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Besøg en antikvitetsmesse og led efter et fælles fund",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag en løbetur rundt om Damhussøen og tæl ænderne",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur i Valby Idrætspark og prøv den udendørs skaterbane",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg Kastrup Søbad og gå en tur på den runde badebro",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på en guidet cykeltur gennem Christianshavns kanaler",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en aftentur i Assistens Kirkegård og lyt efter fugleliv i skumringen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en byhave i Nørrebro og hjælp med at luge en bed sammen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 1,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Tag til en havnefestival på Holmen og prøv lokale madboder",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur i Ryparken og prøv den nye legeplads som voksne",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg et julelysshow i Frederiksberg Have i december",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag en dagstur til Dragør Fort og gå en tur langs kysten",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur til Svanemølleværket og se den nye badebro",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg Tycho Brahe Planetarium og se en stjernehimmel-forestilling",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til en modelbanemesse og genopdag barndommens tog sammen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur i Enghaveparken og lyt til gratis sommerkoncerter",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg Kunstforeningen GL Strand og se en ny udstilling",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag til et loppemarked i Valby og prøv at prutte prisen ned sammen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Gå en tur på Papirøen og prøv en street food-bod I ikke kender",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en gårdbutik uden for byen og køb friske æg og grøntsager",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag en cykeltur til Vestskoven og find den højeste bakke",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur ved Kalveboderne og se solnedgangen over Avedøre",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg et modeloppemarked i DGI-byen en søndag",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til en gospelkoncert i en af byens kirker i december",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Gå en tur i Fælledparken og find det bedste sted for en picnic",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en akvarieudstilling i Den Blå Planet og se hajerne",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på en øko-havevandring i Valbyparkens nyttehaver",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 1,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur på Dybbølsbro og se solnedgangen over havnen fra broen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg en helligtrekongers-koncert i januar i en lokal kirke",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Tag til Kongens Nytorv og se skøjteløbere mens I drikker gløgg",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Gå en tur langs Amager Strandpark om vinteren og se de modige vinterbadere",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Besøg et fyraftensmarked ved havnen om sommeren",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Tag på en spøgelsesvandring i Indre By en efterårsaften",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur i Sydhavnen og find den nyeste kunst på havnefronten",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg et keramikmarked på Frederiksberg og køb en unik kop hver",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til et forårsmarked ved Nyhavn og køb de første tulipaner",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Gå en tur til Svanemøllehavnen og se lystbådene ligge for anker",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "sommer"
+      }
+    },
+    {
+      "text": "Besøg en filmfestival i Cinemateket og se en klassiker på lærred",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til en boghandel-læsegruppe og diskuter en bog I begge har læst",
+      "metadata": {
+        "type": "indoor",
+        "participants": 4,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en tur i Sankt Jørgens Sø og tag et polaroidbillede af hinanden",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg en design- og kunsthåndværkermesse i DGI-byen",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Tag til en åben scene-aften og hør lokale musikere prøve nyt materiale",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Gå en tur i Nørrebroparken og se den nye skaterrampe som tilskuere",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg en vinbar med naturvine i Vesterbro og smag noget nyt",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "mellem",
+        "season": "hele året"
+      }
+    },
+    {
+      "text": "Tag på en byvandring om jødisk Københavns historie",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Gå en tur i Frederiksberg Allé og kig på arkitekturen i de gamle villaer",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "efterår"
+      }
+    },
+    {
+      "text": "Besøg en søndagsmarked med økologiske varer på Israels Plads",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Tag på en stjernekiggeraften uden for byen, væk fra lysforurening",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "vinter"
+      }
+    },
+    {
+      "text": "Gå en tur i Tibetansk have i Vanløse og find roen sammen",
+      "metadata": {
+        "type": "outdoor",
+        "participants": 2,
+        "priceBand": "gratis",
+        "season": "forår"
+      }
+    },
+    {
+      "text": "Besøg en helligaftens-koncert i Marmorkirken op til jul",
+      "metadata": {
+        "type": "indoor",
+        "participants": 2,
+        "priceBand": "billig",
+        "season": "vinter"
+      }
+    }
+  ]
+}
