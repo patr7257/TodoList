@@ -258,17 +258,28 @@ endpoint.
 
 ## TodoTinder (epic #44)
 
-A mobile-first swipe app living in THIS repo: multiple decks (AcTindervitivities,
-VacayTinderation, SwoppingSwiper, DateNighTinders), right swipe creates an item in the
-deck's linked todo list via the existing API, gated by the existing token auth (the two
-account holders only). Grocery deck recycles staples every run; idea decks deplete per
-user and offer a copyable line to have a Claude session refill the deck.
+A mobile-first swipe app: multiple decks (AcTindervitivities, VacayTinderation,
+SwoppingSwiper, DateNighTinders), right swipe creates an item in the deck's
+linked todo list via the existing API, gated by the existing token auth (the two
+account holders only). Grocery deck recycles staples every run; idea decks
+deplete per user and offer a copyable line to have a Claude session refill the
+deck.
 
-The design session is DONE: the settled spec is a comment on #44 and the work is
-split into #56 (V8 schema plus API), #57 (the four datasets), #58 (the swipe PWA
-served by Javalin at `tinder.todolist.patrickrobel.dk`) and #59 (refill import
-endpoint). This supersedes the Activity Tinder note in
-`patr7257/BoredAPIActivityWheel`.
+The design session is DONE: the settled spec is a comment on #44 and the work
+split into #56 (V8 schema plus API), #57 (the four datasets), #58 (the swipe
+PWA) and #59 (refill import endpoint). This supersedes the Activity Tinder note
+in `patr7257/BoredAPIActivityWheel`.
+
+**The API and the datasets live here; the swipe UI does NOT.** The epic
+originally had #58 served as static files by Javalin at
+`tinder.todolist.patrickrobel.dk`, and that was abandoned on 2026-08-16 for a
+concrete reason: the `todo_session` cookie belongs to `patrickrobel.dk`, so an
+app on the API's own origin could not authenticate at all without a second
+sign-in handoff being invented for it. Served from the website at
+`patrickrobel.dk/tinder` it inherits the existing session and the existing
+same-origin proxy, so there is no new auth, no CORS and no DNS record. That also
+keeps this API at exactly ONE unauthenticated route, since no static mount and
+no `AuthFilter` change were needed.
 
 **#56 and #59 have landed**, as the backend below. #57 and #58 are still open,
 so nothing swipes yet: V8 seeds NO deck rows on purpose (a deck's target list
@@ -330,9 +341,10 @@ twice again.
   client left: the overdue rule (due date before today AND status not `DONE`) and
   the completion math (average of per-status percentages over ALL items, not an
   average of per-list averages).
-- The one exception is the TodoTinder swipe app (#58), which is served as static
-  files by this API on its own subdomain. It is a separate product surface, not
-  the todo UI.
+- There is no exception. The TodoTinder swipe app (#58) is a separate product
+  surface but it too is built in the website repo, at `patrickrobel.dk/tinder`,
+  consuming this API through the same same-origin proxy the todo UI uses. This
+  repo owns tinder's schema, API and datasets, and none of its pixels.
 
 ## Notable conventions
 
