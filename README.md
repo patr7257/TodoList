@@ -1,21 +1,29 @@
 # TodoList Management System
 
-Multi-module Maven project with a JavaFX desktop client and an HTTP API backed
-by Postgres.
+The headless HTTP API behind the TodoList product, backed by Postgres.
+
+The front end is **not** in this repo. Since issue #66 the only client is the web
+edition at `/todo` in `patr7257/PatrickRobelWeb`, which is also the phone
+experience via its installable PWA. This repo owns the data model, the API and
+the migrations; that repo owns everything a user looks at.
 
 ## Modules
 
-- `shared/`: shared constants/config + JSON models (used by both client and api)
+- `shared/`: `dk.dtu.shared.TaskStatus`, the task status enum plus its completion
+  percentage per status.
 - `api/`: headless HTTP API (Javalin + JDBI + HikariCP over Postgres); main class
   `dk.dtu.api.ApiMain`. Packages to a self-contained fat jar (`todolist-api.jar`).
-- `client/`: JavaFX desktop client that talks to the API over HTTPS/JSON.
 
 ## How it works (high level)
 
-- The API exposes JSON endpoints for auth, lists, tasks, and a snapshot/state
-  endpoint, persisting everything to Postgres.
-- The client authenticates against the API, then reads and writes lists and tasks
-  over HTTP and polls the state endpoint to refresh the current view.
+- The API exposes JSON endpoints for auth, lists, tasks, counters, share links,
+  and a snapshot/state endpoint, persisting everything to Postgres (Neon in
+  production).
+- Sign in happens on the website (passkeys or a mailed magic link). The website
+  mints the `todo_session` token in the byte-identical HMAC format
+  `dk.dtu.api.auth.Token` verifies, so the two halves stay interchangeable.
+- Clients read and write over HTTPS/JSON and re-read the state endpoint to
+  refresh, rather than applying incremental updates.
 
 ## Run locally (development)
 
@@ -25,82 +33,40 @@ Prerequisites: JDK 21 and Maven. Build the whole reactor first:
 mvn -q install -DskipTests
 ```
 
-1) Start the API. It needs `DATABASE_URL` (a Postgres connection string) and
-   `TODO_SESSION_SECRET` in the environment. It does NOT start a database for
-   you: the embedded Postgres here is test-scope only, so without
-   `DATABASE_URL` every data route answers 503. Start a throwaway local
-   Postgres first, then the API:
+The API needs `DATABASE_URL` (a Postgres connection string) and
+`TODO_SESSION_SECRET` in the environment. It does NOT start a database for you:
+the embedded Postgres here is test-scope only, so without `DATABASE_URL` every
+data route answers 503. Never point it at production Neon, because startup runs
+Flyway and would apply unmerged migrations there. Start a throwaway local
+Postgres first, then the API:
 
 ```powershell
 .\scripts\dev-db.ps1
 $env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
 
-2) Start the client (in a separate terminal):
+Tear it down again with `.\scripts\dev-db.ps1 -Stop`.
 
-```powershell
-mvn -pl client javafx:run
-```
+Run the tests with `mvn test` from the repo root.
 
-Point the client at an API base URL from the in-app connect dialog (it also
-remembers the last one used).
-
-## Download the client
-
-Pre-built client installers are attached to every tagged release:
-
-1. Go to the [Releases page](../../releases)
-2. Download the installer for your platform:
-   - **Windows**: `TodoList Client-<version>.msi` (or the stable
-     `TodoList-Client-Windows.msi`)
-   - **macOS**: `TodoList Client-<version>.dmg` (or the stable
-     `TodoList-Client-macOS.dmg`)
-
-### Installation
-
-**Windows:**
-1. Right-click the `.msi` file, then Run as Administrator
-2. Follow the installation wizard
-3. Launch from the Start Menu shortcut
-
-**macOS:**
-1. Double-click the `.dmg` file
-2. Drag the app to the Applications folder
-3. Launch from Applications or Spotlight
-
-> No Java required. The installer bundles everything needed to run the client.
-
-## API hosting
+## Hosting
 
 The API is deployed on a Dokploy VPS, built from `Dockerfile.api`, and exposed
 publicly behind Dokploy's Traefik reverse proxy with Let's Encrypt TLS at
 `https://api.todolist.patrickrobel.dk`. `DATABASE_URL` and
 `TODO_SESSION_SECRET` are provided as Dokploy service environment variables.
 
-## Building the client installer
+Every merge to `main` redeploys that container, which runs Flyway against
+production Neon on boot. A merge is a ship.
 
-### Automated builds (GitHub Actions)
+## The retired desktop client
 
-`.github/workflows/build-installers.yml` builds the Windows and macOS client
-installers on every push of a `v*` tag (and on manual `workflow_dispatch`) and
-attaches them to a GitHub Release, including stable versionless asset names.
+A JavaFX desktop client used to live in `client/`, packaged with jpackage into an
+MSI and a DMG and auto-updated from GitHub Releases. Issue #66 removed it so that
+product changes only ever have to be made once, on the web edition.
 
-**To trigger a build:**
-
-```bash
-git tag v1.0.1
-git push origin v1.0.1
-```
-
-### Manual local build (Windows)
-
-Prerequisites:
-- JDK 21 (https://adoptium.net/temurin/releases/?version=21)
-- Maven (https://maven.apache.org/download.cgi)
-- WiX Toolset for MSI (https://wixtoolset.org/)
-
-```powershell
-.\build-installers.ps1
-```
-
-Output: `dist\run-<timestamp>\TodoList Client-1.0.0.msi`.
+- The last installer release, **v2.0.8**, stays on the
+  [Releases page](../../releases). An already-installed copy keeps working
+  against this API, which did not change; it simply stops receiving updates.
+- The code is not gone, only untracked from `main`: `git log -- client/` and
+  `git show 7a874a2:client/...` still reach it.

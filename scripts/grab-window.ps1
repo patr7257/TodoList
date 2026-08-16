@@ -1,19 +1,26 @@
-# grab-window.ps1 - reliably capture the TodoList client window to a PNG.
+# grab-window.ps1 - capture any desktop window to a PNG without focusing it.
 #
 # Uses the Win32 PrintWindow API (PW_RENDERFULLCONTENT), which renders the
 # window's OWN buffer to a bitmap. Unlike a screen-scrape (CopyFromScreen), it is
 # correct even when the window is occluded, behind another window, or partly
-# off-screen - so captures never accidentally show a terminal on top.
+# off-screen - so captures never accidentally show a terminal on top, and no
+# window ever has to be brought to the foreground to be seen.
+#
+# This repo no longer ships a desktop app (issue #66 retired the JavaFX client),
+# so nothing here calls this script. It is kept on purpose: it is the reference
+# PrintWindow implementation the global instructions point at as the safe
+# alternative to synthetic input or forced window activation. Pass -TitleMatch
+# to aim it at whatever window you actually want.
 #
 # Usage (non-interactive):
-#   powershell -File scripts\grab-window.ps1 -Label welcome-light
-#   powershell -File scripts\grab-window.ps1 -Label mainmenu-dark -MoveX 60 -MoveY 40 -MoveW 1040 -MoveH 720
+#   powershell -File scripts\grab-window.ps1 -TitleMatch 'Notepad' -Label notes
+#   powershell -File scripts\grab-window.ps1 -TitleMatch 'My App' -Label wide -MoveX 60 -MoveY 40 -MoveW 1040 -MoveH 720
 #
-# Output: screenshots\<Label>.png (gitignored). Matches the window whose title
-# contains "Management System" (the client), so terminal tabs never match.
+# Output: screenshots\<Label>.png (gitignored).
 
 param(
   [string]$Label = 'capture',
+  [string]$TitleMatch = 'Management System',
   [int]$MoveX = -1, [int]$MoveY = -1, [int]$MoveW = -1, [int]$MoveH = -1
 )
 
@@ -45,8 +52,8 @@ public class PW {
 }
 "@
 
-$proc = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -match 'Management System' } | Select-Object -First 1
-if (-not $proc) { Write-Host "NO CLIENT WINDOW (title match 'Management System'). Is the client running?"; exit 1 }
+$proc = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -match $TitleMatch } | Select-Object -First 1
+if (-not $proc) { Write-Host "NO WINDOW matched title '$TitleMatch'. Is it running?"; exit 1 }
 $h = $proc.MainWindowHandle
 if ($MoveW -gt 0) { [PW]::Move($h, $MoveX, $MoveY, $MoveW, $MoveH); Start-Sleep -Milliseconds 900 }
 $path = Join-Path $outDir "$Label.png"

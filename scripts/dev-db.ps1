@@ -138,9 +138,10 @@ Write-Host 'Local database ready. Paste this into the terminal that runs the API
 Write-Host ''
 Write-Host "`$env:DATABASE_URL='$dbUrl'; `$env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java"
 Write-Host ''
-Write-Host 'Then in another terminal, for the desktop client:'
+Write-Host 'The UI lives in the PatrickRobelWeb repo. To point it here, run its'
+Write-Host 'dev server with TODO_API_BASE_URL=http://localhost:8080 :'
 Write-Host ''
-Write-Host '  mvn -pl client javafx:run'
+Write-Host '  cd "C:\Users\pr\repos\1-Personal\PatrickRobelWeb\website"; pnpm dev'
 Write-Host ''
 Write-Host 'Create a login account against this database with:  .\scripts\seed-user.ps1'
 Write-Host "(enter $dbUrl at its prompt)"
