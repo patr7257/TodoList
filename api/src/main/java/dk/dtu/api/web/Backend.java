@@ -46,11 +46,10 @@ public final class Backend {
 
     public Backend(ApiConfig config, TodoService todo, Token token, CountersService counters,
                    SharesService shares, RateLimiter shareRateLimiter) {
-        this(config, todo, auth, token, loginRateLimiter, counters, shares, shareRateLimiter, null);
+        this(config, todo, token, counters, shares, shareRateLimiter, null);
     }
 
-    public Backend(ApiConfig config, TodoService todo, AuthService auth, Token token,
-                   RateLimiter loginRateLimiter, CountersService counters,
+    public Backend(ApiConfig config, TodoService todo, Token token, CountersService counters,
                    SharesService shares, RateLimiter shareRateLimiter, TinderService tinder) {
         this.config = config;
         this.tinder = tinder;

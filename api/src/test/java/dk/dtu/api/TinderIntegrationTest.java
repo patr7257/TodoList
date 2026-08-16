@@ -17,7 +17,6 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
-import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.TinderDeckRow;
@@ -97,11 +96,10 @@ class TinderIntegrationTest {
         todo = new TodoService(jdbi);
         tinder = new TinderService(jdbi, todo);
         token = new Token(SECRET);
-        AuthService auth = new AuthService(todo, token);
         Backend backend = new Backend(
-                ApiConfig.of(0, null, SECRET, 1000, 60,
+                ApiConfig.of(0, null, SECRET,
                         ApiConfig.DEFAULT_SHARE_BASE_URL, 60, 60, PUBLIC_BASE),
-                todo, auth, token, new RateLimiter(1000, 60), null, null, null, tinder);
+                todo, token, null, null, null, tinder);
 
         app = ApiServer.create(backend);
         app.start(0);
@@ -623,8 +621,8 @@ class TinderIntegrationTest {
     @Order(60)
     void answersServiceUnavailableWhenDatabaseNotConfigured() throws Exception {
         Backend noDbBackend = new Backend(
-                ApiConfig.of(0, null, "some-secret", 1000, 60), null, null,
-                new Token("some-secret"), new RateLimiter(1000, 60));
+                ApiConfig.of(0, null, "some-secret"), null,
+                new Token("some-secret"), null, null, null);
         Javalin noDbApp = ApiServer.create(noDbBackend);
         try {
             noDbApp.start(0);
