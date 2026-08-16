@@ -8,15 +8,18 @@
 --   exact match, different case, padded whitespace, a name that matches TWO
 --   users (must stay unresolved), a name that matches nobody, and NULL.
 --
--- These users CANNOT log in: pw_hash is a placeholder, not a real scrypt hash.
--- To create a login account use scripts/seed-user.ps1 (or seed-user.sh).
+-- pw_hash is left NULL, which is what every account looks like since password
+-- login was retired (issue #61). These rows exist only to give the backfill
+-- something to match on; they are not sign-in identities, because sign-in also
+-- needs the website's email allowlist. To create a real account use
+-- scripts/seed-user.ps1 (or seed-user.sh).
 --
 -- Safe to re-run: users upsert on their unique email, lists are guarded by name.
 
 INSERT INTO users (email, name, pw_hash) VALUES
-    ('alex@fixture.test',  'Alex', 'fixture-not-loginable'),
-    ('sam1@fixture.test',  'Sam',  'fixture-not-loginable'),
-    ('sam2@fixture.test',  'Sam',  'fixture-not-loginable')
+    ('alex@fixture.test',  'Alex', NULL),
+    ('sam1@fixture.test',  'Sam',  NULL),
+    ('sam2@fixture.test',  'Sam',  NULL)
 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name;
 
 INSERT INTO lists (name, owner, sort)

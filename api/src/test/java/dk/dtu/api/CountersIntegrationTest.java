@@ -14,7 +14,6 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
-import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.CounterRow;
@@ -22,7 +21,6 @@ import dk.dtu.api.domain.CountersService;
 import dk.dtu.api.domain.TodoService;
 import dk.dtu.api.web.ApiServer;
 import dk.dtu.api.web.Backend;
-import dk.dtu.api.web.RateLimiter;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -67,10 +65,9 @@ class CountersIntegrationTest {
         TodoService todo = new TodoService(jdbi);
         counters = new CountersService(jdbi);
         Token token = new Token("counters-integration-secret");
-        AuthService auth = new AuthService(todo, token);
         Backend backend = new Backend(
-                ApiConfig.of(0, null, "counters-integration-secret", 1000, 60),
-                todo, auth, token, new RateLimiter(1000, 60), counters);
+                ApiConfig.of(0, null, "counters-integration-secret"),
+                todo, token, counters);
 
         app = ApiServer.create(backend);
         app.start(0);
@@ -78,10 +75,9 @@ class CountersIntegrationTest {
 
         // A real user id so bump/created_by paths mirror production usage.
         jdbi.useHandle(h -> h
-                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, :p)")
+                .createUpdate("INSERT INTO users (email, name, pw_hash) VALUES (:e, :n, NULL)")
                 .bind("e", "counters-tester@example.com")
                 .bind("n", "Counters Tester")
-                .bind("p", "irrelevant-hash")
                 .execute());
         String uid = todo.findUserByEmail("counters-tester@example.com").orElseThrow().id();
         bearerToken = token.issue(uid);
@@ -317,8 +313,7 @@ class CountersIntegrationTest {
     @Order(15)
     void answersServiceUnavailableWhenDatabaseNotConfigured() throws Exception {
         Backend noDbBackend = new Backend(
-                ApiConfig.of(0, null, "some-secret", 1000, 60), null, null,
-                new Token("some-secret"), new RateLimiter(1000, 60));
+                ApiConfig.of(0, null, "some-secret"), null, new Token("some-secret"));
         Javalin noDbApp = ApiServer.create(noDbBackend);
         try {
             noDbApp.start(0);

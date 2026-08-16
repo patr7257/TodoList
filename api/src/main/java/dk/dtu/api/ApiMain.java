@@ -4,7 +4,6 @@ import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
 
-import dk.dtu.api.auth.AuthService;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
@@ -55,39 +54,36 @@ public final class ApiMain {
      */
     public static Backend buildBackend(ApiConfig config) {
         Token token = new Token(config.sessionSecret());
-        RateLimiter loginLimiter = new RateLimiter(config.rateLimitMax(), config.rateLimitWindowSeconds());
 
         if (!config.databaseConfigured()) {
             log.warn("DATABASE_URL is not set: data routes will answer 503 until it is configured.");
-            return new Backend(config, null, null, token, loginLimiter);
+            return new Backend(config, null, token);
         }
 
         HikariDataSource dataSource = DataSources.fromJdbcUrl(config.databaseUrl());
         Migrations.migrate(dataSource);
-        return backendFor(config, dataSource, token, loginLimiter);
+        return backendFor(config, dataSource, token);
     }
 
     /**
      * Builds a fully wired Backend over an existing DataSource. Migrations are
      * the caller's responsibility. Used by tests with embedded Postgres.
      */
-    public static Backend backendFor(ApiConfig config, DataSource dataSource, Token token,
-                                     RateLimiter loginLimiter) {
+    public static Backend backendFor(ApiConfig config, DataSource dataSource, Token token) {
         Jdbi jdbi = Jdbi.create(dataSource);
         TodoService todo = new TodoService(jdbi);
-        AuthService auth = new AuthService(todo, token);
         CountersService counters = new CountersService(jdbi);
         SharesService shares = new SharesService(jdbi);
         // TinderService is handed the TodoService rather than building its own
         // item SQL: a right swipe has to create an ORDINARY item, through the
         // one method every other client's item creation already goes through.
         TinderService tinder = new TinderService(jdbi, todo);
-        // The public share route gets its OWN limiter: it is unauthenticated and
-        // far chattier than login, so sharing the login bucket would either
-        // throttle readers or loosen the login limit. Neither is acceptable.
+        // The public share route is the only unauthenticated route left, and it
+        // is the only one with a limiter. It needs one because it is reachable
+        // without a token at all: the cap is what stops a sweep of the 192-bit
+        // token space from being free to attempt.
         RateLimiter shareLimiter = new RateLimiter(
                 config.shareRateLimitMax(), config.shareRateLimitWindowSeconds());
-        return new Backend(config, todo, auth, token, loginLimiter, counters, shares, shareLimiter,
-                tinder);
+        return new Backend(config, todo, token, counters, shares, shareLimiter, tinder);
     }
 }

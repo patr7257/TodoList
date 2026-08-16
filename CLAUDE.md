@@ -42,8 +42,10 @@ shed its JavaFX desktop client in issue #66.
     shares, which deliberately never calls `Views`, `TinderViews` for the
     tinder shapes, and `TinderPrompts`, the pure composer of the refill prompt
     a drained deck hands over).
-  - `dk.dtu.api.auth`: token auth (`AuthFilter`, `AuthService`, `Token`,
-    `Scrypt`).
+  - `dk.dtu.api.auth`: token auth, and nothing else since #61 retired password
+    login. `AuthFilter` (the before-handler and its allowlist), `Token` (mint
+    and verify the `todo_session` value), `Hex` (the lowercase hex rendering the
+    token signature is made of, which used to live on the deleted `Scrypt`).
   - `dk.dtu.api.db`: `DataSources` (Hikari pool) and `Migrations`.
   - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps, plus
     `CountersService` / `CounterRow` for the fun counters and
@@ -105,7 +107,7 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
 - `api`: HTTP/service tests for the api module (`TodoApiIntegrationTest`,
   `CountersIntegrationTest`, `SharesIntegrationTest`, `TinderIntegrationTest`,
   `web/ViewsTest`, `web/ShareViewsTest`, `web/TinderViewsTest`,
-  `web/TinderPromptsTest`, `domain/ShareTokensTest`, `ScryptTest`, `TokenTest`,
+  `web/TinderPromptsTest`, `domain/ShareTokensTest`, `TokenTest`, `HexTest`,
   `CompletionTest`, `DataSourcesTest`). The four integration tests each start
   their own `EmbeddedPostgres` and also drive a real Javalin instance on an
   ephemeral port, so routes and auth are asserted rather than assumed.
@@ -208,11 +210,22 @@ on the website, which is now also the only client.
   RFC 8252 plus PKCE ceremony the retired JavaFX client used. They are harmless
   and are what lets an already-installed v2.0.8 copy sign in at all, so do not
   remove them from that repo as part of anything happening here.
-- **Password login still exists in the API, deliberately unused.** Clients
-  installed before v2.0.8 rely on it. The kill switch is `UPDATE users SET
-  pw_hash = NULL` (V7 made the column nullable and `Scrypt.verify` returns false
-  for a null hash, so it is a clean 401 not a 500). Deleting the code is tracked
-  in #61, and `Token.sign` calls `Scrypt.bytesToHex`, so that helper moves first.
+- **The password path is gone (#61).** `POST /api/todo/login`, `AuthService` and
+  `Scrypt` were deleted, along with the login rate limiter and its
+  `API_RATE_LIMIT_*` settings, and `/api/todo/login` came off `AuthFilter`'s
+  allowlist. `POST /api/todo/logout` stays: it only expires the cookie, which is
+  as useful for a website-minted session as for a locally-minted one.
+  `users.pw_hash` remains as a NULLABLE legacy column that no code reads; it is
+  not dropped, because an applied migration is immutable and removing the column
+  buys nothing.
+- **Accounts are created with `dk.dtu.api.tools.SeedUser`** (`scripts/seed-user.ps1`
+  / `.sh`), which is the ONLY way an account comes into existence and is
+  therefore kept, not deleted. It writes a passwordless row (`pw_hash` NULL) and
+  prompts for email and name only. Nothing self-signs-up: the website's
+  magic-link route mails a link only to an address that already has a `users`
+  row and is on `allowlist.ts`, and the passkey path is usernameless, so it can
+  only resolve a credential enrolled from an existing session. A new person
+  therefore needs BOTH a `SeedUser` row and an allowlist entry.
 - Revocation is still "rotate `TODO_SESSION_SECRET` in Dokploy AND Vercel, then
   redeploy both". It logs everyone out everywhere. Per-user revocation would be a
   breaking wire-format change that `TokenTest` pins on purpose.
@@ -341,8 +354,8 @@ twice again.
   authenticated: `GET`/`POST /api/todo/lists/{id}/shares` and
   `DELETE /api/todo/lists/{id}/shares/{shareId}`. The singular/plural split is
   load-bearing, not cosmetic: `dk.dtu.api.auth.AuthFilter` holds an explicit
-  allowlist (exact `/api/todo/login`, exact `/api/todo/logout`, prefix
-  `/api/todo/share/`), and `share` singular appears in exactly one path in the
+  allowlist, which since #61 is exactly two entries (exact `/api/todo/logout`,
+  prefix `/api/todo/share/`), and `share` singular appears in exactly one path in the
   whole API, so the prefix cannot open a management route. Never add a second
   route under `/api/todo/share/`.
 - **The public share payload must NEVER be built by reusing `Views`.**

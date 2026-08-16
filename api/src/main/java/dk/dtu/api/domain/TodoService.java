@@ -52,7 +52,7 @@ public final class TodoService {
     public List<UserRow> allUsersByName() {
         return jdbi.withHandle(h -> h
                 .createQuery("SELECT id, name FROM users ORDER BY name ASC")
-                .map((rs, ctx) -> new UserRow(rs.getString("id"), null, rs.getString("name"), null, null))
+                .map((rs, ctx) -> new UserRow(rs.getString("id"), null, rs.getString("name"), null))
                 .list());
     }
 
@@ -219,7 +219,6 @@ public final class TodoService {
                 rs.getString("id"),
                 rs.getString("email"),
                 rs.getString("name"),
-                rs.getString("pw_hash"),
                 instant(rs.getTimestamp("created_at")));
     }
 

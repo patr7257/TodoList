@@ -14,8 +14,6 @@ package dk.dtu.api;
 public final class ApiConfig {
 
     public static final int DEFAULT_HTTP_PORT = 8080;
-    public static final int DEFAULT_RATE_LIMIT_MAX = 8;
-    public static final int DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
 
     /**
      * Where a public share link is browsed. The API composes the full share URL
@@ -26,8 +24,15 @@ public final class ApiConfig {
 
     /**
      * The public share route is unauthenticated, so its limit is per client IP
-     * and much looser than the login limit (a shared page is refreshed and
-     * polled by ordinary readers), while still capping a brute-force sweep.
+     * and deliberately loose (a shared page is refreshed and polled by ordinary
+     * readers), while still capping a brute-force sweep.
+     *
+     * <p>It is also the only rate limit left. There used to be a second pair,
+     * {@code API_RATE_LIMIT_MAX} / {@code API_RATE_LIMIT_WINDOW_SECONDS},
+     * throttling password login attempts; issue #61 deleted that route, so the
+     * knobs went with it rather than sitting here being read and ignored. The
+     * two env vars are simply unrecognised now, which is harmless if one is
+     * still set on a deployment.
      */
     public static final int DEFAULT_SHARE_RATE_LIMIT_MAX = 60;
     public static final int DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -48,22 +53,17 @@ public final class ApiConfig {
     private final int httpPort;
     private final String databaseUrl;
     private final String sessionSecret;
-    private final int rateLimitMax;
-    private final int rateLimitWindowSeconds;
     private final String shareBaseUrl;
     private final int shareRateLimitMax;
     private final int shareRateLimitWindowSeconds;
     private final String publicBaseUrl;
 
     private ApiConfig(int httpPort, String databaseUrl, String sessionSecret,
-                      int rateLimitMax, int rateLimitWindowSeconds,
                       String shareBaseUrl, int shareRateLimitMax, int shareRateLimitWindowSeconds,
                       String publicBaseUrl) {
         this.httpPort = httpPort;
         this.databaseUrl = databaseUrl;
         this.sessionSecret = sessionSecret;
-        this.rateLimitMax = rateLimitMax;
-        this.rateLimitWindowSeconds = rateLimitWindowSeconds;
         this.shareBaseUrl = shareBaseUrl;
         this.shareRateLimitMax = shareRateLimitMax;
         this.shareRateLimitWindowSeconds = shareRateLimitWindowSeconds;
@@ -75,38 +75,27 @@ public final class ApiConfig {
         int port = intValue("API_HTTP_PORT", DEFAULT_HTTP_PORT);
         String db = normalizeJdbcUrl(stringValue("DATABASE_URL", null));
         String secret = stringValue("TODO_SESSION_SECRET", null);
-        int rlMax = intValue("API_RATE_LIMIT_MAX", DEFAULT_RATE_LIMIT_MAX);
-        int rlWindow = intValue("API_RATE_LIMIT_WINDOW_SECONDS", DEFAULT_RATE_LIMIT_WINDOW_SECONDS);
         String shareBase = normalizeBaseUrl(stringValue("TODO_SHARE_BASE_URL", DEFAULT_SHARE_BASE_URL));
         int shareMax = intValue("API_SHARE_RATE_LIMIT_MAX", DEFAULT_SHARE_RATE_LIMIT_MAX);
         int shareWindow = intValue("API_SHARE_RATE_LIMIT_WINDOW_SECONDS",
                 DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS);
         String publicBase = normalizeBaseUrl(stringValue("API_PUBLIC_BASE_URL", DEFAULT_PUBLIC_BASE_URL),
                 DEFAULT_PUBLIC_BASE_URL);
-        return new ApiConfig(port, db, secret, rlMax, rlWindow, shareBase, shareMax, shareWindow,
-                publicBase);
+        return new ApiConfig(port, db, secret, shareBase, shareMax, shareWindow, publicBase);
     }
 
-    /**
-     * Explicit constructor for tests. Share settings take their defaults.
-     *
-     * <p>The signature is frozen: existing tests call it positionally, so share
-     * settings were added as the overload below instead of extra parameters
-     * here.
-     */
-    public static ApiConfig of(int httpPort, String databaseUrl, String sessionSecret,
-                               int rateLimitMax, int rateLimitWindowSeconds) {
-        return of(httpPort, databaseUrl, sessionSecret, rateLimitMax, rateLimitWindowSeconds,
+    /** Explicit constructor for tests. Share settings take their defaults. */
+    public static ApiConfig of(int httpPort, String databaseUrl, String sessionSecret) {
+        return of(httpPort, databaseUrl, sessionSecret,
                 DEFAULT_SHARE_BASE_URL, DEFAULT_SHARE_RATE_LIMIT_MAX,
                 DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS);
     }
 
     /** Explicit constructor for tests that need to pin the share settings too. */
     public static ApiConfig of(int httpPort, String databaseUrl, String sessionSecret,
-                               int rateLimitMax, int rateLimitWindowSeconds,
                                String shareBaseUrl, int shareRateLimitMax,
                                int shareRateLimitWindowSeconds) {
-        return of(httpPort, databaseUrl, sessionSecret, rateLimitMax, rateLimitWindowSeconds,
+        return of(httpPort, databaseUrl, sessionSecret,
                 shareBaseUrl, shareRateLimitMax, shareRateLimitWindowSeconds,
                 DEFAULT_PUBLIC_BASE_URL);
     }
@@ -116,12 +105,10 @@ public final class ApiConfig {
      * base URL (the one the tinder refill prompt names).
      */
     public static ApiConfig of(int httpPort, String databaseUrl, String sessionSecret,
-                               int rateLimitMax, int rateLimitWindowSeconds,
                                String shareBaseUrl, int shareRateLimitMax,
                                int shareRateLimitWindowSeconds, String publicBaseUrl) {
         return new ApiConfig(httpPort, normalizeJdbcUrl(databaseUrl), sessionSecret,
-                rateLimitMax, rateLimitWindowSeconds, normalizeBaseUrl(shareBaseUrl),
-                shareRateLimitMax, shareRateLimitWindowSeconds,
+                normalizeBaseUrl(shareBaseUrl), shareRateLimitMax, shareRateLimitWindowSeconds,
                 normalizeBaseUrl(publicBaseUrl, DEFAULT_PUBLIC_BASE_URL));
     }
 
@@ -197,14 +184,6 @@ public final class ApiConfig {
 
     public boolean sessionSecretConfigured() {
         return sessionSecret != null && !sessionSecret.isBlank();
-    }
-
-    public int rateLimitMax() {
-        return rateLimitMax;
-    }
-
-    public int rateLimitWindowSeconds() {
-        return rateLimitWindowSeconds;
     }
 
     /** Origin a public share link is browsed at, with no trailing slash. */
