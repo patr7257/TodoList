@@ -99,7 +99,7 @@ public final class Token {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] raw = mac.doFinal(encodedPayload.getBytes(StandardCharsets.UTF_8));
-            return Scrypt.bytesToHex(raw);
+            return Hex.bytesToHex(raw);
         } catch (Exception e) {
             throw new IllegalStateException("HMAC-SHA256 unavailable", e);
         }

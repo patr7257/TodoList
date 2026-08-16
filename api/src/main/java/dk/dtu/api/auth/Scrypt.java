@@ -79,21 +79,12 @@ public final class Scrypt {
     public static String hash(String password) {
         byte[] saltRaw = new byte[SALT_BYTES];
         RANDOM.nextBytes(saltRaw);
-        String saltHex = bytesToHex(saltRaw);
+        String saltHex = Hex.bytesToHex(saltRaw);
         byte[] hash = SCrypt.generate(
                 password.getBytes(StandardCharsets.UTF_8),
                 saltHex.getBytes(StandardCharsets.UTF_8),
                 COST_N, BLOCK_SIZE_R, PARALLELISM_P, DEFAULT_KEYLEN);
-        return saltHex + ":" + bytesToHex(hash);
-    }
-
-    static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-            sb.append(Character.forDigit(b & 0xF, 16));
-        }
-        return sb.toString();
+        return saltHex + ":" + Hex.bytesToHex(hash);
     }
 
     static byte[] hexToBytes(String hex) {
