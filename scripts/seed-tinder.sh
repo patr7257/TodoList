@@ -8,8 +8,7 @@
 # differ per environment), and upserts idempotently so running it twice never
 # duplicates anything.
 #
-# Assumed schema (see the design-session comment on issue #44; issue #56 owns the
-# real migration, adjust the column names below if it lands differently):
+# Schema, as shipped by V8:
 #   tinder_decks(key text UNIQUE, display_name text, target_list_id uuid,
 #                recycle_mode text, dataset_key text, active boolean)
 #   tinder_entries(deck_id uuid, text text, metadata jsonb, source text,
@@ -23,7 +22,13 @@
 # skipped, then asks for confirmation before writing anything. Never deletes an
 # existing entry.
 #
-# Requires the PostgreSQL client (psql) and jq on PATH.
+# The four target lists (Aktiviteter, Rejsemaal, Indkoeb, Date nights, spelled
+# with their real Danish letters) must already exist by NAME. A deck whose list
+# is missing is reported in the dry run and skipped rather than pointed at
+# nothing, and the shortfall check at the end turns that into a loud failure.
+#
+# Requires jq. Uses psql if it is installed, otherwise borrows one from a
+# throwaway docker container.
 
 set -euo pipefail
 
@@ -31,11 +36,37 @@ cd "$(cd "$(dirname "$0")/.." && pwd)"
 
 DECK_FILES="scripts/data/tinder-aktiviteter.json scripts/data/tinder-rejsemaal.json scripts/data/tinder-indkoeb.json scripts/data/tinder-datenights.json"
 
+USE_DOCKER=0
 if ! command -v psql >/dev/null 2>&1; then
-  echo "psql was not found on PATH."
-  echo "Install the PostgreSQL client tools (they ship psql) and try again."
-  exit 1
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Neither psql nor docker was found on PATH."
+    echo "Install the PostgreSQL client tools, or start Docker, and try again."
+    exit 1
+  fi
+  USE_DOCKER=1
+  echo "psql is not installed locally, borrowing one from a docker container."
 fi
+
+# Runs psql against DATABASE_URL. Always reads SQL from a FILE, never a pipe, so
+# the Danish letters in the deck and list names cannot be mangled in transit.
+run_psql() {
+  sql_file="$1"; shift
+  if [ "$USE_DOCKER" -eq 1 ]; then
+    # localhost inside a container is the CONTAINER, not this machine.
+    url=$(printf '%s' "$DATABASE_URL" | sed -e 's/localhost/host.docker.internal/' -e 's/127\.0\.0\.1/host.docker.internal/')
+    host_dir=$(dirname "$sql_file")
+    # Git Bash rewrites anything that looks like a unix path in a command line,
+    # so the container-side /sql becomes C:/Program Files/Git/sql and the mount
+    # source needs to be a Windows path. cygpath exists only there, so this is a
+    # no-op on macOS and Linux.
+    if command -v cygpath >/dev/null 2>&1; then
+      host_dir=$(cygpath -m "$host_dir")
+    fi
+    MSYS_NO_PATHCONV=1 docker run --rm -e PGCLIENTENCODING=UTF8 -v "$host_dir:/sql:ro" postgres:16       psql "$url" -v ON_ERROR_STOP=1 "$@" -f "/sql/$(basename "$sql_file")"
+  else
+    PGCLIENTENCODING=UTF8 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 "$@" -f "$sql_file"
+  fi
+}
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq was not found on PATH. Install it and try again."
@@ -67,13 +98,18 @@ cleanup() {
 trap cleanup EXIT
 
 # --- Check the tinder_* tables exist before doing anything else ---
-CHECK=$(psql "$DATABASE_URL" -tAc "SELECT (to_regclass('public.tinder_decks') IS NOT NULL AND to_regclass('public.tinder_entries') IS NOT NULL)::text;" 2>&1) || {
+# Casting the boolean to text yields 'true' / 'false', NOT 't' / 'f'; the short
+# forms are psql's aligned DISPLAY, not the value. Comparing against 't' made
+# this check fail even on a database that had the tables.
+printf "SELECT (to_regclass('public.tinder_decks') IS NOT NULL AND to_regclass('public.tinder_entries') IS NOT NULL)::text;
+" > "$WORKDIR/check.sql"
+CHECK=$(run_psql "$WORKDIR/check.sql" -tA 2>&1) || {
   echo "Could not connect to the database or run the check query."
   echo "$CHECK"
   exit 1
 }
 CHECK_TRIMMED=$(echo "$CHECK" | tr -d '[:space:]')
-if [ "$CHECK_TRIMMED" != "t" ]; then
+if [ "$CHECK_TRIMMED" != "true" ]; then
   echo ""
   echo "The tinder_decks / tinder_entries tables do not exist in this database yet."
   echo "They come from the V8 migration (issue #56). Start the API once against this"
@@ -154,7 +190,7 @@ cat "$SETUP_SQL" "$WORKDIR/dryrun_query.sql" > "$WORKDIR/dryrun.sql"
 echo ""
 echo "DRY RUN: nothing is written yet."
 echo ""
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$WORKDIR/dryrun.sql"
+run_psql "$WORKDIR/dryrun.sql"
 
 echo ""
 printf 'Proceed with these writes? [y/N] '
@@ -203,5 +239,29 @@ cat "$SETUP_SQL" "$WORKDIR/apply_query.sql" > "$WORKDIR/apply.sql"
 
 echo ""
 echo "Writing ..."
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$WORKDIR/apply.sql"
+run_psql "$WORKDIR/apply.sql"
+
+# Verify, and fail LOUDLY on a shortfall. A deck whose target list does not
+# resolve is skipped by the INSERT rather than erroring, so without this the
+# script can report success having written half the data. That is not
+# hypothetical: a codepage bug in the PowerShell twin did exactly that once,
+# dropping the two decks whose list names carry Danish letters.
+EXPECTED_ENTRIES=$(jq -s 'map(.entries | length) | add' $DECK_FILES)
+printf "SELECT (SELECT count(*) FROM tinder_decks WHERE dataset_key IS NOT NULL) || ' ' || (SELECT count(*) FROM tinder_entries e JOIN tinder_decks d ON d.id = e.deck_id WHERE d.dataset_key IS NOT NULL);
+" > "$WORKDIR/counts.sql"
+COUNTS=$(run_psql "$WORKDIR/counts.sql" -tA | tr -d '
+')
+GOT_DECKS=$(echo "$COUNTS" | awk '{print $1}')
+GOT_ENTRIES=$(echo "$COUNTS" | awk '{print $2}')
+echo ""
+echo "Seeded decks: $GOT_DECKS (expected at least 4)"
+echo "Seeded entries: $GOT_ENTRIES (expected at least $EXPECTED_ENTRIES)"
+if [ "$GOT_DECKS" -lt 4 ] || [ "$GOT_ENTRIES" -lt "$EXPECTED_ENTRIES" ]; then
+  echo ""
+  echo "SHORTFALL: fewer rows landed than the files hold."
+  echo "The usual cause is a deck whose target list does not exist by that exact"
+  echo "name. Re-run the dry run and check the list_status column."
+  exit 1
+fi
+
 echo "Done."

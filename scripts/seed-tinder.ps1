@@ -6,12 +6,15 @@
 # differ per environment), and upserts idempotently so running it twice never
 # duplicates anything.
 #
-# Assumed schema (see the design-session comment on issue #44; issue #56 owns the
-# real migration, adjust the column names below if it lands differently):
+# Schema, as shipped by V8:
 #   tinder_decks(key text UNIQUE, display_name text, target_list_id uuid,
 #                recycle_mode text, dataset_key text, active boolean)
 #   tinder_entries(deck_id uuid, text text, metadata jsonb, source text,
 #                  active boolean, UNIQUE (deck_id, text))
+#
+# The four target lists (Aktiviteter, Rejsemål, Indkøb, Date nights) must
+# already exist by NAME. A deck whose list is missing is reported in the dry run
+# and skipped rather than being pointed at nothing.
 #
 # Usage (from anywhere):
 #   .\scripts\seed-tinder.ps1
@@ -21,7 +24,9 @@
 # skipped, then asks for confirmation before writing anything. Never deletes an
 # existing entry.
 #
-# Requires the PostgreSQL client (psql) on PATH.
+# Uses psql if it is installed, otherwise borrows one from a throwaway docker
+# container, so nothing has to be installed on a machine that already runs the
+# dev database in Docker.
 
 $ErrorActionPreference = 'Continue'
 
@@ -34,11 +39,63 @@ $deckFiles = @(
     'scripts/data/tinder-datenights.json'
 )
 
+# How to reach psql. A local client is preferred, but this machine deliberately
+# runs Postgres only in Docker (see dev-db.ps1) and has no PostgreSQL client
+# installed, so requiring one on PATH would make this script unrunnable exactly
+# where it is meant to be run. The fallback borrows psql from a throwaway
+# container instead, which needs no install and works against any target,
+# including Neon.
 $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
+$useDocker = $false
 if (-not $psqlCmd) {
-    Write-Host 'psql was not found on PATH.' -ForegroundColor Red
-    Write-Host 'Install the PostgreSQL client tools (they ship psql) and try again.'
-    exit 1
+    $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $dockerCmd) {
+        Write-Host 'Neither psql nor docker was found on PATH.' -ForegroundColor Red
+        Write-Host 'Install the PostgreSQL client tools, or start Docker Desktop, and try again.'
+        exit 1
+    }
+    $useDocker = $true
+    Write-Host 'psql is not installed locally, borrowing one from a docker container.' -ForegroundColor Yellow
+}
+
+$env:PGCLIENTENCODING = 'UTF8'
+
+# Every deck name and most entry text contains æ, ø or å, so how the SQL reaches
+# psql is not a detail. It is NEVER piped: PowerShell encodes a pipe into a
+# native process using the console codepage, which varies by how the script was
+# launched, and under the wrong one "Indkøb" arrives as mojibake, its target
+# list lookup matches nothing, and the seed silently drops that deck while still
+# printing success. That happened, and it is what the shortfall check at the end
+# exists to catch. Instead the SQL goes through a UTF-8 file with no BOM, which
+# no codepage can touch; the docker path mounts the directory holding it.
+$sqlDir = Join-Path ([System.IO.Path]::GetTempPath()) "todolist-tinder-$([guid]::NewGuid().ToString('N'))"
+New-Item -ItemType Directory -Path $sqlDir | Out-Null
+
+# Runs a SQL script (given as a string) and returns psql's output. $LASTEXITCODE
+# is meaningful afterwards either way.
+function Invoke-Psql {
+    param([string] $Sql, [switch] $Quiet)
+    $name = "q-$([guid]::NewGuid().ToString('N')).sql"
+    $path = Join-Path $sqlDir $name
+    [System.IO.File]::WriteAllText($path, $Sql, (New-Object System.Text.UTF8Encoding($false)))
+    try {
+        if ($useDocker) {
+            # localhost inside a container is the CONTAINER, not this machine, so
+            # a local dev URL has to be rewritten or the connection silently goes
+            # nowhere. Neon and any other remote host are unaffected.
+            $url = $env:DATABASE_URL -replace 'localhost', 'host.docker.internal' -replace '127\.0\.0\.1', 'host.docker.internal'
+            if ($Quiet) {
+                return (& docker run --rm -e PGCLIENTENCODING=UTF8 -v "${sqlDir}:/sql:ro" postgres:16 psql $url -v ON_ERROR_STOP=1 -tA -f "/sql/$name" 2>&1)
+            }
+            return (& docker run --rm -e PGCLIENTENCODING=UTF8 -v "${sqlDir}:/sql:ro" postgres:16 psql $url -v ON_ERROR_STOP=1 -f "/sql/$name" 2>&1)
+        }
+        if ($Quiet) {
+            return (& psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -tA -f $path 2>&1)
+        }
+        return (& psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f $path 2>&1)
+    } finally {
+        Remove-Item $path -ErrorAction SilentlyContinue
+    }
 }
 
 foreach ($f in $deckFiles) {
@@ -54,19 +111,20 @@ if (-not $env:DATABASE_URL) {
     $setByUs = $true
 }
 
-$tempFiles = @()
-
 try {
     # --- Check the tinder_* tables exist before doing anything else ---
+    # Casting the boolean to text yields 'true' / 'false', NOT 't' / 'f'; the
+    # short forms are psql's ALIGNED display, not the value. Comparing against
+    # 't' made this check fail even on a database that had the tables.
     $checkSql = "SELECT (to_regclass('public.tinder_decks') IS NOT NULL AND to_regclass('public.tinder_entries') IS NOT NULL)::text;"
-    $checkOut = & psql $env:DATABASE_URL -tAc $checkSql 2>&1
+    $checkOut = Invoke-Psql -Sql $checkSql -Quiet
     if ($LASTEXITCODE -ne 0) {
         Write-Host 'Could not connect to the database or run the check query.' -ForegroundColor Red
         Write-Host ($checkOut -join "`n")
         exit 1
     }
     $checkVal = ($checkOut -join '').Trim()
-    if ($checkVal -ne 't') {
+    if ($checkVal -ne 'true') {
         Write-Host ''
         Write-Host 'The tinder_decks / tinder_entries tables do not exist in this database yet.' -ForegroundColor Yellow
         Write-Host 'They come from the V8 migration (issue #56). Start the API once against this'
@@ -174,18 +232,10 @@ COMMIT;
 \echo 'Seed complete.'
 "@
 
-    $dryRunFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "todolist-tinder-dryrun-$([guid]::NewGuid().ToString('N')).sql")
-    $applyFile = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "todolist-tinder-apply-$([guid]::NewGuid().ToString('N')).sql")
-    $tempFiles += $dryRunFile, $applyFile
-
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($dryRunFile, ($setupSql + "`n" + $dryRunQuery), $utf8NoBom)
-    [System.IO.File]::WriteAllText($applyFile, ($setupSql + "`n" + $applyQuery), $utf8NoBom)
-
     Write-Host ''
     Write-Host 'DRY RUN: nothing is written yet.' -ForegroundColor Cyan
     Write-Host ''
-    & psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f $dryRunFile
+    Invoke-Psql -Sql ($setupSql + "`n" + $dryRunQuery) | Write-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host 'Dry run query failed. See the psql output above.' -ForegroundColor Red
         exit 1
@@ -200,16 +250,41 @@ COMMIT;
 
     Write-Host ''
     Write-Host 'Writing ...' -ForegroundColor Cyan
-    & psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f $applyFile
+    Invoke-Psql -Sql ($setupSql + "`n" + $applyQuery) | Write-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host 'Seeding failed. See the psql output above.' -ForegroundColor Red
         exit 1
     }
+
+    # Verify, and fail LOUDLY on a shortfall. A deck whose target list does not
+    # resolve is skipped by the INSERT rather than erroring, so without this the
+    # script can report success having written half the data. That is not
+    # hypothetical: it is exactly what a codepage bug in the pipe did here once,
+    # dropping the two decks whose list names carry Danish letters while still
+    # printing "Done".
+    $expectedDecks = $deckLines.Count
+    $expectedEntries = $entryLines.Count
+    $countSql = "SELECT (SELECT count(*) FROM tinder_decks WHERE dataset_key IS NOT NULL)::text || ' ' || (SELECT count(*) FROM tinder_entries e JOIN tinder_decks d ON d.id = e.deck_id WHERE d.dataset_key IS NOT NULL)::text;"
+    $counts = (Invoke-Psql -Sql $countSql -Quiet) -join ''
+    $parts = $counts.Trim() -split '\s+'
+    if ($parts.Count -eq 2) {
+        $gotDecks = [int] $parts[0]
+        $gotEntries = [int] $parts[1]
+        Write-Host ''
+        Write-Host "Seeded decks: $gotDecks (expected at least $expectedDecks)"
+        Write-Host "Seeded entries: $gotEntries (expected at least $expectedEntries)"
+        if ($gotDecks -lt $expectedDecks -or $gotEntries -lt $expectedEntries) {
+            Write-Host ''
+            Write-Host 'SHORTFALL: fewer rows landed than the files hold.' -ForegroundColor Red
+            Write-Host 'The usual cause is a deck whose target list does not exist by that exact'
+            Write-Host 'name. Re-run the dry run and check the list_status column.'
+            exit 1
+        }
+    }
+
     Write-Host 'Done.' -ForegroundColor Green
 } finally {
-    foreach ($t in $tempFiles) {
-        if (Test-Path $t) { Remove-Item $t -ErrorAction SilentlyContinue }
-    }
+    if (Test-Path $sqlDir) { Remove-Item $sqlDir -Recurse -Force -ErrorAction SilentlyContinue }
     # Never leave a pasted secret behind in this shell.
     if ($setByUs) { Remove-Item Env:\DATABASE_URL -ErrorAction SilentlyContinue }
 }
