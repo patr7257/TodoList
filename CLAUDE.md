@@ -2,32 +2,33 @@
 
 ## What this is
 
-TodoList Management System: a multi-user task manager with a JavaFX desktop
-client and a headless HTTP API backed by Postgres. Multiple clients talk to one
-API over HTTPS/JSON, join shared to do lists, create and reassign tasks, and
-update task status (NOT_STARTED / IN_PROGRESS / DELAYED / NEED_HELP / DONE). The
-API keeps state consistent under concurrent access and persists everything to
-Postgres (Neon in production).
+TodoList Management System: a multi-user task manager. This repo holds the
+headless HTTP API and the shared enum it exposes. Clients talk to it over
+HTTPS/JSON, join shared to do lists, create and reassign tasks, and update task
+status (NOT_STARTED / IN_PROGRESS / DELAYED / NEED_HELP / DONE). The API keeps
+state consistent under concurrent access and persists everything to Postgres
+(Neon in production).
+
+**There is no front end in this repo.** Since issue #66 the only client is the
+web edition at `/todo` in `patr7257/PatrickRobelWeb`, which is also the phone
+experience via its installable PWA. See "UI work happens in the website repo"
+below, which replaced an older rule about keeping two clients in lockstep.
 
 This started as a DTU course project ("Project 13, To do list", see the course
 template still embedded in old commits) built around tuple space coordination
 concepts. It was later moved into this personal repo, cleaned up into a generic
-installable app, and then migrated off the original jSpace tuple space transport
-onto the HTTP API described here. The jSpace server module has been retired
-(issue #25).
+installable app, migrated off the original jSpace tuple space transport onto the
+HTTP API described here (the jSpace module was retired in issue #25), and finally
+shed its JavaFX desktop client in issue #66.
 
 ## Module layout (Maven multi-module, groupId `com.patr7257`)
 
 - `pom.xml`: parent POM, packaging `pom`, Java 21 (`maven.compiler.release`),
-  declares the three modules below plus shared versions for JUnit 5.11.4 and
-  JavaFX 21.0.5.
-- `shared/` (`todolist-shared`): shared constants and config used by both
-  client and api.
-  - `dk.dtu.shared.Config`: runtime configuration read from system properties
-    with environment variable fallback (API base URL, connection-error
-    handling).
-  - `dk.dtu.shared.TaskStatus`: task status enum with a completion percentage
-    per status.
+  declares the two modules below plus the shared JUnit 5.11.4 version.
+- `shared/` (`todolist-shared`): one class, `dk.dtu.shared.TaskStatus`, the task
+  status enum with a completion percentage per status. It is a separate module
+  only because it predates the client's removal; folding it into `api/` would be
+  a fine future cleanup but nothing depends on it happening.
 - `api/` (`todolist-api`): headless HTTP API. Main class `dk.dtu.api.ApiMain`.
   Built with Javalin (HTTP), JDBI + HikariCP over Postgres, and Gson for JSON.
   Packages to a self-contained shaded fat jar (`todolist-api.jar`).
@@ -48,34 +49,8 @@ onto the HTTP API described here. The jSpace server module has been retired
     queries and is the hottest file in the repo, while counters have no website
     counterpart and shares own an unauthenticated read path that must not be
     coupled to it).
-- `client/` (`todolist-client`): JavaFX desktop client. Main class
-  `dk.dtu.ClientApp`.
-  - `dk.dtu.net`: the HTTP transport. `TodoApiClient` (raw HTTP + JSON),
-    `ApiSession` (process-wide session: client, bearer token, signed-in user,
-    user set), `StatePoller` (polls the API state endpoint to refresh the view),
-    `WebAuthClient` (the sign-in code exchange, which talks to the WEBSITE and
-    not to the API), `ApiModels`, `CounterDto`, `ShareDto`, `ApiException`.
-  - `dk.dtu.scenes`: `A_WelcomeScreen`, `B_LoginScreen`, `B2_Dashboard`,
-    `C_MainMenu`, `D_TodoListView` (letter-prefixed to show screen flow order).
-    `B2_Dashboard` is the post-login landing page and sits between login and the
-    lists view; it is named `B2_` rather than renumbering `C_`/`D_`, which would
-    have churned two large scene files for nothing.
-  - `dk.dtu.auth`: browser-mediated sign in (`Pkce`, `BrowserSignIn`,
-    `Browsers`). See the Sign in section below; this is NOT a password form.
-  - `dk.dtu.methods`: `Lists`, `Tasks`, `Users`, `Helpers`, the client-side
-    operations that call the API via `ApiSession` / `TodoApiClient`, plus
-    `Counters` (counter CRUD), `Shares` (share-link CRUD plus the pure helpers
-    the web edition duplicates verbatim), `Dashboard` (pure stat derivation,
-    "now" injected so it is unit-testable) and `Filters` (the "only mine"
-    predicate, which fails OPEN when no signed-in user is resolvable so an empty
-    table never masquerades as lost data).
-  - `dk.dtu.collumns`: JavaFX `TableView` column/cell classes for the lists and
-    tasks tables (note the module name keeps this spelling).
-  - `dk.dtu.update`: on-launch and Settings-tab auto-update.
-  - `ClientConnectDialog`, `SettingsDialog`, `MainUserConfig`,
-    `DarkModeManager`: connection setup, settings, and dark mode support.
 
-Both `api` and `client` depend on `todolist-shared`.
+`api` depends on `todolist-shared`.
 
 ## Build and run
 
@@ -88,15 +63,15 @@ mvn clean install
 ```
 
 (use `install`, not just `package`, so the `shared` module's jar is resolvable
-by `api` / `client`).
+by `api`).
 
-Run locally, from the repo root, in two terminals. Do NOT add `-am`: with `-am`
-the direct `exec:java` / `javafx:run` goal also runs on the parent aggregate
-module and fails ("parameters 'mainClass' ... are missing"). Run
-`mvn -q install -DskipTests` first so each module's dependencies resolve, then:
+Run the API from the repo root. Do NOT add `-am`: with `-am` the direct
+`exec:java` goal also runs on the parent aggregate module and fails
+("parameters 'mainClass' ... are missing"). Run `mvn -q install -DskipTests`
+first so dependencies resolve.
 
-Start the API. It reads `DATABASE_URL` (Postgres connection string) and
-`TODO_SESSION_SECRET` from the environment.
+It reads `DATABASE_URL` (Postgres connection string) and `TODO_SESSION_SECRET`
+from the environment.
 
 `mvn -pl api exec:java` does NOT start an embedded Postgres. The embedded
 Postgres in this repo (`io.zonky.test`) is a TEST-scope dependency used only by
@@ -112,18 +87,9 @@ Use the throwaway Docker Postgres instead (see "Local dev database" below):
 $env:DATABASE_URL='postgres://postgres:todo@localhost:5433/todo'; $env:TODO_SESSION_SECRET='dev-secret'; mvn -pl api exec:java
 ```
 
-Start the client (separate terminal):
-
-```powershell
-mvn -pl client javafx:run
-```
-
-The client needs TWO origins, not one: the API base URL and the **web origin**
-sign in happens on (see the Sign in section). Both are set in the in-app connect
-dialog and remembered via `ServerPrefs` (Java Preferences, registry key
-`HKCU:\Software\JavaSoft\Prefs\dk\dtu`), as `api.url` and `web.url`, with
-defaults in `dk.dtu.shared.Config`. Pointing the client at a local `next dev` is
-impossible without setting the web origin, which is why it is not optional.
+To exercise the UI against a local API, run the website from
+`patr7257/PatrickRobelWeb` (`cd website; pnpm dev`) with `TODO_API_BASE_URL`
+pointed at `http://localhost:8080`.
 
 ## Tests
 
@@ -137,21 +103,10 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
   their own `EmbeddedPostgres` and also drive a real Javalin instance on an
   ephemeral port, so routes and auth are asserted rather than assumed.
   `ViewsTest` pins the EXACT key set and order of the state payload's list
-  object: that is the regression guard for the separate website client.
+  object: that is the regression guard for the website client.
   `ShareViewsTest` plus `SharesIntegrationTest` do the same for the public
   share payload, and additionally assert what is ABSENT from it, which is the
   contract that matters for the API's only unauthenticated output.
-- `client`: `HelpersTest`, `ListsTest`, `TasksTest`, `ViewPrefsTest`,
-  `FiltersTest`, `DashboardStatsTest`, `CountersTest`, `SharesTest`,
-  `auth/PkceTest`, `auth/BrowserSignInTest`, `net/StatePollerTest`,
-  `net/TodoApiClientTest`, `net/CounterClientTest`, `net/ShareClientTest`,
-  `net/WebAuthClientTest`. No JavaFX is instantiated in tests; scene logic is
-  extracted into pure helpers so it can be tested at all. `BrowserSignInTest` is
-  the exception that proves the rule: it starts the REAL loopback listener and
-  drives it with `HttpClient` (wrong state, missing state, double callback,
-  `/favicon.ico`), because that server is plain JDK code with no JavaFX in it.
-  It never opens a browser: binding and opening are deliberately separate calls
-  so no test can ever touch the desktop.
 
 Run all tests from the repo root with `mvn test`.
 
@@ -188,14 +143,15 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V5 | #46 | `fun_counters` |
 | V6 | #52 | `list_shares` (public share links) |
 | V7 | #51 | `todo_credentials` (passkeys) + `users.pw_hash` made nullable |
+| V8 | #56 | RESERVED: `tinder_decks`, `tinder_entries`, `tinder_swipes` |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
 - **`outOfOrder` is at its default `false`, and this has teeth.** If a higher
   version reaches production before a lower one, `flyway.migrate()` throws at
   boot, the Dokploy container crash-loops, and the live API is down for the
-  desktop clients AND the website. This was proven, not assumed: applying V5
-  before V3 on a scratch database fails with
+  website. This was proven, not assumed: applying V5 before V3 on a scratch
+  database fails with
   `FlywayValidateException: Detected resolved migration not applied to database: 3`.
   Consequence: when two branches each add a migration, pre-assign the numbers and
   land them in ONE merge, or renumber the second branch's own file before it
@@ -206,60 +162,20 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
   to production, NEVER edit it: a checksum mismatch crash-loops the container.
   Corrections ship as a new version.
 
-## Packaging installers
+## CI and releases
 
-`build-installers.ps1` (Windows) and the macOS steps in `README.md` use
-`jpackage` to build a native CLIENT installer (MSI on Windows, DMG on macOS)
-that bundles a JRE, so end users do not need Java installed. Only the client is
-packaged: the API is a hosted service, not an installer.
+One workflow, `.github/workflows/ci.yml`: a full reactor build plus tests on
+every pull request. Main only receives verified merges.
 
-CI (two workflows):
-- `.github/workflows/ci.yml` runs on every pull request: full reactor build +
-  tests plus the installer-module guard. Main only receives verified merges.
-- `.github/workflows/build-installers.yml` RELEASES. Auto: every push to `main`
-  (i.e. every merged PR) bumps the PATCH of the latest GitHub release, builds
-  both installers with that version baked in, and publishes a GitHub Release;
-  the in-app updater then offers it to users. Docs-only merges (`*.md`,
-  `docs/`, `.claude/`) skip the release. Manual: pushing a `v*` tag releases
-  exactly that version (use for minor/major bumps; the next auto release bumps
-  from it). Runs are queued via a concurrency group so two merges cannot
-  compute the same next version.
-
-- The jlinked runtime must include every JDK module the app touches, not just
-  the JavaFX ones (`java.logging` for Ikonli/JNA, `java.naming`, `java.sql`,
-  `java.net.http`, `jdk.jfr`, `jdk.httpserver` for the sign-in loopback listener,
-  etc.). Note the trap `jdk.httpserver` illustrates: it lived in TEST scope for
-  a long time, so jdeps never flagged it, and it only became required the day
-  `dk.dtu.auth.BrowserSignIn` moved it into main code. The list is SINGLE-SOURCED in
-  `scripts/installer-modules.txt`, read by both workflow jobs, by
-  `build-installers.ps1`, and by the guard
-  (`scripts/check-installer-modules.ps1`, jdeps-based, runs in PR CI and before
-  every release build). Adding a client dependency that needs a new JDK module
-  means adding it THERE: a missing one makes the packaged app crash silently at
-  startup (`NoClassDefFoundError`) even though `mvn javafx:run` works fine.
-- The client jpackage step also passes
-  `--add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED` so the
-  "Auto-fit columns" reflection into the TableView skin works in the packaged
-  build (the same option is in `client/pom.xml` for `mvn javafx:run`).
-
-Release conventions (do not break these):
-- The version comes from the `version` job in `build-installers.yml`: a `v*`
-  tag ref is used verbatim (stripped of the `v`), otherwise the latest GitHub
-  release's patch is bumped. It feeds `--app-version` AND `--java-options
-  -Dtodolist.version=...` (macOS rejects a leading-zero major, so the fallback
-  with no releases and no tags is `1.0.0`).
-- Each release also gets STABLE, versionless asset copies
-  (`TodoList-Client-Windows.msi`, `TodoList-Client-macOS.dmg`) so
-  `releases/latest/download/<name>` is a permanent URL the website and the
-  in-app updater rely on.
-- `--win-upgrade-uuid` (client `c70294f3-...`) and `--mac-package-identifier`
-  (`com.patr7257.todolist.client`) are PERMANENT; changing one orphans installed
-  copies. App icon is `client/src/main/resources/Icons/appicon.{ico,png}`.
+There is **no release workflow and no installer any more** (issue #66). Merging
+to `main` redeploys the API container on Dokploy, and nothing else. The last
+desktop installer release, v2.0.8, stays on the Releases page; an installed copy
+keeps working against this API but no longer receives updates.
 
 ## Sign in (passkeys + magic link, issue #51)
 
 **There is no password form anywhere in the product any more.** Sign in happens
-on the website and both clients consume the result.
+on the website, which is now also the only client.
 
 - The web edition (`/todo` in `patr7257/PatrickRobelWeb`) offers a passkey
   (`@simplewebauthn`, discoverable credentials, so login is usernameless) or a
@@ -269,18 +185,11 @@ on the website and both clients consume the result.
   own side; that pair is the only thing standing between "the website mints" and
   "the Java API accepts", because a mismatch shows up solely as a 401 in the
   merged system.
-- The JavaFX client cannot do WebAuthn, so it opens the system browser and gets
-  the token back on a `127.0.0.1` loopback listener. This is RFC 8252 with PKCE.
-  The URL carries a **port number, never a `redirect_uri`**, so open redirect is
-  not a category that exists here. The browser only ever carries a one-time code;
-  the token is fetched by the client itself over HTTPS. PKCE is pinned against
-  **RFC 7636 Appendix B** in both repos.
-- `port` may be legitimately **absent** when the client cannot bind a listener.
-  Absent means "no loopback, the typed code is the whole flow"; present but
-  invalid is still rejected. Those are different and are handled separately.
-- **The typed fallback code is phishable and PKCE does not fix it**, because PKCE
-  only protects the party that chose the challenge. The mitigation is the
-  anti-phishing warning inside the code panel, in both languages. Do not remove it.
+- The website also still serves the **desktop handoff** endpoints
+  (`/api/todo/auth/desktop-code`, `/api/todo/auth/desktop-exchange`), the
+  RFC 8252 plus PKCE ceremony the retired JavaFX client used. They are harmless
+  and are what lets an already-installed v2.0.8 copy sign in at all, so do not
+  remove them from that repo as part of anything happening here.
 - **Password login still exists in the API, deliberately unused.** Clients
   installed before v2.0.8 rely on it. The kill switch is `UPDATE users SET
   pw_hash = NULL` (V7 made the column nullable and `Scrypt.verify` returns false
@@ -307,77 +216,50 @@ it to whatever origin actually serves the `/s/:token` page. The public share
 route also has its own limiter, `API_SHARE_RATE_LIMIT_MAX` (default 60) per
 `API_SHARE_RATE_LIMIT_WINDOW_SECONDS` (default 60), keyed on client IP.
 
-## Auto-update
-
-The client checks for updates on launch (a dismissible banner) and via a Settings
-"Updates" tab (`dk.dtu.update.*`): it queries the public GitHub Releases API
-anonymously, compares the running version
-(`System.getProperty("todolist.version", "dev")`, so no nagging when run from
-source) to the latest tag, downloads the platform installer, and runs it
-(`msiexec /i` on Windows, `open` on macOS), upgrading in place.
-
-## Planned: TodoTinder (issue #44, idea stage, nothing built)
+## Planned: TodoTinder (issue #44)
 
 A mobile-first swipe app living in THIS repo: multiple decks (AcTindervitivities,
 VacayTinderation, SwoppingSwiper, DateNighTinders), right swipe creates an item in the
 deck's linked todo list via the existing API, gated by the existing token auth (the two
 account holders only). Grocery deck recycles staples every run; idea decks deplete per
-user and offer a copyable POST URL to have a Claude session refill the deck. The full
-spec draft and the "Questions for Patrick" checklist live in issue #44; run a design
-session against that issue before writing any code. This supersedes the Activity Tinder
+user and offer a copyable POST line to have a Claude session refill the deck.
+
+The design session is DONE: the settled spec is a comment on #44 and the work is
+split into #56 (V8 schema plus API), #57 (the four datasets), #58 (the swipe PWA
+served by Javalin at `tinder.todolist.patrickrobel.dk`) and #59 (refill import
+endpoint). Read those before writing code. This supersedes the Activity Tinder
 note in `patr7257/BoredAPIActivityWheel`.
 
-## MANDATORY: UI work covers BOTH clients
+## MANDATORY: UI work happens in the website repo, not here
 
-Any UI change to the TodoList product ships for the JavaFX desktop client AND for
-the web edition (which is also the phone experience, via the installable PWA).
-Do not deliver desktop-only UI and file the web side as a follow-up unless Patrick
-explicitly says desktop only.
+This repo has no user interface. Any change a person can see ships in
+`patr7257/PatrickRobelWeb`, as the `/todo` route (desktop browser and, via the
+installable PWA, the phone). That is one front end, not two: issue #66 retired
+the JavaFX desktop client precisely so a product change never has to be built
+twice again.
 
-The two front ends live in DIFFERENT repos: the desktop client is `client/` here,
-the web edition is the `/todo` route in `patr7257/PatrickRobelWeb`. So a UI change
-usually means two issues on two boards (this repo's board is GitHub Project #7,
-the website's is #2) and two pull requests. Plan for that up front.
-
-Backend work is shared and done ONCE in `api/`, then consumed by both. Keep
-behaviour rules identical across clients or the two UIs will disagree about the
-same data: the overdue rule (due date before today AND status not `DONE`) and the
-completion math (average of per-status percentages over ALL items, not an average
-of per-list averages) are the two that have already caused divergence.
+- A UI change usually still means an issue on each board (this repo's board is
+  GitHub Project #7, the website's is #2) whenever the API has to move too.
+- Backend work is done ONCE here and consumed there. Two behaviour rules used to
+  drift between the clients and are worth keeping written down even with one
+  client left: the overdue rule (due date before today AND status not `DONE`) and
+  the completion math (average of per-status percentages over ALL items, not an
+  average of per-list averages).
+- The one exception is the TodoTinder swipe app (#58), which is served as static
+  files by this API on its own subdomain. It is a separate product surface, not
+  the todo UI.
 
 ## Notable conventions
 
-- Package root is `dk.dtu` for all three modules (`dk.dtu.shared.*` for the
-  shared module, `dk.dtu.api.*` for the api module), a holdover from the
-  project's DTU course origin; the Maven `groupId` is `com.patr7257`.
-- Client/API communication is HTTP + JSON via `dk.dtu.net.TodoApiClient`, driven
-  through the process-wide `dk.dtu.net.ApiSession`. There is no tuple space and
-  no direct RPC. The client refreshes by polling the API state endpoint
-  (`dk.dtu.net.StatePoller`) and refetching the current view rather than applying
-  incremental updates.
-- The client visual layer is AtlantaFX (global Primer theme, swapped
-  light/dark) + the "Soft Warm Minimal" brand overlay: `common.css` (structure
-  + warm-paper LIGHT tokens, overriding the AtlantaFX `-color-*` looked-up
-  colors; serif Georgia display titles, status pills, warm status/band tokens)
-  and `theme-warm-dark.css` (warm-charcoal DARK token re-overrides only).
-  `DarkModeManager.applyBrand(List<String>)` attaches them in the right order
-  and is the ONE way to attach brand styling (dialogs delegate to it). Keep the
-  two token blocks in lockstep when adding a color. Vector icons come from
-  Ikonli via `dk.dtu.ui.Icons`; the lists/tasks tables are real `TableView`s
-  built by the `dk.dtu.ui.Tables` adapter from the `dk.dtu.collumns.*` `Column`
-  classes; `dk.dtu.ui.WindowChrome` darkens the native Windows title bar via the
-  Win32 DWM API (JNA).
-- Per-user view state (filters, column visibility/order/width, sort, manual
-  reordering) auto-persists via `dk.dtu.ViewPrefs` (Java Preferences, keyed by
-  the signed-in user, local to this machine) and restores on open. New
-  view-affecting UI state should go through `ViewPrefs`, not ad-hoc storage.
-  Namespacing matters: the "only mine" toggles live as the key `onlyMine` INSIDE
-  the existing per-view `filters` map of view ids `lists` and `tasks`, and any
-  dashboard state uses `dashboard`-prefixed keys. A save must `load` the view
-  first and overwrite only its own slice, or it clobbers column widths and sort.
-- **`GET /api/todo/state` is APPEND-ONLY.** The separate website client parses
-  that exact payload, so keys may be added at the end of an object but never
-  removed, renamed, retyped or reordered. `api/src/test/java/dk/dtu/api/web/ViewsTest.java`
+- Package root is `dk.dtu` for both modules (`dk.dtu.shared.*` for the shared
+  module, `dk.dtu.api.*` for the api module), a holdover from the project's DTU
+  course origin; the Maven `groupId` is `com.patr7257`.
+- Client/API communication is HTTP + JSON. There is no tuple space and no direct
+  RPC. Clients refresh by re-reading the state endpoint and refetching the
+  current view rather than applying incremental updates.
+- **`GET /api/todo/state` is APPEND-ONLY.** The website client parses that exact
+  payload, so keys may be added at the end of an object but never removed,
+  renamed, retyped or reordered. `api/src/test/java/dk/dtu/api/web/ViewsTest.java`
   pins the list object's key set and order as the regression guard. A new
   resource family gets its OWN endpoint instead of being bolted into `/state`,
   which is why the fun counters live at `/api/todo/counters`.
@@ -398,25 +280,18 @@ of per-list averages) are the two that have already caused divergence.
   id. `ShareViewsTest` and `SharesIntegrationTest` pin both the exact key order
   and the absence of every forbidden key and value.
 - **The share `url` is composed only by the API**, as
-  `TODO_SHARE_BASE_URL + "/s/" + token` in `ShareViews.share`. Neither client
-  builds a share URL from a token, which makes it structurally impossible for
-  the desktop app and the website to show different links for the same share.
-  Share tokens come from `dk.dtu.api.domain.ShareTokens` (24 SecureRandom bytes,
-  URL-safe base64 without padding: 32 chars, 192 bits). Every share failure
-  (unknown, malformed, revoked, expired) answers a byte-identical 404.
+  `TODO_SHARE_BASE_URL + "/s/" + token` in `ShareViews.share`. No client builds a
+  share URL from a token. Share tokens come from `dk.dtu.api.domain.ShareTokens`
+  (24 SecureRandom bytes, URL-safe base64 without padding: 32 chars, 192 bits).
+  Every share failure (unknown, malformed, revoked, expired) answers a
+  byte-identical 404.
 - `lists.owner_id uuid REFERENCES users(id)` is the real owner; the legacy
   free-text `lists.owner` column is KEPT and kept in sync as a denormalized
-  display name. Two reasons, both load-bearing: the website may read that column
-  directly, and because every merge publishes a client installer separately from
-  the API redeploy, a freshly auto-updated client can briefly talk to an older
-  API, where an `ownerId`-only patch would produce an empty column set and a 400.
-  `users.name` is NOT unique, so the backfill resolves only unambiguous matches
-  and deliberately leaves the rest NULL to be re-picked by hand.
+  display name, because the website may read that column directly. `users.name`
+  is NOT unique, so the V4 backfill resolved only unambiguous matches and
+  deliberately left the rest NULL to be re-picked by hand.
 - Counter bumps are relative in SQL (`value = value + :delta`), not a
-  read-modify-write, so two people clicking at once both land.
-- Every dialog must be prepared via `DarkModeManager.prepareDialog(dialog,
-  owner)`: it sets the owner window + `WINDOW_MODAL` (fixes the macOS "app
-  slides away" bug) and attaches brand + dark-mode styling. Never show a bare
-  `Dialog`/`Alert` without it.
+  read-modify-write, so two people clicking at once both land. Any future tally
+  follows the same rule.
 - The API persists state to Postgres via JDBI; schema is applied by
   `dk.dtu.api.db.Migrations`.

@@ -467,24 +467,25 @@ drift. Edit the master, then propagate.
 
 ## Cached values for this repo (TodoList)
 
-Discovered 2026-08-03; re-verify with `gh` if anything looks stale.
+Discovered 2026-08-03, refreshed 2026-08-16 after issue #66; re-verify with `gh`
+if anything looks stale.
 
 - Repo: `patr7257/TodoList`. Default branch `main`, and there is NO `dev` branch:
-  **`main` IS production.** Every non-docs merge to `main` publishes a client
-  installer release AND triggers a Dokploy redeploy of the live API, which runs
-  Flyway against production Neon. A merge is a ship.
-- Docs-only merges skip the release when EVERY changed path matches
-  `^([^/]*\.md|docs/|\.claude/)`. Use a separate docs PR to avoid a pointless
-  release and redeploy.
+  **`main` IS production.** Every merge to `main` triggers a Dokploy redeploy of
+  the live API, which runs Flyway against production Neon. A merge is a ship.
+- Since issue #66 there is no installer release workflow, so a merge no longer
+  publishes anything to the Releases page. `ci.yml` on pull requests is the only
+  workflow left.
 - Board: GitHub Project **#7**, "TodoList dev board", owner `patr7257`.
   - Project id: `PVT_kwHOCbc9N84BeBBQ`
   - Status field id: `PVTSSF_lAHOCbc9N84BeBBQzhYeUbM`
   - Options: Todo `f75ad846`, In Progress `47fc9ee4`, Done `98236657`
   - There is **no "In review" column**, so post the draft PR link as an issue
     comment instead of moving a card there.
-- The web front end for this product lives in a DIFFERENT repo,
-  `patr7257/PatrickRobelWeb` (board #2). UI work covers both clients, so expect
-  two issues and two PRs (see the MANDATORY section in this repo's CLAUDE.md).
+- The ONLY front end for this product lives in a DIFFERENT repo,
+  `patr7257/PatrickRobelWeb` (board #2), as the `/todo` route. Anything a user
+  can see is built there, so a product change is often an issue and a PR in each
+  repo (see the MANDATORY section in this repo's CLAUDE.md).
 - Two parallel branches that each add a Flyway migration MUST have their version
   numbers pre-assigned and land in one merge; `outOfOrder` is false, so the wrong
   order crash-loops the production API at boot.

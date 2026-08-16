@@ -9,18 +9,16 @@
     <packaging>pom</packaging>
     
     <name>TodoList Management System</name>
-    <description>A personal project for managing todo lists with client-server architecture</description>
+    <description>A personal project for managing todo lists: a headless HTTP API and the shared code it exposes</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
         <junit.version>5.11.4</junit.version>
-        <javafx.version>21.0.5</javafx.version>
     </properties>
-    
+
     <modules>
         <module>shared</module>
-        <module>client</module>
         <module>api</module>
     </modules>
 </project>

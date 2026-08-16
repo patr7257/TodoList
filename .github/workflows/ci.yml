@@ -1,8 +1,9 @@
 name: CI
 
-# PR-level gate: main only receives code that builds, passes the full test
-# reactor, and passes the installer-module guard. Merging to main then triggers
-# the auto-release in build-installers.yml.
+# PR-level gate: main only receives code that builds and passes the full test
+# reactor. Since issue #66 there is no desktop client and no installer release,
+# so this is the only workflow in the repo; merging to main redeploys the API on
+# Dokploy and nothing else.
 on:
   pull_request:
 
@@ -22,15 +23,3 @@ jobs:
 
       - name: Build and test all modules
         run: mvn -B clean verify
-
-      - name: Prepare Client jpackage input
-        run: |
-          mkdir -p client-jpackage-input
-          cp client/target/todolist-client-1.0.0.jar client-jpackage-input/
-          cp client/target/libs/*.jar client-jpackage-input/
-
-      # Same guard the release workflow runs, so a missing jlink module fails
-      # the PR instead of the release.
-      - name: Guard against missing installer modules
-        shell: pwsh
-        run: ./scripts/check-installer-modules.ps1

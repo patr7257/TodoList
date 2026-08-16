@@ -19,5 +19,5 @@ build-log.txt
 .DS_Store
 Thumbs.db
 
-# Local UI screenshots (capture-app.ps1)
+# Local UI screenshots (grab-window.ps1)
 /screenshots/
