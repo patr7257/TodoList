@@ -2,12 +2,13 @@
 
 ## Date, branch, PR, CI
 
-- 2026-08-16. Branch: `docs/session-close-2026-08-16` (this file's own PR).
-  Everything else from this session is merged and live.
+- 2026-08-16 (closing edits 2026-08-17). Branch: `docs/handover-tinder-link`
+  (this file's own PR). Everything else from this session is merged and live.
 - **TodoList**: #69 (#66), #70 (#61), #71 (#56 + #59), #72 (#61), #73 (#57), all
   squash-merged with CI green. `main` is at the #73 merge plus this docs branch.
-- **PatrickRobelWeb**: #173 (the `/todo` UX batch) and #174 (TodoTinder), both
-  merged, both Vercel production deploys verified live.
+- **PatrickRobelWeb**: #173 (the `/todo` UX batch), #174 (TodoTinder) and #176
+  (the dashboard link into TodoTinder), all merged, all Vercel production
+  deploys verified live.
 - **Every issue that existed at session start is closed.** The only open issue in
   either repo's TodoList scope is **#74**, which this session filed on purpose.
 
@@ -23,11 +24,12 @@ UX backlog shipped. Product changes now only ever have to be made once.
   receiving updates.
 - **TodoTinder (#44) is finished and live** at `https://patrickrobel.dk/tinder`:
   V8 schema, swipe/match/import API, four curated decks totalling 440 entries,
-  and an installable swipe PWA. The epic and all four sub-issues are closed.
+  and an installable swipe PWA, linked from the `/todo` dashboard on both
+  desktop and phone. The epic and all four sub-issues are closed.
 - **The `/todo` UX backlog shipped**: #63, #64, #65, #67, #68 here plus
   PatrickRobelWeb #169 and #170.
 - **Password login is gone** from the API. `SeedUser` deliberately survived.
-- Six implementation subagents, eight PRs, two repos, seven production merges.
+- Six implementation subagents, ten PRs, two repos, nine production merges.
 
 **Five bugs were found that CI could not have caught**, three of them in code
 that was already typechecking, unit-testing and building green. They are in the
@@ -39,18 +41,15 @@ gotchas section below, because each is a repeatable class of mistake.
    verified end to end headlessly against a live API, but never on a real phone,
    and the swipe gesture's feel (an 8px tap slop and a 96px commit distance) is
    the kind of thing only a thumb can judge.
-2. **Decide whether `/todo` should link to `/tinder`.** Nothing links into it
-   today; it is reachable only by URL or as an installed app. That was left out
-   on purpose rather than forgotten.
-3. **Read the four decks and prune them.** 440 entries were authored to a brief
+2. **Read the four decks and prune them.** 440 entries were authored to a brief
    and verified structurally (exact counts, no duplicates, correct Danish), but
    nobody has read them all for taste. `scripts/data/tinder-*.json`, then re-run
    the seed script; it is idempotent.
-4. **Seed the four target lists in production before using TodoTinder for real.**
+3. **Seed the four target lists in production before using TodoTinder for real.**
    The decks point at lists named `Aktiviteter`, `Rejsemål`, `Indkøb` and
    `Date nights`, resolved BY NAME. If they do not exist in production the seed
    reports a shortfall and exits non-zero rather than half-seeding.
-5. **Work #74** (per-user session revocation) when it matters. It is a breaking
+4. **Work #74** (per-user session revocation) when it matters. It is a breaking
    wire-format change pinned from both repos, so it needs a coordinated deploy.
 
 ## Verbatim resume commands (PowerShell)
@@ -157,14 +156,15 @@ cd "C:\Users\pr\repos\1-Personal\TodoList"; .\scripts\dev-db.ps1 -Stop
 
 - **Nothing of mine is running.** The dev database, the API container and the
   dev server are all stopped; ports 3100, 18080, 5433 and 8080 are free.
-- **Docker Desktop was left UP deliberately, and this is the one thing to know.**
-  This session started it, but `mw-postgres` (MW Service Tool, a different repo)
-  is now running on it and that project's dev server is live on **:3000**.
-  Stopping Docker would have taken its database out from under it, so the
-  ownership marker was released instead: session end will leave Docker alone.
-  Stop it yourself when the MW work is done.
-- All worktrees removed in both repos. TodoList is on
-  `docs/session-close-2026-08-16`; PatrickRobelWeb is on `main`, clean.
+- **Docker Desktop: this session started it, and session end will stop it.**
+  Worth knowing why that took two decisions rather than one. Mid-session it was
+  left up on purpose, because `mw-postgres` (MW Service Tool, a different repo)
+  had come up with it and that project's dev server was live on **:3000**;
+  stopping Docker would have pulled the database out from under it. That server
+  has since stopped and nothing is using the container, so the ownership marker
+  was left in place and the normal cleanup applies. If you are ever mid-MW-work
+  when a TodoList session ends, check `:3000` before letting Docker go.
+- All worktrees removed in both repos. Both are on `main` and clean.
 - No cron jobs or scheduled tasks were created. Keep-awake is not active.
 - `.claude/.codev-ack` is now gitignored and untracked, so it no longer shows as
   permanently modified. All six historical session lines were preserved.
