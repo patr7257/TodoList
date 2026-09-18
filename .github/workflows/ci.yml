@@ -6,6 +6,19 @@ name: CI
 # Dokploy and nothing else.
 on:
   pull_request:
+  # main IS production here: a merge redeploys the API on Dokploy and Flyway
+  # applies any pending migration against production Neon at boot. A pull
+  # request is tested against its own head, not against the merge result, so two
+  # green pull requests can still produce a broken main. Verifying the push
+  # cannot prevent that, but it reports it in about two minutes rather than
+  # leaving the website to discover it. See issue #81.
+  push:
+    branches: [main]
+
+# A superseded run tells you nothing, so cancel it rather than queue it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
