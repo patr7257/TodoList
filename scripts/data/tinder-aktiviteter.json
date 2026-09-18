@@ -926,93 +926,12 @@
       }
     },
     {
-      "text": "Besøg Tivolis julemarked og drik gløgg under lysene",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "vinter"
-      }
-    },
-    {
-      "text": "Tag til Kulturnatten i oktober og vælg tre steder I aldrig har besøgt",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "efterår"
-      }
-    },
-    {
-      "text": "Besøg et påskemarked og find de bedste håndlavede påskeæg",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "forår"
-      }
-    },
-    {
-      "text": "Tag til Copenhagen Jazz Festival og find en gratis gadekoncert",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "gratis",
-        "season": "sommer"
-      }
-    },
-    {
-      "text": "Besøg Distortion og dans i gaderne til musikken",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "sommer"
-      }
-    },
-    {
-      "text": "Tag til et julemarked på Højbro Plads og køb en julegave til hinanden",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "vinter"
-      }
-    },
-    {
-      "text": "Se nytårsfyrværkeriet fra Amalienborg Slotsplads",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "gratis",
-        "season": "vinter"
-      }
-    },
-    {
-      "text": "Besøg en halloweenudstilling i oktober og pynt jer uhyggeligt",
-      "metadata": {
-        "type": "indoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "efterår"
-      }
-    },
-    {
       "text": "Tag til Tivolis sommerkarneval og prøv den vildeste forlystelse",
       "metadata": {
         "type": "outdoor",
         "participants": 2,
         "priceBand": "mellem",
         "season": "sommer"
-      }
-    },
-    {
-      "text": "Besøg et adventsmarked på landet uden for byen",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "vinter"
       }
     },
     {
@@ -1313,15 +1232,6 @@
       }
     },
     {
-      "text": "Besøg en julemarkedsstand på Nytorv og køb varm kakao",
-      "metadata": {
-        "type": "outdoor",
-        "participants": 1,
-        "priceBand": "billig",
-        "season": "vinter"
-      }
-    },
-    {
       "text": "Tag til et loppemarked på Islands Brygge en lørdag formiddag",
       "metadata": {
         "type": "outdoor",
@@ -1424,7 +1334,7 @@
       "text": "Besøg en byhave i Nørrebro og hjælp med at luge en bed sammen",
       "metadata": {
         "type": "outdoor",
-        "participants": 1,
+        "participants": 2,
         "priceBand": "gratis",
         "season": "forår"
       }
@@ -1595,7 +1505,7 @@
       "text": "Tag på en øko-havevandring i Valbyparkens nyttehaver",
       "metadata": {
         "type": "outdoor",
-        "participants": 1,
+        "participants": 2,
         "priceBand": "gratis",
         "season": "forår"
       }
@@ -1607,15 +1517,6 @@
         "participants": 2,
         "priceBand": "gratis",
         "season": "efterår"
-      }
-    },
-    {
-      "text": "Besøg en helligtrekongers-koncert i januar i en lokal kirke",
-      "metadata": {
-        "type": "indoor",
-        "participants": 2,
-        "priceBand": "billig",
-        "season": "vinter"
       }
     },
     {
@@ -1703,7 +1604,7 @@
       "text": "Tag til en boghandel-læsegruppe og diskuter en bog I begge har læst",
       "metadata": {
         "type": "indoor",
-        "participants": 4,
+        "participants": 2,
         "priceBand": "gratis",
         "season": "hele året"
       }
