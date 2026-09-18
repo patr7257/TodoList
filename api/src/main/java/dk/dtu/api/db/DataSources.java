@@ -27,6 +27,14 @@ public final class DataSources {
     }
 
     public static HikariDataSource fromJdbcUrl(String jdbcUrl) {
+        return new HikariDataSource(buildConfig(jdbcUrl));
+    }
+
+    /**
+     * Builds the pool config without opening a connection, so tests can assert on
+     * it directly instead of paying for {@link HikariDataSource}'s eager connect.
+     */
+    static HikariConfig buildConfig(String jdbcUrl) {
         Parsed parsed = parse(jdbcUrl);
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(parsed.url());
@@ -41,7 +49,16 @@ public final class DataSources {
         config.setMinimumIdle(1);
         // Fail fast if the database is unreachable at startup.
         config.setInitializationFailTimeout(10_000);
-        return new HikariDataSource(config);
+        // Neon closes an idle server side connection well before Hikari's 30 minute
+        // default maxLifetime, so the pool kept handing out sockets Neon had already
+        // closed ("Failed to validate connection ... This connection has been
+        // closed."). Keep maxLifetime comfortably under Neon's idle close window, and
+        // keepaliveTime below that so the one connection minimumIdle pins open is
+        // pinged before it goes stale, not just before it is retired.
+        config.setMaxLifetime(240_000);
+        config.setKeepaliveTime(60_000);
+        config.setIdleTimeout(120_000);
+        return config;
     }
 
     /**
