@@ -41,8 +41,11 @@ public final class StateController {
             throw HttpError.unauthorized();
         }
 
-        List<ListRow> lists = todo.allListsOrdered();
-        List<ItemRow> items = todo.allItemsOrdered();
+        // Ordered for THIS user (issue #77): their list_order / item_order
+        // overrides where they have them, the baseline sort columns where they
+        // never reordered. The payload shape is unchanged either way.
+        List<ListRow> lists = todo.allListsOrdered(uid);
+        List<ItemRow> items = todo.allItemsOrdered(uid);
         List<UserRow> users = todo.allUsersByName();
 
         Map<String, String> assigneeNames = new LinkedHashMap<>();

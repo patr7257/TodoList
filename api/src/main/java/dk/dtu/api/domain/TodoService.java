@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 import org.jdbi.v3.core.Jdbi;
@@ -58,9 +59,35 @@ public final class TodoService {
 
     // -- lists -----------------------------------------------------------------
 
-    public List<ListRow> allListsOrdered() {
+    /**
+     * Every list in the caller's own order (issue #77): the V9 {@code list_order}
+     * override when that user has one, the baseline {@code lists.sort} column
+     * when they never reordered, then {@code created_at} as the tie-break.
+     *
+     * <p>The resolved value is served through the EXISTING {@code sort} field,
+     * which is the whole point of the design: GET /api/todo/state gains no key,
+     * so the append-only contract and its ViewsTest guard do not move, and the
+     * website's read path needs no change at all.
+     *
+     * <p>The columns are listed out rather than selected as {@code l.*} because
+     * {@code l.*} plus {@code COALESCE(...) AS sort} yields TWO result columns
+     * labelled {@code sort}, and {@code ResultSet.getInt("sort")} then returns
+     * the first one, which is the unresolved baseline. Naming the columns is
+     * the version of this that cannot silently read the wrong one.
+     *
+     * <p>A uid that is null or not a uuid binds as NULL, so no override matches
+     * and every caller falls back to the baseline order rather than getting a
+     * 500 out of a failed cast.
+     */
+    public List<ListRow> allListsOrdered(String uid) {
         return jdbi.withHandle(h -> h
-                .createQuery("SELECT * FROM lists ORDER BY sort ASC, created_at ASC")
+                .createQuery("SELECT l.id, l.name, COALESCE(lo.sort, l.sort) AS sort, l.created_at, "
+                        + "l.owner, l.priority, l.year, l.location, l.description, "
+                        + "l.task_columns_json, l.owner_id "
+                        + "FROM lists l "
+                        + "LEFT JOIN list_order lo ON lo.list_id = l.id AND lo.user_id = CAST(:uid AS uuid) "
+                        + "ORDER BY COALESCE(lo.sort, l.sort) ASC, l.created_at ASC")
+                .bind("uid", uuidOrNull(uid))
                 .map((rs, ctx) -> mapList(rs))
                 .list());
     }
@@ -130,9 +157,23 @@ public final class TodoService {
 
     // -- items -----------------------------------------------------------------
 
-    public List<ItemRow> allItemsOrdered() {
+    /**
+     * Every item in the caller's own order, resolved from the V9
+     * {@code item_order} override exactly as {@link #allListsOrdered(String)}
+     * resolves lists, and subject to the same two notes: the columns are named
+     * so the resolved {@code sort} is the only one in the result set, and a
+     * non-uuid uid simply matches no override.
+     */
+    public List<ItemRow> allItemsOrdered(String uid) {
         return jdbi.withHandle(h -> h
-                .createQuery("SELECT * FROM items ORDER BY sort ASC, created_at ASC")
+                .createQuery("SELECT i.id, i.list_id, i.text, i.description, i.done, i.status, "
+                        + "i.priority, i.due_at, i.location, i.assignee_id, "
+                        + "COALESCE(io.sort, i.sort) AS sort, i.created_by, i.created_at, "
+                        + "i.updated_at, i.year "
+                        + "FROM items i "
+                        + "LEFT JOIN item_order io ON io.item_id = i.id AND io.user_id = CAST(:uid AS uuid) "
+                        + "ORDER BY COALESCE(io.sort, i.sort) ASC, i.created_at ASC")
+                .bind("uid", uuidOrNull(uid))
                 .map((rs, ctx) -> mapItem(rs))
                 .list());
     }
@@ -179,6 +220,81 @@ public final class TodoService {
                 .createUpdate("DELETE FROM items WHERE id = CAST(:id AS uuid)")
                 .bind("id", id)
                 .execute()) > 0;
+    }
+
+    // -- per-user ordering (issue #77) -----------------------------------------
+
+    /** One row of a bulk reorder: which resource, and where the caller put it. */
+    public record SortEntry(String id, int sort) {
+    }
+
+    /**
+     * Upserts the caller's whole list ordering in ONE transaction, writing only
+     * into {@code list_order} and only on the caller's own user_id, so a request
+     * cannot move anyone else's arrangement no matter what it contains.
+     *
+     * <p>Returns the number of rows written, or empty when the uid is not a uuid
+     * or ANY id in the batch is unknown. In the unknown-id case nothing at all is
+     * written: the ids are checked first, inside the same transaction, so a bad
+     * row halfway down the array cannot leave half an arrangement behind. That is
+     * the failure the single-row PATCH path had, where the website fired N
+     * independent requests and a half applied reorder was a real outcome.
+     */
+    public OptionalInt saveListOrder(String uid, List<SortEntry> order) {
+        return saveOrder("list_order", "list_id", "lists", uid, order);
+    }
+
+    /** The items half of {@link #saveListOrder(String, List)}, same contract. */
+    public OptionalInt saveItemOrder(String uid, List<SortEntry> order) {
+        return saveOrder("item_order", "item_id", "items", uid, order);
+    }
+
+    /**
+     * The shared body of the two methods above. {@code overrideTable},
+     * {@code idColumn} and {@code resourceTable} are compile-time constants from
+     * the two call sites and never request data, so interpolating them into the
+     * SQL is safe; every value in the statement is bound.
+     */
+    private OptionalInt saveOrder(String overrideTable, String idColumn, String resourceTable,
+                                  String uid, List<SortEntry> order) {
+        if (!isUuid(uid)) {
+            return OptionalInt.empty();
+        }
+        List<SortEntry> entries = order == null ? List.of() : order;
+        for (SortEntry e : entries) {
+            if (e == null || !isUuid(e.id())) {
+                return OptionalInt.empty();
+            }
+        }
+        if (entries.isEmpty()) {
+            return OptionalInt.of(0);
+        }
+
+        return jdbi.inTransaction(h -> {
+            List<UUID> ids = entries.stream().map(e -> UUID.fromString(e.id())).distinct().toList();
+            int known = h.createQuery("SELECT COUNT(*) FROM " + resourceTable + " WHERE id IN (<ids>)")
+                    .bindList("ids", ids)
+                    .mapTo(Integer.class)
+                    .one();
+            if (known != ids.size()) {
+                return OptionalInt.empty();
+            }
+            // Row by row rather than one multi-VALUES statement: a batch that
+            // names the same id twice would make a single statement fail with
+            // "cannot affect row a second time", and last-one-wins is the
+            // friendlier answer for a drag that produced a duplicate.
+            for (SortEntry e : entries) {
+                h.createUpdate("INSERT INTO " + overrideTable + " (user_id, " + idColumn + ", sort) "
+                                + "VALUES (CAST(:uid AS uuid), CAST(:id AS uuid), :sort) "
+                                + "ON CONFLICT (user_id, " + idColumn + ") "
+                                + "DO UPDATE SET sort = EXCLUDED.sort")
+                        .bind("uid", uid)
+                        .bind("id", e.id())
+                        .bind("sort", e.sort())
+                        .execute();
+            }
+            return OptionalInt.of(entries.size());
+        });
     }
 
     // -- dynamic update helper -------------------------------------------------
@@ -263,6 +379,11 @@ public final class TodoService {
     private static Integer nullableInt(ResultSet rs, String col) throws SQLException {
         int v = rs.getInt(col);
         return rs.wasNull() ? null : v;
+    }
+
+    /** The value itself when it is a uuid, else null (binds as a NULL uuid). */
+    private static String uuidOrNull(String s) {
+        return isUuid(s) ? s : null;
     }
 
     static boolean isUuid(String s) {
