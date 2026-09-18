@@ -13,7 +13,7 @@
     { "text": "Køb skyr", "metadata": { "kategori": "mejeri" } },
     { "text": "Køb feta", "metadata": { "kategori": "mejeri" } },
     { "text": "Køb flødeost", "metadata": { "kategori": "mejeri" } },
-    { "text": "Køb gedeost som noget nyt at smage", "metadata": { "kategori": "mejeri" } },
+    { "text": "Køb gedeost", "metadata": { "kategori": "mejeri" } },
 
     { "text": "Køb løg", "metadata": { "kategori": "grønt" } },
     { "text": "Køb gulerødder", "metadata": { "kategori": "grønt" } },
@@ -21,7 +21,7 @@
     { "text": "Køb agurk", "metadata": { "kategori": "grønt" } },
     { "text": "Hent broccoli", "metadata": { "kategori": "grønt" } },
     { "text": "Køb spinat", "metadata": { "kategori": "grønt" } },
-    { "text": "Køb jordskokker, en sæsonvare vi ikke har prøvet", "metadata": { "kategori": "grønt" } },
+    { "text": "Køb jordskokker", "metadata": { "kategori": "grønt" } },
 
     { "text": "Køb æbler", "metadata": { "kategori": "frugt" } },
     { "text": "Køb bananer", "metadata": { "kategori": "frugt" } },
@@ -29,7 +29,7 @@
     { "text": "Køb citroner", "metadata": { "kategori": "frugt" } },
     { "text": "Hent vindruer", "metadata": { "kategori": "frugt" } },
     { "text": "Køb pærer", "metadata": { "kategori": "frugt" } },
-    { "text": "Køb granatæbler som noget nyt", "metadata": { "kategori": "frugt" } },
+    { "text": "Køb granatæbler", "metadata": { "kategori": "frugt" } },
 
     { "text": "Køb frosne ærter", "metadata": { "kategori": "frost" } },
     { "text": "Køb frosne pommes frites", "metadata": { "kategori": "frost" } },
@@ -37,7 +37,7 @@
     { "text": "Køb frosne bær", "metadata": { "kategori": "frost" } },
     { "text": "Køb frosne rejer", "metadata": { "kategori": "frost" } },
     { "text": "Køb frossen pizza", "metadata": { "kategori": "frost" } },
-    { "text": "Køb frosne edamamebønner, en ny frostvare at prøve", "metadata": { "kategori": "frost" } },
+    { "text": "Køb frosne edamamebønner", "metadata": { "kategori": "frost" } },
 
     { "text": "Køb pasta", "metadata": { "kategori": "kolonial" } },
     { "text": "Køb ris", "metadata": { "kategori": "kolonial" } },
@@ -45,15 +45,15 @@
     { "text": "Køb havregryn", "metadata": { "kategori": "kolonial" } },
     { "text": "Køb olivenolie", "metadata": { "kategori": "kolonial" } },
     { "text": "Køb sukker", "metadata": { "kategori": "kolonial" } },
-    { "text": "Køb sumak, et krydderi vi ikke har prøvet", "metadata": { "kategori": "kolonial" } },
+    { "text": "Køb sumak", "metadata": { "kategori": "kolonial" } },
 
     { "text": "Køb rugbrød", "metadata": { "kategori": "brød" } },
     { "text": "Køb franskbrød", "metadata": { "kategori": "brød" } },
-    { "text": "Hent boller til weekenden", "metadata": { "kategori": "brød" } },
+    { "text": "Hent boller", "metadata": { "kategori": "brød" } },
     { "text": "Køb knækbrød", "metadata": { "kategori": "brød" } },
     { "text": "Køb tortillas", "metadata": { "kategori": "brød" } },
     { "text": "Køb havregrynsboller", "metadata": { "kategori": "brød" } },
-    { "text": "Køb et surdejsbrød fra bageren som noget nyt", "metadata": { "kategori": "brød" } },
+    { "text": "Køb et surdejsbrød", "metadata": { "kategori": "brød" } },
 
     { "text": "Køb hakket oksekød", "metadata": { "kategori": "kød" } },
     { "text": "Køb kyllingebryst", "metadata": { "kategori": "kød" } },
@@ -61,7 +61,7 @@
     { "text": "Køb frikadeller", "metadata": { "kategori": "kød" } },
     { "text": "Køb hakket svinekød", "metadata": { "kategori": "kød" } },
     { "text": "Hent pålæg", "metadata": { "kategori": "kød" } },
-    { "text": "Køb andebryst til weekendens forsøg", "metadata": { "kategori": "kød" } },
+    { "text": "Køb andebryst", "metadata": { "kategori": "kød" } },
 
     { "text": "Køb kaffe", "metadata": { "kategori": "drikkevarer" } },
     { "text": "Køb te", "metadata": { "kategori": "drikkevarer" } },
@@ -69,7 +69,7 @@
     { "text": "Køb øl", "metadata": { "kategori": "drikkevarer" } },
     { "text": "Køb juice", "metadata": { "kategori": "drikkevarer" } },
     { "text": "Køb danskvand", "metadata": { "kategori": "drikkevarer" } },
-    { "text": "Køb en kombucha som ny smag", "metadata": { "kategori": "drikkevarer" } },
+    { "text": "Køb en kombucha", "metadata": { "kategori": "drikkevarer" } },
 
     { "text": "Køb toiletpapir", "metadata": { "kategori": "husholdning" } },
     { "text": "Køb opvasketabs", "metadata": { "kategori": "husholdning" } },
@@ -77,7 +77,7 @@
     { "text": "Køb vaskepulver", "metadata": { "kategori": "husholdning" } },
     { "text": "Køb affaldsposer", "metadata": { "kategori": "husholdning" } },
     { "text": "Køb rengøringsmiddel", "metadata": { "kategori": "husholdning" } },
-    { "text": "Køb kompostposer, en ny vane at prøve", "metadata": { "kategori": "husholdning" } },
+    { "text": "Køb kompostposer", "metadata": { "kategori": "husholdning" } },
 
     { "text": "Køb chips", "metadata": { "kategori": "snacks" } },
     { "text": "Køb popcorn", "metadata": { "kategori": "snacks" } },
@@ -85,6 +85,6 @@
     { "text": "Køb nødder", "metadata": { "kategori": "snacks" } },
     { "text": "Køb kiks", "metadata": { "kategori": "snacks" } },
     { "text": "Køb lakrids", "metadata": { "kategori": "snacks" } },
-    { "text": "Køb ristede kikærter som ny snack", "metadata": { "kategori": "snacks" } }
+    { "text": "Køb ristede kikærter", "metadata": { "kategori": "snacks" } }
   ]
 }

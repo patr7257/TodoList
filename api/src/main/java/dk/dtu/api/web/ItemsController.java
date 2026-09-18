@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 import dk.dtu.api.auth.AuthFilter;
@@ -51,6 +52,37 @@ public final class ItemsController {
 
     public ItemsController(Backend backend) {
         this.backend = backend;
+    }
+
+    // -- bulk reorder (issue #77) ----------------------------------------------
+
+    /**
+     * PUT /api/todo/items/order with
+     * {@code {"order":[{"id":"<uuid>","sort":0}, ...]}}: the caller's whole item
+     * arrangement, upserted into {@code item_order} in ONE transaction. Answers
+     * {@code {"ok":true,"count":N}}, 400 on a malformed body, 404 when any id is
+     * unknown (and then nothing is written).
+     *
+     * <p>The user is the authenticated caller and nothing else. The body carries
+     * no user field and any extra key in it is ignored, so there is no request
+     * that moves another person's ordering.
+     */
+    public void order(Context ctx) {
+        TodoService todo = requireBackend();
+        String uid = ctx.attribute(AuthFilter.UID_ATTRIBUTE);
+        if (uid == null) {
+            throw HttpError.unauthorized();
+        }
+        List<TodoService.SortEntry> entries = OrderBody.parse(Body.parse(ctx.body()));
+
+        OptionalInt written = todo.saveItemOrder(uid, entries);
+        if (written.isEmpty()) {
+            throw HttpError.notFound();
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("count", written.getAsInt());
+        ctx.json(out);
     }
 
     // -- create ----------------------------------------------------------------

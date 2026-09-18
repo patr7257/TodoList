@@ -6,8 +6,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
 
+import dk.dtu.api.auth.AuthFilter;
 import dk.dtu.api.domain.ColumnValue;
 import dk.dtu.api.domain.ListRow;
 import dk.dtu.api.domain.TodoService;
@@ -44,6 +46,36 @@ public final class ListsController {
 
     public ListsController(Backend backend) {
         this.backend = backend;
+    }
+
+    /**
+     * PUT /api/todo/lists/order with
+     * {@code {"order":[{"id":"<uuid>","sort":0}, ...]}}: the caller's whole list
+     * arrangement, upserted into {@code list_order} in ONE transaction (issue
+     * #77). Answers {@code {"ok":true,"count":N}}, 400 on a malformed body, 404
+     * when any id is unknown (and then nothing is written, so a reorder can
+     * never land half applied the way N single-row PATCHes could).
+     *
+     * <p>The user is the authenticated caller and nothing else. The body carries
+     * no user field and any extra key in it is ignored, so there is no request
+     * that moves another person's ordering.
+     */
+    public void order(Context ctx) {
+        TodoService todo = requireBackend();
+        String uid = ctx.attribute(AuthFilter.UID_ATTRIBUTE);
+        if (uid == null) {
+            throw HttpError.unauthorized();
+        }
+        List<TodoService.SortEntry> entries = OrderBody.parse(Body.parse(ctx.body()));
+
+        OptionalInt written = todo.saveListOrder(uid, entries);
+        if (written.isEmpty()) {
+            throw HttpError.notFound();
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("ok", true);
+        out.put("count", written.getAsInt());
+        ctx.json(out);
     }
 
     public void create(Context ctx) {

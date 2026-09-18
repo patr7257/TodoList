@@ -152,7 +152,7 @@ migrations to production):
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V8`.
+`api/src/main/resources/db/migration`. Current head is `V10`.
 
 **Version register.** Because `outOfOrder` is false (see below), migration
 numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
@@ -164,6 +164,8 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V6 | #52 | `list_shares` (public share links) |
 | V7 | #51 | `todo_credentials` (passkeys) + `users.pw_hash` made nullable |
 | V8 | #56 | `tinder_decks`, `tinder_entries`, `tinder_swipes` (TodoTinder) |
+| V9 | #77 | `list_order`, `item_order` (per-user ordering overrides) |
+| V10 | #74 | `users.token_version` (per-user session revocation) |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
@@ -226,9 +228,29 @@ on the website, which is now also the only client.
   row and is on `allowlist.ts`, and the passkey path is usernameless, so it can
   only resolve a credential enrolled from an existing session. A new person
   therefore needs BOTH a `SeedUser` row and an allowlist entry.
-- Revocation is still "rotate `TODO_SESSION_SECRET` in Dokploy AND Vercel, then
-  redeploy both". It logs everyone out everywhere. Per-user revocation would be a
-  breaking wire-format change that `TokenTest` pins on purpose.
+- **Revocation is per user (#74), through the `tv` claim.** The payload is
+  `{"uid":...,"exp":...,"tv":<users.token_version>}`, with `tv` appended LAST so
+  `uid` and `exp` keep their positions, and signing is unchanged (lowercase hex
+  HMAC-SHA256 over the base64url payload STRING). Signing one person out is
+  `UPDATE users SET token_version = token_version + 1 WHERE id = ?`, and there
+  is deliberately no admin endpoint for it yet. Rotating
+  `TODO_SESSION_SECRET` in Dokploy AND Vercel still exists as the everybody
+  option.
+- **A token with NO `tv` still verifies, on purpose.** It was minted before #74,
+  and rejecting those would sign everybody out on the deploy that introduces the
+  feature. The cost is that such a token also survives a revocation, so the
+  branch in `AuthFilter.versionCurrent` can be tightened to reject a missing
+  claim once every live session carries one (the 30 day TTL ages the rest out).
+- **The mint side is what pins the format, not the verify side.** Both parsers
+  scan the payload by key name and tolerate unknown fields, so a verify-only
+  test stays green through a real divergence between the Java API and the
+  website minter. `TokenTest` therefore asserts that `issue` PRODUCES the
+  versioned vector byte for byte, and `session.test.ts` in the website repo has
+  to pin the same string from its side.
+- **This makes the API's verify path do one database read per request**
+  (`TodoService.tokenVersion`), uncached on purpose: a cache would delay a
+  revocation by its TTL, and immediacy is the whole point. A short TTL cache is
+  the obvious optimisation if traffic ever justifies it.
 
 ## Hosting the API
 
@@ -383,6 +405,19 @@ twice again.
   (24 SecureRandom bytes, URL-safe base64 without padding: 32 chars, 192 bits).
   Every share failure (unknown, malformed, revoked, expired) answers a
   byte-identical 404.
+- **Ordering is per user (#77), and it is served through the EXISTING `sort`
+  field.** `lists.sort` / `items.sort` are KEPT as the baseline an account that
+  never reordered still sees, and the V9 tables `list_order` / `item_order`
+  hold one override row per user per resource. The read path resolves
+  `COALESCE(override.sort, base.sort)` in SQL, so `/state` gained no key and
+  `Views` needed no change: if a future change makes `ViewsTest` move because of
+  ordering, the change is wrong. A reorder is written by
+  `PUT /api/todo/lists/order` and `PUT /api/todo/items/order`, body
+  `{"order":[{"id","sort"}, ...]}`, upserted in ONE transaction and keyed on the
+  caller's token uid only, so a half applied reorder is impossible and no
+  request can move another person's arrangement. The `sort` field on the
+  single-row PATCH still writes the shared baseline column; retiring it is a
+  separate cleanup for once the website no longer calls it.
 - `lists.owner_id uuid REFERENCES users(id)` is the real owner; the legacy
   free-text `lists.owner` column is KEPT and kept in sync as a denormalized
   display name, because the website may read that column directly. `users.name`
