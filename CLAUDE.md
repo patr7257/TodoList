@@ -152,7 +152,7 @@ migrations to production):
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V8`.
+`api/src/main/resources/db/migration`. Current head is `V9`.
 
 **Version register.** Because `outOfOrder` is false (see below), migration
 numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
@@ -164,6 +164,7 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V6 | #52 | `list_shares` (public share links) |
 | V7 | #51 | `todo_credentials` (passkeys) + `users.pw_hash` made nullable |
 | V8 | #56 | `tinder_decks`, `tinder_entries`, `tinder_swipes` (TodoTinder) |
+| V9 | #77 | `list_order`, `item_order` (per-user ordering overrides) |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
@@ -383,6 +384,19 @@ twice again.
   (24 SecureRandom bytes, URL-safe base64 without padding: 32 chars, 192 bits).
   Every share failure (unknown, malformed, revoked, expired) answers a
   byte-identical 404.
+- **Ordering is per user (#77), and it is served through the EXISTING `sort`
+  field.** `lists.sort` / `items.sort` are KEPT as the baseline an account that
+  never reordered still sees, and the V9 tables `list_order` / `item_order`
+  hold one override row per user per resource. The read path resolves
+  `COALESCE(override.sort, base.sort)` in SQL, so `/state` gained no key and
+  `Views` needed no change: if a future change makes `ViewsTest` move because of
+  ordering, the change is wrong. A reorder is written by
+  `PUT /api/todo/lists/order` and `PUT /api/todo/items/order`, body
+  `{"order":[{"id","sort"}, ...]}`, upserted in ONE transaction and keyed on the
+  caller's token uid only, so a half applied reorder is impossible and no
+  request can move another person's arrangement. The `sort` field on the
+  single-row PATCH still writes the shared baseline column; retiring it is a
+  separate cleanup for once the website no longer calls it.
 - `lists.owner_id uuid REFERENCES users(id)` is the real owner; the legacy
   free-text `lists.owner` column is KEPT and kept in sync as a denormalized
   display name, because the website may read that column directly. `users.name`

@@ -37,9 +37,14 @@ public final class ApiServer {
         app.post("/api/todo/logout", auth::logout);
         app.get("/api/todo/state", state::get);
         app.post("/api/todo/lists", lists::create);
+        // Bulk per-user reorder (#77), one transaction for the whole
+        // arrangement. PUT on a literal path, so it cannot collide with the
+        // PATCH on /lists/{id} below (different method, and a different path).
+        app.put("/api/todo/lists/order", lists::order);
         app.patch("/api/todo/lists/{id}", lists::update);
         app.delete("/api/todo/lists/{id}", lists::delete);
         app.post("/api/todo/items", items::create);
+        app.put("/api/todo/items/order", items::order);
         app.patch("/api/todo/items/{id}", items::update);
         app.delete("/api/todo/items/{id}", items::delete);
         app.get("/api/todo/counters", counters::list);

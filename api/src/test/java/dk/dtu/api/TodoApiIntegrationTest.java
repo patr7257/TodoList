@@ -274,9 +274,9 @@ class TodoApiIntegrationTest {
         assertEquals(seedUserId, item.createdBy());
 
         // Read back through the ordered queries used by GET /state.
-        List<ListRow> lists = todo.allListsOrdered();
+        List<ListRow> lists = todo.allListsOrdered(seedUserId);
         assertTrue(lists.stream().anyMatch(l -> l.id().equals(list.id())));
-        List<ItemRow> items = todo.allItemsOrdered();
+        List<ItemRow> items = todo.allItemsOrdered(seedUserId);
         assertTrue(items.stream().anyMatch(i -> i.id().equals(item.id())));
 
         // Update: status DONE derives done=true.
@@ -290,7 +290,7 @@ class TodoApiIntegrationTest {
         // Delete list cascades to its items.
         assertTrue(todo.deleteList(list.id()));
         assertFalse(todo.listExists(list.id()));
-        assertTrue(todo.allItemsOrdered().stream().noneMatch(i -> i.id().equals(item.id())),
+        assertTrue(todo.allItemsOrdered(seedUserId).stream().noneMatch(i -> i.id().equals(item.id())),
                 "items should cascade-delete with their list");
     }
 
@@ -335,7 +335,7 @@ class TodoApiIntegrationTest {
         // Read back through the ordered query used by GET /state after re-setting.
         todo.updateList(created.id(), List.of(
                 new ColumnValue("year", ":year", 2030, Types.INTEGER)));
-        ListRow reread = todo.allListsOrdered().stream()
+        ListRow reread = todo.allListsOrdered(seedUserId).stream()
                 .filter(l -> l.id().equals(created.id())).findFirst().orElseThrow();
         assertEquals(2030, reread.year());
 
@@ -369,7 +369,7 @@ class TodoApiIntegrationTest {
         todo.insertItem(new NewItem(list.id(), "b", null, "IN_PROGRESS", null, null, null, null, seedUserId));
         todo.insertItem(new NewItem(list.id(), "c", null, "DONE", null, null, null, null, seedUserId));
 
-        List<ItemRow> items = todo.allItemsOrdered().stream()
+        List<ItemRow> items = todo.allItemsOrdered(seedUserId).stream()
                 .filter(i -> i.listId().equals(list.id()))
                 .toList();
         assertEquals(3, items.size());
