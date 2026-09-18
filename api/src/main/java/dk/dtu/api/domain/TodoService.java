@@ -49,6 +49,26 @@ public final class TodoService {
                 .findFirst());
     }
 
+    /**
+     * The user's current {@code users.token_version} (V10, issue #74), or empty
+     * when the id is unknown or not a uuid.
+     *
+     * <p>Empty is deliberately NOT the same as zero: an unknown id must fail a
+     * version comparison rather than quietly pass it, so the caller treats
+     * empty as "reject" instead of defaulting.
+     */
+    public OptionalInt tokenVersion(String userId) {
+        if (!isUuid(userId)) {
+            return OptionalInt.empty();
+        }
+        Optional<Integer> found = jdbi.withHandle(h -> h
+                .createQuery("SELECT token_version FROM users WHERE id = CAST(:id AS uuid)")
+                .bind("id", userId)
+                .mapTo(Integer.class)
+                .findFirst());
+        return found.isPresent() ? OptionalInt.of(found.get()) : OptionalInt.empty();
+    }
+
     /** All users, id + name only, ordered by name (assignee dropdown source). */
     public List<UserRow> allUsersByName() {
         return jdbi.withHandle(h -> h

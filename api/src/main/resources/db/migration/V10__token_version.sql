@@ -1,0 +1,35 @@
+-- V10: per-user session revocation (issue #74).
+--
+-- Until now the only way to revoke a session was rotating TODO_SESSION_SECRET
+-- in BOTH Dokploy and Vercel and redeploying both, which signs everybody out
+-- of everything. There was no way to sign out one person, or one device.
+--
+-- The fix is a version counter per user. The todo_session payload gains a "tv"
+-- claim carrying the value the token was minted at, and verification rejects a
+-- token whose claim no longer matches this column. Revoking one person's
+-- sessions is then one statement:
+--
+--   UPDATE users SET token_version = token_version + 1 WHERE id = ?;
+--
+-- There is deliberately no admin endpoint for that yet. The product has two
+-- users, the statement above is the whole mechanism, and an authenticated
+-- route that can sign other people out is a bigger decision than this issue.
+--
+-- DEFAULT 0 is what makes the deploy safe rather than a flag day. Every
+-- existing row gets 0 without a backfill, and a token minted BEFORE this
+-- change carries no "tv" at all and is accepted as-is (see AuthFilter), so no
+-- live session breaks the moment this lands. That transition branch is the
+-- only reason the column can be introduced without logging everyone out, which
+-- is the exact thing the feature exists to avoid.
+--
+-- NOT NULL is safe here precisely because of the default: adding a NOT NULL
+-- column WITH a default cannot fail on existing rows, and IF NOT EXISTS makes
+-- the whole statement a no-op on re-run. Nothing is dropped, renamed or
+-- retyped, so this stays inside the additive and idempotent rule in CLAUDE.md.
+--
+-- See the version register in CLAUDE.md: V9 is #77 (per-user ordering), V10 is
+-- this. outOfOrder is false, so the order these reach production in is load
+-- bearing: V10 must never arrive before V9, which is why this branch is cut
+-- from the one carrying V9 and the two land in one merge.
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version integer NOT NULL DEFAULT 0;
