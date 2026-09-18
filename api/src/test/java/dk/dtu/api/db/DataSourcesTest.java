@@ -3,9 +3,19 @@ package dk.dtu.api.db;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import com.zaxxer.hikari.HikariConfig;
 import org.junit.jupiter.api.Test;
 
 class DataSourcesTest {
+
+    @Test
+    void setsPoolLifetimeSettingsUnderNeonsIdleCloseWindow() {
+        HikariConfig config = DataSources.buildConfig(
+                "jdbc:postgresql://db.example.com/app?sslmode=require");
+        assertEquals(240_000, config.getMaxLifetime());
+        assertEquals(60_000, config.getKeepaliveTime());
+        assertEquals(120_000, config.getIdleTimeout());
+    }
 
     @Test
     void splitsInlineNeonCredentialsOutOfTheUrl() {
