@@ -175,10 +175,26 @@ SELECT
   d.target_list_name,
   CASE WHEN l.id IS NULL THEN 'MISSING target list, will be skipped' ELSE 'ok' END AS list_status,
   (SELECT count(*) FROM lists m WHERE m.name = d.target_list_name) AS lists_with_that_name,
+  l.id AS resolved_list_id,
+  l.created_at AS resolved_list_created,
+  coalesce(l.item_count, 0) AS resolved_list_items,
+  CASE
+    WHEN l.id IS NULL THEN ''
+    WHEN l.created_at > now() - interval '1 hour' AND coalesce(l.item_count, 0) = 0
+      THEN 'CHECK: matched a list created in the last hour that is EMPTY. If an older list holds the real content under a slightly different name, this deck is about to bind to the wrong one.'
+    ELSE ''
+  END AS warning,
   CASE WHEN td.id IS NULL THEN 'insert' ELSE 'update' END AS deck_action
 FROM input_decks d
 LEFT JOIN LATERAL (
-  SELECT id FROM lists WHERE name = d.target_list_name ORDER BY created_at ASC, id ASC LIMIT 1
+  SELECT
+    li.id,
+    li.created_at,
+    (SELECT count(*) FROM items it WHERE it.list_id = li.id) AS item_count
+  FROM lists li
+  WHERE li.name = d.target_list_name
+  ORDER BY li.created_at ASC, li.id ASC
+  LIMIT 1
 ) l ON true
 LEFT JOIN tinder_decks td ON td.key = d.key
 ORDER BY d.key;
