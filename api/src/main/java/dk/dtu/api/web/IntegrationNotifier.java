@@ -58,7 +58,10 @@ public final class IntegrationNotifier {
                 if (created.size() == MAX_CREATED_ITEMS) {
                     break;
                 }
-                created.add(Map.of("id", i.id(), "text", i.text()));
+                Map<String, String> item = new java.util.LinkedHashMap<>();
+                item.put("id", i.id());
+                item.put("text", i.text());
+                created.add(item);
             }
             Map<String, Object> body = new java.util.LinkedHashMap<>();
             body.put("event", EVENT);
