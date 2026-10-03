@@ -36,27 +36,32 @@ shed its JavaFX desktop client in issue #66.
     `ListsController`, `ItemsController`, `StateController`,
     `CountersController`, `ListSharesController` for authenticated share
     management, `ShareController` for the one public route, and
-    `TinderController` for TodoTinder), plus `Backend`, `RateLimiter`,
+    `TinderController` for TodoTinder, and `IntegrationsController` for the
+    integration API), plus `Backend`, `RateLimiter`,
     `ClientIp` (shared rate-limit key resolution), and JSON/error helpers
     (`Views` for lists/items, `CounterViews` for counters, `ShareViews` for
     shares, which deliberately never calls `Views`, `TinderViews` for the
     tinder shapes, and `TinderPrompts`, the pure composer of the refill prompt
     a drained deck hands over).
-  - `dk.dtu.api.auth`: token auth, and nothing else since #61 retired password
-    login. `AuthFilter` (the before-handler and its allowlist), `Token` (mint
+  - `dk.dtu.api.auth`: token auth and integration keys (password login was
+    retired in #61). `AuthFilter` (the before-handler and its allowlist), `Token` (mint
     and verify the `todo_session` value), `Hex` (the lowercase hex rendering the
-    token signature is made of, which used to live on the deleted `Scrypt`).
+    token signature is made of, which used to live on the deleted `Scrypt`),
+    `IntegrationKeys` (parses `TODO_INTEGRATION_KEYS` and matches a presented key
+    by SHA-256 in constant time).
   - `dk.dtu.api.db`: `DataSources` (Hikari pool) and `Migrations`.
   - `dk.dtu.api.domain`: `TodoService` and the row/value types it maps, plus
     `CountersService` / `CounterRow` for the fun counters and
     `SharesService` / `ShareRow` / `ShareTokens` for the public share links,
     and `TinderService` / `TinderDeckRow` / `TinderEntryRow` /
-    `TinderSwipeRow` / `TinderMatchRow` for TodoTinder (all three deliberately
+    `TinderSwipeRow` / `TinderMatchRow` for TodoTinder, and `IntegrationService`
+    for lists kept in sync by an external system (all four deliberately
     their own services: `TodoService` mirrors the website's queries and is the
     hottest file in the repo, while counters have no website counterpart,
     shares own an unauthenticated read path that must not be coupled to it, and
     tinder is a whole resource family that only borrows
-    `TodoService.insertItem` to land a right swipe).
+    `TodoService.insertItem` to land a right swipe, and `IntegrationService` is
+    separate for the same reason as tinder).
 
 `api` depends on `todolist-shared`.
 
@@ -106,11 +111,15 @@ JUnit 5 (Jupiter 5.11.4) tests live under each module's `src/test/java`:
 - `shared`: `TaskStatusTest`.
 - `api`: HTTP/service tests for the api module (`TodoApiIntegrationTest`,
   `CountersIntegrationTest`, `SharesIntegrationTest`, `TinderIntegrationTest`,
+  `OrderingIntegrationTest`, `RevocationIntegrationTest`,
+  `ExternalItemsIntegrationTest`, `IntegrationsApiIntegrationTest`,
   `web/ViewsTest`, `web/ShareViewsTest`, `web/TinderViewsTest`,
-  `web/TinderPromptsTest`, `domain/ShareTokensTest`, `TokenTest`, `HexTest`,
-  `CompletionTest`, `DataSourcesTest`). The four integration tests each start
-  their own `EmbeddedPostgres` and also drive a real Javalin instance on an
-  ephemeral port, so routes and auth are asserted rather than assumed.
+  `web/TinderPromptsTest`, `web/OrderBodyTest`, `domain/ShareTokensTest`,
+  `TokenTest`, `HexTest`, `auth/IntegrationKeysTest`,
+  `tools/MintIntegrationKeyTest`, `CompletionTest`, `DataSourcesTest`). Every
+  `*IntegrationTest` starts its own `EmbeddedPostgres` (zonky, no Docker needed)
+  and most also drive a real Javalin instance on an ephemeral port, so routes
+  and auth are asserted rather than assumed.
   `ViewsTest` pins the EXACT key set and order of the state payload's list
   object: that is the regression guard for the website client.
   `ShareViewsTest` plus `SharesIntegrationTest` do the same for the public
@@ -279,6 +288,16 @@ website. It exists because the refill prompt (#59) is pasted into a Claude
 session that has no idea where this API lives, so it has to name an absolute
 endpoint.
 
+`TODO_INTEGRATION_KEYS` (Dokploy service env, unset by default) configures the
+integration API: comma separated `name:sha256hex:userId` entries. It holds only
+the SHA-256 of each key, never a key. Mint one with
+`mvn -q -pl api -am -DskipTests package; java -cp api/target/todolist-api.jar dk.dtu.api.tools.MintIntegrationKey`
+from the repo root: it prompts for the name and the user id, prints the key
+ONCE (it goes into the client app's secret env, never into this repo) and the
+entry to add here. A malformed entry is skipped and logged as `entry N` at
+startup rather than crashing the container. Revoking a key is removing its
+entry and redeploying.
+
 ## TodoTinder (epic #44)
 
 A mobile-first swipe app: multiple decks (AcTindervitivities, VacayTinderation,
@@ -348,6 +367,36 @@ The five rules that are easy to break and expensive to get wrong:
   `scripts/tinder-refill.ps1` (`.sh` for mac/Linux), which prompts for the
   session token. Never put a token, or an angle-bracket placeholder, into
   anything meant to be pasted.
+
+## Integration API (issue #85)
+
+Lets an external app keep one of its lists in sync with a TodoList list. The
+first client is `patr7257/RobelBartenderAPI`, which pushes a "Drinks" shopping
+list.
+
+| Method | Path | Body / query | Answers |
+|---|---|---|---|
+| PUT | `/api/todo/integrations/lists/{listName}/items` | `{source, items:[{externalId, text, description, done}]}` | `{listId, created, updated, closed}` |
+| GET | `/api/todo/integrations/lists/{listName}/items` | `?source=` | `{listId \| null, items:[{externalId, text, done}]}` |
+
+The rules that are easy to break:
+
+- **Credentials never overlap.** Under `/api/todo/integrations/` only an
+  integration key (Bearer header) is accepted and a session is refused;
+  everywhere else an integration key is refused. Integration routes are NOT on
+  the unauthenticated allowlist, which stays at two entries.
+- **The list is the integration user's list with that exact name**
+  (`owner_id` = the key's user), created on first PUT. `listId` is its uuid as
+  a string.
+- **Upsert key is `(list_id, external_source, external_id)`** (V11 partial
+  unique index). The integration owns text and description; done=true closes,
+  done=false REOPENS. A client must therefore read back (GET) and adopt ticks
+  made in TodoList before it PUTs, or it undoes them.
+- **Items not in a PUT are never touched**, and a deleted item is recreated by
+  the next PUT that mentions it.
+- **One PUT is one transaction, serialised per (user, list name) by
+  `pg_advisory_xact_lock`**, because a unique index on list names is not
+  possible additively. Validation runs before it, so a 400 writes nothing.
 
 ## MANDATORY: UI work happens in the website repo, not here
 
