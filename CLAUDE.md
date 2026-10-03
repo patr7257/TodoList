@@ -161,7 +161,7 @@ migrations to production):
 ## Migrations
 
 Flyway, from `dk.dtu.api.db.Migrations`, files in
-`api/src/main/resources/db/migration`. Current head is `V11`.
+`api/src/main/resources/db/migration`. Current head is `V12`.
 
 **Version register.** Because `outOfOrder` is false (see below), migration
 numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
@@ -176,6 +176,7 @@ numbers are pre-assigned per issue and recorded here BEFORE the branch merges:
 | V9 | #77 | `list_order`, `item_order` (per-user ordering overrides) |
 | V10 | #74 | `users.token_version` (per-user session revocation) |
 | V11 | #85 | `items.external_source`, `items.external_id` + partial unique index (integration API) |
+| V12 | #87 | `push_subscriptions`, `notification_prefs` (Web Push, used only by the website) |
 
 - `baselineOnMigrate=true` with `baselineVersion=1`, because production Neon
   already held the V1 schema when Flyway was introduced.
