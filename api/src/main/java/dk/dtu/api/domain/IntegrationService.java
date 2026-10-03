@@ -3,6 +3,7 @@ package dk.dtu.api.domain;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,8 @@ import java.util.Objects;
 
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.Query;
+import org.jdbi.v3.core.statement.SqlStatement;
 import org.jdbi.v3.core.statement.Update;
 
 /**
@@ -39,7 +42,12 @@ public final class IntegrationService {
     public record SyncItem(String externalId, String text, String description, boolean done) {
     }
 
-    public record SyncResult(String listId, int created, int updated, int closed) {
+    /** An item created by one sync, so a notify hook can name it. */
+    public record CreatedItem(String id, String text) {
+    }
+
+    public record SyncResult(String listId, int created, int updated, int closed,
+                             List<CreatedItem> createdItems) {
     }
 
     public record ExternalItem(String externalId, String text, boolean done) {
@@ -70,10 +78,11 @@ public final class IntegrationService {
             int created = 0;
             int updated = 0;
             int closed = 0;
+            List<CreatedItem> createdItems = new ArrayList<>();
             for (SyncItem in : items) {
                 Existing cur = existing.get(in.externalId());
                 if (cur == null) {
-                    insertItem(h, listId, source, in, userId);
+                    createdItems.add(new CreatedItem(insertItem(h, listId, source, in, userId), in.text()));
                     created++;
                     continue;
                 }
@@ -94,7 +103,7 @@ public final class IntegrationService {
                     updated++;
                 }
             }
-            return new SyncResult(listId, created, updated, closed);
+            return new SyncResult(listId, created, updated, closed, List.copyOf(createdItems));
         });
     }
 
@@ -162,12 +171,12 @@ public final class IntegrationService {
         return out;
     }
 
-    private static void insertItem(Handle h, String listId, String source, SyncItem in, String userId) {
+    private static String insertItem(Handle h, String listId, String source, SyncItem in, String userId) {
         String status = in.done() ? "DONE" : "NOT_STARTED";
-        Update u = h.createUpdate("INSERT INTO items "
+        Query u = h.createQuery("INSERT INTO items "
                 + "(list_id, text, description, status, done, created_by, external_source, external_id) "
                 + "VALUES (CAST(:listId AS uuid), :text, :description, CAST(:status AS todo_status), :done, "
-                + "CAST(:createdBy AS uuid), :source, :externalId)");
+                + "CAST(:createdBy AS uuid), :source, :externalId) RETURNING CAST(id AS text)");
         u.bind("listId", listId);
         u.bind("text", in.text());
         bindNullableText(u, "description", in.description());
@@ -176,7 +185,7 @@ public final class IntegrationService {
         u.bind("createdBy", userId);
         u.bind("source", source);
         u.bind("externalId", in.externalId());
-        u.execute();
+        return u.mapTo(String.class).one();
     }
 
     private static void updateText(Handle h, String itemId, SyncItem in, Timestamp now) {
@@ -199,7 +208,7 @@ public final class IntegrationService {
                 .execute();
     }
 
-    private static void bindNullableText(Update u, String name, String value) {
+    private static void bindNullableText(SqlStatement<?> u, String name, String value) {
         if (value == null) {
             u.bindNull(name, Types.VARCHAR);
         } else {
