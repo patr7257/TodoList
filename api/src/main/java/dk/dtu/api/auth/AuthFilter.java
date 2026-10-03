@@ -23,6 +23,10 @@ import org.jetbrains.annotations.NotNull;
  * against the stored column, so bumping that column signs one person out
  * without touching anybody else's session.
  *
+ * <p>Paths under {@code /api/todo/integrations/} are the one exception to the
+ * session rule: they take an integration key from {@code TODO_INTEGRATION_KEYS}
+ * as a Bearer header instead, and refuse a session. See {@link IntegrationKeys}.
+ *
  * <p>When the database is not configured the filter steps aside so the data
  * controllers can answer 503 first, matching the website's ordering where an
  * unconfigured backend returns 503 rather than 401.
@@ -31,6 +35,15 @@ public final class AuthFilter implements Handler {
 
     public static final String COOKIE_NAME = "todo_session";
     public static final String UID_ATTRIBUTE = "uid";
+    public static final String INTEGRATION_ATTRIBUTE = "integration";
+
+    /**
+     * Integration keys (TODO_INTEGRATION_KEYS) are accepted under this prefix
+     * and NOWHERE else, and session tokens are refused under it. The two
+     * credential kinds never overlap, so a leaked integration key cannot read
+     * /state and a session cannot impersonate an integration.
+     */
+    private static final String INTEGRATIONS_PREFIX = "/api/todo/integrations/";
 
     /**
      * The complete set of unauthenticated paths, matched EXACTLY (logout) or by
@@ -75,6 +88,10 @@ public final class AuthFilter implements Handler {
         if (!backend.databaseConfigured()) {
             return; // let the controller answer 503
         }
+        if (isIntegrationPath(ctx.path())) {
+            authenticateIntegration(ctx);
+            return;
+        }
 
         String value = bearerOrCookie(ctx);
         Optional<Token.Session> session = backend.token().verify(value);
@@ -86,6 +103,39 @@ public final class AuthFilter implements Handler {
             throw HttpError.unauthorized();
         }
         ctx.attribute(UID_ATTRIBUTE, uid);
+    }
+
+    /**
+     * Bearer header only (never the cookie). The key is matched by SHA-256 in
+     * constant time, then the mapped user must still exist: a key for a deleted
+     * user is a 401, not a foreign-key 500 further down.
+     */
+    private void authenticateIntegration(Context ctx) {
+        IntegrationKeys keys = backend.config() == null
+                ? IntegrationKeys.EMPTY
+                : backend.config().integrationKeys();
+        Optional<IntegrationKeys.Caller> caller = keys.match(bearerOnly(ctx));
+        if (caller.isEmpty()) {
+            throw HttpError.unauthorized();
+        }
+        if (backend.todo().findUserById(caller.get().userId()).isEmpty()) {
+            throw HttpError.unauthorized();
+        }
+        ctx.attribute(UID_ATTRIBUTE, caller.get().userId());
+        ctx.attribute(INTEGRATION_ATTRIBUTE, caller.get().name());
+    }
+
+    static boolean isIntegrationPath(String path) {
+        return path != null && path.startsWith(INTEGRATIONS_PREFIX);
+    }
+
+    private static String bearerOnly(Context ctx) {
+        String auth = ctx.header("Authorization");
+        if (auth == null) {
+            return null;
+        }
+        String trimmed = auth.trim();
+        return trimmed.regionMatches(true, 0, "Bearer ", 0, 7) ? trimmed.substring(7).trim() : null;
     }
 
     /**

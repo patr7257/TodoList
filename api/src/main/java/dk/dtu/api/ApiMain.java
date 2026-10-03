@@ -8,6 +8,7 @@ import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.CountersService;
+import dk.dtu.api.domain.IntegrationService;
 import dk.dtu.api.domain.SharesService;
 import dk.dtu.api.domain.TinderService;
 import dk.dtu.api.domain.TodoService;
@@ -89,6 +90,7 @@ public final class ApiMain {
         // token space from being free to attempt.
         RateLimiter shareLimiter = new RateLimiter(
                 config.shareRateLimitMax(), config.shareRateLimitWindowSeconds());
-        return new Backend(config, todo, token, counters, shares, shareLimiter, tinder);
+        IntegrationService integrations = new IntegrationService(jdbi);
+        return new Backend(config, todo, token, counters, shares, shareLimiter, tinder, integrations);
     }
 }

@@ -3,6 +3,7 @@ package dk.dtu.api.web;
 import dk.dtu.api.ApiConfig;
 import dk.dtu.api.auth.Token;
 import dk.dtu.api.domain.CountersService;
+import dk.dtu.api.domain.IntegrationService;
 import dk.dtu.api.domain.SharesService;
 import dk.dtu.api.domain.TinderService;
 import dk.dtu.api.domain.TodoService;
@@ -35,6 +36,7 @@ public final class Backend {
     private final SharesService shares;
     private final RateLimiter shareRateLimiter;
     private final TinderService tinder;
+    private final IntegrationService integrations;
 
     public Backend(ApiConfig config, TodoService todo, Token token) {
         this(config, todo, token, null);
@@ -51,8 +53,15 @@ public final class Backend {
 
     public Backend(ApiConfig config, TodoService todo, Token token, CountersService counters,
                    SharesService shares, RateLimiter shareRateLimiter, TinderService tinder) {
+        this(config, todo, token, counters, shares, shareRateLimiter, tinder, null);
+    }
+
+    public Backend(ApiConfig config, TodoService todo, Token token, CountersService counters,
+                   SharesService shares, RateLimiter shareRateLimiter, TinderService tinder,
+                   IntegrationService integrations) {
         this.config = config;
         this.tinder = tinder;
+        this.integrations = integrations;
         this.todo = todo;
         this.token = token;
         this.counters = counters;
@@ -96,5 +105,9 @@ public final class Backend {
 
     public TinderService tinder() {
         return tinder;
+    }
+
+    public IntegrationService integrations() {
+        return integrations;
     }
 }

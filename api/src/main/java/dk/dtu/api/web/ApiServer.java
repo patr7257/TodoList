@@ -26,6 +26,7 @@ public final class ApiServer {
         ListSharesController listShares = new ListSharesController(backend);
         ShareController share = new ShareController(backend);
         TinderController tinder = new TinderController(backend);
+        IntegrationsController integrations = new IntegrationsController(backend);
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new GsonJsonMapper());
@@ -63,6 +64,11 @@ public final class ApiServer {
         app.post("/api/todo/tinder/decks/{deck}/swipes", tinder::swipe);
         app.post("/api/todo/tinder/decks/{deck}/entries", tinder::importEntries);
         app.get("/api/todo/tinder/matches", tinder::matches);
+        // Integration API (bartender sync). Integration key ONLY: AuthFilter
+        // refuses a session under /api/todo/integrations/ and refuses an
+        // integration key everywhere else.
+        app.put("/api/todo/integrations/lists/{listName}/items", integrations::putItems);
+        app.get("/api/todo/integrations/lists/{listName}/items", integrations::getItems);
         // The one public route (singular "share"), exempted in AuthFilter.
         app.get("/api/todo/share/{token}", share::get);
 
