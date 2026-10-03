@@ -44,6 +44,11 @@ public final class ApiMain {
                 config.httpPort(),
                 config.databaseConfigured() ? "configured" : "NOT configured",
                 config.sessionSecretConfigured() ? "configured" : "NOT configured");
+        log.info("Integration keys configured: {}", config.integrationKeys().size());
+        if (!config.integrationKeys().rejected().isEmpty()) {
+            log.warn("TODO_INTEGRATION_KEYS: ignored malformed {} (expected name:sha256hex:userId)",
+                    config.integrationKeys().rejected());
+        }
 
         Runtime.getRuntime().addShutdownHook(new Thread(app::stop, "api-shutdown"));
     }
