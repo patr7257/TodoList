@@ -24,6 +24,9 @@ the migrations; that repo owns everything a user looks at.
   `dk.dtu.api.auth.Token` verifies, so the two halves stay interchangeable.
 - Clients read and write over HTTPS/JSON and re-read the state endpoint to
   refresh, rather than applying incremental updates.
+- External apps can keep a list in sync through the integration API
+  (`/api/todo/integrations/...`), authenticated by a per-integration key whose
+  SHA-256 is configured in `TODO_INTEGRATION_KEYS`. Details in `CLAUDE.md`.
 
 ## Run locally (development)
 
@@ -54,7 +57,9 @@ Run the tests with `mvn test` from the repo root.
 The API is deployed on a Dokploy VPS, built from `Dockerfile.api`, and exposed
 publicly behind Dokploy's Traefik reverse proxy with Let's Encrypt TLS at
 `https://api.todolist.patrickrobel.dk`. `DATABASE_URL` and
-`TODO_SESSION_SECRET` are provided as Dokploy service environment variables.
+`TODO_SESSION_SECRET` are provided as Dokploy service environment variables,
+plus `TODO_INTEGRATION_KEYS` when an integration is enabled (hashes only, see
+`CLAUDE.md`).
 
 Every merge to `main` redeploys that container, which runs Flyway against
 production Neon on boot. A merge is a ship.

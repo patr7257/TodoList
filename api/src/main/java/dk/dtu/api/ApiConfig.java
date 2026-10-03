@@ -1,5 +1,7 @@
 package dk.dtu.api;
 
+import dk.dtu.api.auth.IntegrationKeys;
+
 /**
  * Runtime configuration for the API. Every value is read as a JVM system
  * property first, then an environment variable, then a built-in default, so
@@ -57,10 +59,14 @@ public final class ApiConfig {
     private final int shareRateLimitMax;
     private final int shareRateLimitWindowSeconds;
     private final String publicBaseUrl;
+    private final IntegrationKeys integrationKeys;
+    private final String notifyUrl;
+    private final String notifySecret;
 
     private ApiConfig(int httpPort, String databaseUrl, String sessionSecret,
                       String shareBaseUrl, int shareRateLimitMax, int shareRateLimitWindowSeconds,
-                      String publicBaseUrl) {
+                      String publicBaseUrl, IntegrationKeys integrationKeys,
+                      String notifyUrl, String notifySecret) {
         this.httpPort = httpPort;
         this.databaseUrl = databaseUrl;
         this.sessionSecret = sessionSecret;
@@ -68,6 +74,9 @@ public final class ApiConfig {
         this.shareRateLimitMax = shareRateLimitMax;
         this.shareRateLimitWindowSeconds = shareRateLimitWindowSeconds;
         this.publicBaseUrl = publicBaseUrl;
+        this.integrationKeys = integrationKeys == null ? IntegrationKeys.EMPTY : integrationKeys;
+        this.notifyUrl = notifyUrl;
+        this.notifySecret = notifySecret;
     }
 
     /** Builds the config from system properties / environment variables. */
@@ -81,7 +90,9 @@ public final class ApiConfig {
                 DEFAULT_SHARE_RATE_LIMIT_WINDOW_SECONDS);
         String publicBase = normalizeBaseUrl(stringValue("API_PUBLIC_BASE_URL", DEFAULT_PUBLIC_BASE_URL),
                 DEFAULT_PUBLIC_BASE_URL);
-        return new ApiConfig(port, db, secret, shareBase, shareMax, shareWindow, publicBase);
+        IntegrationKeys integrationKeys = IntegrationKeys.parse(stringValue("TODO_INTEGRATION_KEYS", null));
+        return new ApiConfig(port, db, secret, shareBase, shareMax, shareWindow, publicBase, integrationKeys,
+                stringValue("TODO_NOTIFY_URL", null), stringValue("TODO_NOTIFY_SECRET", null));
     }
 
     /** Explicit constructor for tests. Share settings take their defaults. */
@@ -109,7 +120,7 @@ public final class ApiConfig {
                                int shareRateLimitWindowSeconds, String publicBaseUrl) {
         return new ApiConfig(httpPort, normalizeJdbcUrl(databaseUrl), sessionSecret,
                 normalizeBaseUrl(shareBaseUrl), shareRateLimitMax, shareRateLimitWindowSeconds,
-                normalizeBaseUrl(publicBaseUrl, DEFAULT_PUBLIC_BASE_URL));
+                normalizeBaseUrl(publicBaseUrl, DEFAULT_PUBLIC_BASE_URL), IntegrationKeys.EMPTY, null, null);
     }
 
     /**
@@ -202,6 +213,39 @@ public final class ApiConfig {
     /** Origin this API is reachable at from outside, with no trailing slash. */
     public String publicBaseUrl() {
         return publicBaseUrl;
+    }
+
+    /**
+     * A copy of this config with {@code TODO_INTEGRATION_KEYS} set to
+     * {@code raw}. Exists so tests can configure keys without a ninth
+     * {@code of(...)} overload; production reads the env in fromEnvironment.
+     */
+    public ApiConfig withIntegrationKeys(String raw) {
+        return new ApiConfig(httpPort, databaseUrl, sessionSecret, shareBaseUrl,
+                shareRateLimitMax, shareRateLimitWindowSeconds, publicBaseUrl,
+                IntegrationKeys.parse(raw), notifyUrl, notifySecret);
+    }
+
+    /** A copy with the notify hook target set (tests); production reads the env. */
+    public ApiConfig withNotify(String url, String secret) {
+        return new ApiConfig(httpPort, databaseUrl, sessionSecret, shareBaseUrl,
+                shareRateLimitMax, shareRateLimitWindowSeconds, publicBaseUrl,
+                integrationKeys, url, secret);
+    }
+
+    /** TODO_NOTIFY_URL, or null when unset or blank. */
+    public String notifyUrl() {
+        return notifyUrl == null || notifyUrl.isBlank() ? null : notifyUrl.trim();
+    }
+
+    /** TODO_NOTIFY_SECRET, or null when unset or blank. Never log it. */
+    public String notifySecret() {
+        return notifySecret == null || notifySecret.isBlank() ? null : notifySecret.trim();
+    }
+
+    /** Parsed integration keys; never null, empty when the env var is unset. */
+    public IntegrationKeys integrationKeys() {
+        return integrationKeys;
     }
 
     private static String stringValue(String key, String fallback) {

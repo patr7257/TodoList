@@ -8,6 +8,7 @@ import dk.dtu.api.auth.Token;
 import dk.dtu.api.db.DataSources;
 import dk.dtu.api.db.Migrations;
 import dk.dtu.api.domain.CountersService;
+import dk.dtu.api.domain.IntegrationService;
 import dk.dtu.api.domain.SharesService;
 import dk.dtu.api.domain.TinderService;
 import dk.dtu.api.domain.TodoService;
@@ -44,6 +45,11 @@ public final class ApiMain {
                 config.httpPort(),
                 config.databaseConfigured() ? "configured" : "NOT configured",
                 config.sessionSecretConfigured() ? "configured" : "NOT configured");
+        log.info("Integration keys configured: {}", config.integrationKeys().size());
+        if (!config.integrationKeys().rejected().isEmpty()) {
+            log.warn("TODO_INTEGRATION_KEYS: ignored malformed {} (expected name:sha256hex:userId)",
+                    config.integrationKeys().rejected());
+        }
 
         Runtime.getRuntime().addShutdownHook(new Thread(app::stop, "api-shutdown"));
     }
@@ -84,6 +90,7 @@ public final class ApiMain {
         // token space from being free to attempt.
         RateLimiter shareLimiter = new RateLimiter(
                 config.shareRateLimitMax(), config.shareRateLimitWindowSeconds());
-        return new Backend(config, todo, token, counters, shares, shareLimiter, tinder);
+        IntegrationService integrations = new IntegrationService(jdbi);
+        return new Backend(config, todo, token, counters, shares, shareLimiter, tinder, integrations);
     }
 }
