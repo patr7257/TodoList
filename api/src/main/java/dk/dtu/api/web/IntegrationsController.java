@@ -39,9 +39,11 @@ public final class IntegrationsController {
     static final int MAX_LIST_NAME_LENGTH = 200;
 
     private final Backend backend;
+    private final IntegrationNotifier notifier;
 
     public IntegrationsController(Backend backend) {
         this.backend = backend;
+        this.notifier = new IntegrationNotifier(backend.config());
     }
 
     public void putItems(Context ctx) {
@@ -72,6 +74,8 @@ public final class IntegrationsController {
         }
 
         IntegrationService.SyncResult r = integrations.sync(uid, listName, source, items);
+        // sync() has returned, so its transaction has committed: notify only now.
+        notifier.changed(source, listName, r);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("listId", r.listId());
         out.put("created", r.created());

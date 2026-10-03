@@ -299,6 +299,16 @@ entry to add here. A malformed entry is skipped and logged as `entry N` at
 startup rather than crashing the container. Revoking a key is removing its
 entry and redeploying.
 
+`TODO_NOTIFY_URL` (full URL) and `TODO_NOTIFY_SECRET` (Dokploy service env, both
+unset by default) switch on the notify hook: after a committed integration PUT
+that created, updated or closed at least one item, the API POSTs
+`{event, source, listId, listName, created, updated, closed, createdItems}` to
+the URL with `Authorization: Bearer <secret>`. It is fire and forget (async, 3
+second timeout), so a failing or slow target never affects the PUT response;
+only the outcome status is logged. If either variable is unset or blank the
+hook is skipped silently. Set both in Dokploy, together with
+`TODO_INTEGRATION_KEYS`, BEFORE merging.
+
 ## TodoTinder (epic #44)
 
 A mobile-first swipe app: multiple decks (AcTindervitivities, VacayTinderation,
